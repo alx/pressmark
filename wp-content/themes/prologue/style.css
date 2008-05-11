@@ -1,0 +1,297 @@
+/*  
+Theme Name: Prologue
+Version: 1.3
+Author: Joseph Scott and Matt Thomas, Automattic
+Author URI: http://automattic.com/
+Tags: blue, two columns, fixed width, custom header, microblog
+Description: A group blog theme for short update messages, inspired by Twitter.
+*/
+
+/* The Reset ---------------------------------- */
+body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,
+h6,pre,form,fieldset,input,p,blockquote,table,
+th,td { margin: 0; padding: 0; }
+fieldset,img,abbr { border: 0; }
+address,caption,cite,code,dfn,em,h1,h2,h3,
+h4,h5,h6,strong,th,var { font-style: normal; font-weight: normal; }
+caption,th { text-align: left; }
+q:before,q:after { content: ''; }
+a { text-decoration: none; }
+/* -------------------------------------------- */
+body {
+	font-size: 62.5%;
+	background: #fff;
+	font-family: "Lucida Grande",Verdana,"Bitstream Vera Sans",Arial,sans-serif;
+}
+a {
+	font-weight: bold;
+	color: #246;
+}
+a:hover {
+	border-bottom: 1px solid #bbb;
+	color: #68a;
+}
+a:active {
+	color: #468;
+}
+strong {
+	font-weight: bold;
+}
+em {
+	font-style: italic;
+}
+#wrapper {
+	width: 726px;
+	margin: 0 auto;
+}
+#main {
+	width: 462px;
+	padding: 22px;
+	float: left;
+}
+#main .wp-smiley {
+	border: none;
+}
+#sidebar {
+	width: 176px;
+	padding: 22px;
+	float: left;
+	color: #555;
+}
+#sidebar ul li p {
+	font-size: 0.9em;
+	line-height: 1.4em;
+	margin-bottom: 1.5em;
+}
+h1 {
+	font-size: 3.6em;
+	font-family: Georgia, "Times New Roman", serif;
+	margin-left: 22px;
+	margin-top: 40px;
+	margin-bottom: 18px;
+}
+h1 a {
+	font-weight: normal;
+}
+#postbox {
+	background: #e4f2fd url(i/form-top.png) top left no-repeat;
+	margin-top: 12px;
+}
+#postbox form {
+	background: url(i/form-btm.png) bottom left no-repeat;
+	padding: 22px 0 22px 22px;
+}
+#postbox textarea#posttext {
+	width: 608px;
+	height: 50px;
+	border: 1px solid #c6d9e9;
+	margin-bottom: 10px;
+	padding: 2px;
+	font: 1.4em/1.2em "Lucida Grande",Verdana,"Bitstream Vera Sans",Arial,sans-serif;
+	}
+#postbox label {
+	color: #333;
+	display: block;
+	font-size: 1.2em;
+	margin-bottom: 4px;
+	margin-left: 70px;
+	font-weight: bold;
+}
+#postbox input#tags {
+	font-size: 1.2em;
+	padding: 2px;
+	border: 1px solid #c6d9e9;
+	width: 402px;
+	margin-left: 70px;
+}
+#postbox input#submit {
+	font-size: 1.2em;
+	margin-left: 20px;
+}
+#userpage #main ul,
+#postpage #main ul {
+	margin-left: 0;
+}
+#userpage #sidebar,
+#postpage #sidebar {
+	margin-top:8px;
+}
+#main ul {
+	list-style: none;
+	margin-top: 16px;
+	margin-left: 70px;
+}
+#main h2 {
+	margin-top: 4px;
+}
+h2 {
+	font-size: 1.8em;
+	font-weight: bold;
+	color: #555;
+}
+h3 {
+	font-size: 1.4em;
+	color: #777;
+	font-weight: bold;
+}
+#postbox img.avatar {
+	float: left;
+	margin-top: 19px;
+	margin-right: 13px;
+	margin-left: 0px;
+	padding: 3px;
+	border: 1px solid #c6d9e9;
+	background: #fff;	
+}
+#sidebar ul li#authors ul li img.avatar {
+	clear: both;
+	margin: 0 3px 0 0;
+	padding: 3px;
+}
+#sidebar ul li#authors, #sidebar ul li#authors ul li {
+	border: none;
+}
+img.avatar {
+	float: left;
+	margin-right: 12px;
+	margin-left: -70px;
+	padding: 3px;
+	border: 1px solid #ddd;
+}
+#main ul li {
+	overflow: visible; 
+	margin-bottom: 1.5em;
+/*	border-bottom: 1px solid #ddd; */
+}
+.postcontent {
+	overflow: auto;
+}
+.bottom_of_entry {
+	border-top: 1px solid #ddd; 
+	clear: both;
+	margin: 0;
+	padding: 0;
+}
+h2 img {
+	vertical-align: middle;
+	margin-right: 12px;
+}
+#main p img {
+	vertical-align: top;
+	padding: 2px;
+	border: 1px solid #eee;
+	margin-right: 8px;
+}
+#main h4 {
+	font-size: 1.3em;
+}
+#main p {
+	font-size: 1.3em;
+	line-height: 1.4em;
+	font-family: Georgia, "Times New Roman", serif;
+	margin: .7em 0;
+	color: #555;
+}
+#main ul#comments {
+	margin-left: 52px;
+}
+#main ul#comments img.avatar {
+	margin-left: -52px;
+	margin-right: 12px;
+}
+#main form {
+	margin-top: 10px;
+}
+#main textarea {
+	width: 460px;
+}
+#main input {
+	margin: 4px 0;
+}
+#main .meta {
+	font-family: "Lucida Grande",Verdana,"Bitstream Vera Sans",Arial,sans-serif;
+	font-size: 0.8em;
+	margin: 0 0 1.5em 0;
+	color: #666;
+}
+#main p.meta {
+	font-size: 1em;
+}
+h2 .rss {
+	float: none;
+	background: url(i/feed12x12.png) center left no-repeat;
+	padding-top: 0;
+	padding-left: 16px;
+}
+.rss {
+	float: right;
+	background: url(i/feed.png) bottom left no-repeat;
+	padding-left: 14px;
+	font-size: 0.8em;
+	font-weight: normal;
+	padding-top: 4px;
+	line-height: 1em;
+}
+.allrss {
+	background: url(i/feed.png) center left no-repeat;
+	padding-left: 14px;
+}
+#sidebar a:hover {
+	border-bottom: none;
+}
+#sidebar ul {
+	list-style: none;
+	font-size: 1.3em;
+	margin-bottom: 22px;
+	color: #888;
+}
+#sidebar ul li {
+	clear: both;
+	padding: 4px 0;
+	border-bottom: 1px solid #ddd;
+}
+#sidebar ul li.credits {
+	margin-top: 1.5em;
+	font-size: .9em;
+	color: #555;
+	border-bottom: none;
+}
+#sidebar ul h2 {
+	font-size: 1.384em;
+	margin-bottom: 7px;
+}
+#sidebar ul ul {
+	font-size: 1em;
+}
+
+#wpstats {
+	position: relative;
+	margin-top: 30px;
+}
+#main ul,
+#main .post ul {
+	list-style: none;
+	margin-top: 16px;
+	margin-left: 70px;
+}
+#main ul ul,
+#main .post ul {
+	margin-left: 18px;
+	list-style: disc;
+}
+#main ul ul ul,
+#main ul ol ul,
+#main .post ul ul,
+#main .post ol ul {
+	margin-top: 0;
+}
+#main ol,
+#main .post ol {
+	margin-top: 16px;
+	margin-left: 18px;
+	list-style: decimal;
+}
+#main ol ol,
+#main .post ol ol {
+	margin-top: 0;
+}
