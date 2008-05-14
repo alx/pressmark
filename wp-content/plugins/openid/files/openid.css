@@ -1,0 +1,19 @@
+#openid_enabled_link, .openid_link,  #openid_url, #commentform #openid_url {
+	background: url('openid.gif') center left no-repeat; 
+	padding-left: 18px; 
+}
+
+body.login #openid_url {
+	width: 92%;
+	font-size: 20px;
+	background-color: #FFF;
+	border: 1px solid #ccc;
+	padding: 3px 3px 3px 18px;
+	margin-right: 6px;
+}
+
+/* fix link color on wp-login.php */
+body.login form#loginform a.legacy, 
+body.login form#registerform a.legacy {
+	color: #FFF;
+}
