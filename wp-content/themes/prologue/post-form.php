@@ -14,8 +14,6 @@ $first_name		= attribute_escape( $user->first_name );
 		<input type="text" name="posturl" value="" id="posturl">
 		
 		<label for="posttext">Description:</label>
-		<input type="text" name="posttext" value="" id="posttext">
-		
 		<textarea name="posttext" id="posttext" rows="3" cols="60"></textarea>
 	
 		<label for="tags">Tag it</label>
