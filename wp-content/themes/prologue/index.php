@@ -26,6 +26,8 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 		'tags_input'	=> $tags,
 		'post_status'	=> 'publish'
 	) );
+	
+	update_post_meta($post_id, "pressmark-url", $post_url);
 
 	wp_redirect( get_bloginfo( 'url' ) . '/' );
 	exit;
@@ -66,7 +68,7 @@ if( have_posts( ) ) {
 		<span class="meta">
 			<?php the_time( "h:i:s a" ); ?> on <?php the_time( "F j, Y" ); ?> |
 			<?php comments_popup_link( __( '0' ), __( '1' ), __( '%' ) ); ?> |
-			<a href="<?php the_permalink( ); ?>">#</a> | 
+			<a href="<?php post_custom("pressmark-url"); ?>">#</a> | 
 			<?php edit_post_link( __( 'e' ) ); ?>
 			<br />
 			<?php the_tags( __( 'Tags: ' ), ', ', ' ' ); ?>
