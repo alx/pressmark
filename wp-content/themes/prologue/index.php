@@ -9,6 +9,7 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 	check_admin_referer( 'new-post' );
 
 	$user_id		= $current_user->user_id;
+	$post_url		= $_POST['posturl'];
 	$post_content	= $_POST['posttext'];
 	$tags			= $_POST['tags'];
 
