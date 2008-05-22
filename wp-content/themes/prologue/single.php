@@ -19,17 +19,19 @@ if( have_posts( ) ) {
 	</h2>
 	<ul>
 		<li>
+			<h3><a href="<?php echo post_custom("pressmark-url"); ?>"><?php the_title(); ?></a></h3>
 			<h4>
-				<?php the_time( "h:i:s a" ); ?> on <?php the_time( "F j, Y" ); ?>
-				| <a href="<?php echo get_permalink( ); ?>">#</a> | 
-				<?php edit_post_link( __( 'e' ) ); ?>
 				<span class="meta">
-					<?php comments_popup_link( __( '0' ), __( '1' ), __( '%' ) ); ?>
+					<?php the_time( "h:i:s a" ); ?> on <?php the_time( "F j, Y" ); ?> |
+					<?php comments_popup_link( __( '0' ), __( '1' ), __( '%' ) ); ?> |
+					<?php edit_post_link( __( 'e' ) ); ?>
 					<br />
-					<?php the_tags( __( 'Tags: ' ), ', ', ' ' ); ?>
+					<?php the_author_posts_link( ); ?><?php the_tags( __( ' | Tags: ' ), ', ', ' ' ); ?>
 				</span>
 			</h4>
-			<?php the_content( __( '(More ...)' ) ); ?>
+			<div class="postcontent">
+				<?php the_content( __( '(More ...)' ) ); ?>
+			</div> <!-- // postcontent -->
 			<div class="bottom_of_entry">&nbsp;</div>
 		</li>
 	</ul>
