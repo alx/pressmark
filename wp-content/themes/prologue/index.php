@@ -32,7 +32,7 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 	$wpdb->query( "
 			INSERT INTO $wpdb->postmeta
 			(post_id,meta_key,meta_value )
-			VALUES ('$post_id','pressmark','$post_url' )
+			VALUES ('$post_id','pressmark-url','$post_url' )
 		" );
 
 	wp_redirect( get_bloginfo( 'url' ) . '/' );
