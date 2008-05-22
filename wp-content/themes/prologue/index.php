@@ -63,7 +63,7 @@ if( have_posts( ) ) {
 		}
 		$previous_user_id = $current_user_id;
 ?>
-	<h3><a href="<?php post_custom("pressmark-url"); ?>"><?php the_title(); ?></a></h3>
+	<h3><a href="<?php echo post_custom("pressmark-url"); ?>"><?php the_title(); ?></a></h3>
 	<h4>
 		<span class="meta">
 			<?php the_time( "h:i:s a" ); ?> on <?php the_time( "F j, Y" ); ?> |
