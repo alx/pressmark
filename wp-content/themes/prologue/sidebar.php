@@ -24,8 +24,9 @@ if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) {
 			</p>
 		</li>
 		
+		<?php if ( is_user_logged_in() ) { ?>
 		<li class="bookmarlet">
-			<p>Copy this link in your Firefox Bookmarks Toolbar!<br/>
+			<p>NOT WORKING YET - Copy this link in your Firefox Bookmarks Toolbar!<br/>
 			Then when you get a link, simply press the "Press it" bookmark to post it on <?php bloginfo( 'name' ); ?>.<br/>
 			<a href="javascript:Q='';if(top.frames.length==0)Q=document.selection.createRange()
 			.text;void (btw=window.open ('<?php echo get_option('siteurl'); ?>?postcontent='+escape(Q)+
@@ -34,5 +35,6 @@ if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) {
 			Press it</a>
 			</p>
 		</li>
+		<?php } ?>
 	</ul>
 </div> <!-- // sidebar -->
