@@ -14,7 +14,14 @@ if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) {
 ?>
 
 		<li class="credits">
-			<p><?php wp_loginout(); ?></p>
+			<p>
+				<?php
+				if ( ! is_user_logged_in() )
+					$link = '<a href="' . get_option('siteurl') . '/wp-login.php?redirect_to=' . urlencode(get_option('siteurl')) . '">' . __('Log in') . '</a>';
+				else
+					$link = '<a href="' . get_option('siteurl') . '/wp-login.php?action=logout">' . __('Log out') . '</a>';
+				?>
+			</p>
 		</li>
 	</ul>
 </div> <!-- // sidebar -->
