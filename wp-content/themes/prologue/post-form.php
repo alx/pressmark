@@ -11,15 +11,15 @@ $first_name		= attribute_escape( $user->first_name );
 		<?php echo prologue_get_avatar( $user->ID, $user->user_email, 48 ); ?>
 
 		<label for="posttitle">T&iacute;tulo:</label>
-		<input type="text" name="posttitle" value="" id="posttitle">
+		<input type="text" name="posttitle" value="" id="posttitle" class="text"/>
 		
-		<label for="posttext">Enlace:</label>
-		<textarea name="posttext" id="posttext" rows="3" cols="60"></textarea>
+		<label for="enlace">Enlace:</label>
+		<input type="text" name="enlace" class="text"/>
 		
-		<label for="posttext">Descripción:</label>
-		<textarea name="posttext" id="posttext" rows="3" cols="60"></textarea>
+		<label for="descripcion">Descripción:</label>
+		<textarea name="descripcion" id="descripcion" rows="3" cols="60"></textarea>
 	
-		<label for="tags">Tag it</label>
+		<label for="tags">Tags</label>
 		<input type="text" name="tags" id="tags" autocomplete="off" />
 	
 		<input id="submit" type="submit" value="Post it" />
