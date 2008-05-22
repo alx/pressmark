@@ -14,7 +14,7 @@ if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) {
 ?>
 
 		<li class="credits">
-			<p><a href="/wp-login.php">Login</a></p>
+			<p><?php wp_loginout(); ?></p>
 		</li>
 	</ul>
 </div> <!-- // sidebar -->

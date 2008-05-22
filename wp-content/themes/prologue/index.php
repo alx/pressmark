@@ -63,16 +63,14 @@ if( have_posts( ) ) {
 		}
 		$previous_user_id = $current_user_id;
 ?>
-
+	<h3><a href="<?php post_custom("pressmark-url"); ?>"><?php the_title(); ?></a></h3>
 	<h4>
-		<?php the_author_posts_link( ); ?>
 		<span class="meta">
 			<?php the_time( "h:i:s a" ); ?> on <?php the_time( "F j, Y" ); ?> |
 			<?php comments_popup_link( __( '0' ), __( '1' ), __( '%' ) ); ?> |
-			<a href="<?php post_custom("pressmark-url"); ?>">#</a> | 
 			<?php edit_post_link( __( 'e' ) ); ?>
 			<br />
-			<?php the_tags( __( 'Tags: ' ), ', ', ' ' ); ?>
+			<?php the_author_posts_link( ); ?> | <?php the_tags( __( 'Tags: ' ), ', ', ' ' ); ?>
 		</span>
 	</h4>
 	<div class="postcontent">
