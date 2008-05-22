@@ -9,10 +9,10 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 	check_admin_referer( 'new-post' );
 
 	$user_id		= $current_user->user_id;
-	$post_title		= $_REQUEST['posttitle'];
-	$post_url		= $_REQUEST['posturl'];
-	$post_content	= $_REQUEST['posttext'];
-	$tags			= $_REQUEST['tags'];
+	$post_title		= $_POST['posttitle'];
+	$post_url		= $_POST['posturl'];
+	$post_content	= $_POST['posttext'];
+	$tags			= $_POST['tags'];
 
 	// $char_limit		= 40;
 	// $post_title		= strip_tags( $post_content );
