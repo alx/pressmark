@@ -32,4 +32,5 @@
 <ul>
 	<li>Lead developer: Alexandre Girard - alx.girard@gmail.com - don't hesitate to contact me for any info</li>
 	<li>Git repository: <a href="http://github.com/alx/pressmark/">http://github.com/alx/pressmark/</a></li>
+	<li>Lighthouse Tickets: <a href="http://lasindias.lighthouseapp.com/projects/11692-pressmark/overview">http://lasindias.lighthouseapp.com/projects/11692-pressmark/overview</a>
 </ul>
