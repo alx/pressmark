@@ -3,7 +3,7 @@ Contributors: wnorris, alanjcastonguay, factoryjoe
 Tags: openid, authentication
 Requires at least: 2.2
 Tested up to: 2.5.0
-Stable tag: 2.1.8
+Stable tag: 2.1.9
 
 Allow the use of OpenID for authentication of users and commenters.
 
@@ -86,6 +86,11 @@ requests can also be found at [wp-plugins.org][bugs-reports].
 
 
 == Changelog ==
+
+= version 2.1.9 =
+ - fix javascript loading issues
+ - fix various bugs when creating new account with OpenID
+ - fix error message, and add new warning prompt when removing last OpenID for account
 
 = version 2.1.8 =
  - fix UI issue with wp-login.php page in WP2.5

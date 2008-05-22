@@ -242,7 +242,7 @@ if  ( !class_exists('WordpressOpenIDLogic') ) {
 					break;
 					
 				case 'drop_identity':  // Remove a binding.
-					$this->_profile_drop_identity();
+					$this->_profile_drop_identity($_REQUEST['id']);
 					break;
 			}
 		}
@@ -276,8 +276,7 @@ if  ( !class_exists('WordpressOpenIDLogic') ) {
 		 *
 		 * @private
 		 **/
-		function _profile_drop_identity() {
-			$id = $_REQUEST['id'];
+		function _profile_drop_identity($id) {
 
 			if( !isset( $id)) {
 				$this->error = 'Identity url delete failed: ID paramater missing.';
@@ -290,12 +289,21 @@ if  ( !class_exists('WordpressOpenIDLogic') ) {
 				return;
 			}
 
+			$identity_urls = $this->store->get_my_identities();
+			if (sizeof($identity_urls) == 1 && !$_REQUEST['confirm']) {
+				$this->error = 'This is your last identity URL.  Are you sure you want to delete it? Doing so may interfere with your ability to login.<br /><br /> '
+					. '<a href="?confirm=true&'.$_SERVER['QUERY_STRING'].'">Yes I\'m sure.  Delete it</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+					. '<a href="?page='.$this->core->interface->profile_page_name.'">No, don\'t delete it.</a>';
+				$this->action = 'warning';
+				return;
+			}
+
 			check_admin_referer('wp-openid-drop-identity_'.$deleted_identity_url);
 			
 			if( $this->store->drop_identity($id) ) {
 				$this->error = 'Identity url delete successful. <b>' . $deleted_identity_url 
 					. '</b> removed.';
-				$this->action= 'success';
+				$this->action = 'success';
 				return;
 			}
 			
@@ -576,7 +584,8 @@ if  ( !class_exists('WordpressOpenIDLogic') ) {
 						} else {
 							// TODO - Start a registration loop in WPMU.
 							$this->error = 'OpenID authentication valid, but unable '
-								. 'to find an account association.';
+								. 'to find a WordPress account associated with this OpenID.<br /><br />'
+								. 'Enable "Anyone can register" to allow creation of new accounts via OpenID.';
 							$this->action = 'error';
 						}
 					} else {
@@ -646,18 +655,13 @@ if  ( !class_exists('WordpressOpenIDLogic') ) {
 				
 				$user = new WP_User( $user_id );
 
-				if( ! wp_login($oid_user_data['user_login'], $oid_user_data['user_pass'], true ) ) {
+				if( ! wp_login( $user->user_login, $oid_user_data['user_pass'] ) ) {
 					$this->error = 'User was created fine, but wp_login() for the new user failed. '
 						. 'This is probably a bug.';
 					$this->action= 'error';
-					//$this->core->log->error( $this->error );
-					break;
+					$this->core->log->err( $this->error );
+					return;
 				}
-				
-				$user->first_name = wp_specialchars( trim($oid_user_data['first_name']) );
-				$user->last_name = wp_specialchars( trim($oid_user_data['last_name']) );
-				$user->email = wp_specialchars( trim($oid_user_data['user_email']) );
-				wp_update_user( get_object_vars( $user ));
 				
 				// notify of user creation
 				wp_new_user_notification( $user->user_login );
