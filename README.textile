@@ -1,0 +1,35 @@
+<h1>Pressmark: Social Bookmark with Wordpress</h1>
+
+<p>Pressmark with a Wordpress installation with all you need to start a social bookmarking website (like <a href="http://del.icio.us">del.icio.us</a>, <a href="http://sabros.us">sabros.us</a>, ...).<br/>
+
+<h2>Installation</h2>
+
+<ul>
+	<li>Get Pressmark sources:
+	<ul>
+		<li><a href='http://github.com/alx/pressmark/tarball/master'>Download it from Github</a></li>
+		<li>If you've got git installed, clone it from Github (to easily get last updated)
+		<code>
+		git clone git://github.com/alx/pressmark.git pressmark
+		</code>
+		</li>
+	</ul>
+	</li>
+	<li>Move the source to your webserver, ask a geek how to do it if you don't know :)</li>
+	<li>Wordpress configuration: copy '<em>wp-config-sample.php</em>' to '<em>wp-config.php</em>' and fill up the MySQL database information.</li>
+	<li>Access to the website where you've installed Pressmark, and begin the "2 min. installation" from Wordpress</li>
+	<li>Now that your website is ready, go in the administration pages and activate the following options:
+		<ul>
+			<li>In '<em>Design</em>': select '<em>Prologue</em>' theme;</li>
+			<li>In '<em>Setting</em>': select '<em>Anyone can register</em>' and set the '<em>New User Default Role</em>' to '<em>Author</em>' if you want your users to post links;</li>
+			<li>In '<em>Plugins</em>': activate '<em>WP-OpenID</em>' plugin</li>
+		</ul>
+	</li>
+<ul>
+
+<h2>Support</h2>
+
+<ul>
+	<li>Lead developer: Alexandre Girard - alx.girard@gmail.com - don't hesitate to contact me for any info</li>
+	<li>Git repository: <a href="http://github.com/alx/pressmark/">http://github.com/alx/pressmark/</a></li>
+</ul>
