@@ -42,7 +42,7 @@ if( current_user_can( 'publish_posts' ) ) {
 ?>
 
 <div id="main">
-	<h2>Latest Updates <a class="rss" href="<?php bloginfo( 'rss2_url' ); ?>">RSS</a></h2>
+	<h2>Latest Bookmarks <a class="rss" href="<?php bloginfo( 'rss2_url' ); ?>">RSS</a></h2>
 	<ul>
 
 <?php

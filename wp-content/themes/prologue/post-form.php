@@ -14,10 +14,10 @@ $first_name		= attribute_escape( $user->first_name );
 		<input type="text" name="posttitle" value="" id="posttitle" class="text"/>
 		
 		<label for="enlace">Enlace:</label>
-		<input type="text" name="enlace" class="text"/>
+		<input type="text" name="posturl" class="text" value="http://"/>
 		
 		<label for="descripcion">Descripción:</label>
-		<textarea name="descripcion" id="descripcion" rows="3" cols="60"></textarea>
+		<textarea name="posttext" id="descripcion" rows="3" cols="60"></textarea>
 	
 		<label for="tags">Tags</label>
 		<input type="text" name="tags" id="tags" autocomplete="off" />

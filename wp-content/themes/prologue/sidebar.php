@@ -4,7 +4,7 @@
 
 <?php 
 if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) { 
-	$before = "<li><h2>Recent Projects</h2>\n";
+	$before = "<li><h2>Recent Tags</h2>\n";
 	$after = "</li>\n";
 
 	$num_to_show = 35;
