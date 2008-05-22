@@ -13,11 +13,11 @@ $first_name		= attribute_escape( $user->first_name );
 		<label for="posttitle">T&iacute;tulo:</label>
 		<input type="text" name="posttitle" value="" id="posttitle" class="text"/>
 		
-		<label for="enlace">Enlace:</label>
-		<input type="text" name="posturl" class="text" value="http://"/>
+		<label for="posturl">Enlace:</label>
+		<input type="text" id="posturl" name="posturl" class="text" value="http://"/>
 		
-		<label for="descripcion">Descripción:</label>
-		<textarea name="posttext" id="descripcion" rows="3" cols="60"></textarea>
+		<label for="posttext">Descripción:</label>
+		<textarea name="posttext" id="posttext" rows="3" cols="60"></textarea>
 	
 		<label for="tags">Tags</label>
 		<input type="text" name="tags" id="tags" autocomplete="off" />
