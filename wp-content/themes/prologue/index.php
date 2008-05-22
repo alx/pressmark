@@ -75,7 +75,7 @@ if( have_posts( ) ) {
 			<?php comments_popup_link( __( '0' ), __( '1' ), __( '%' ) ); ?> |
 			<?php edit_post_link( __( 'e' ) ); ?>
 			<br />
-			<?php the_author_posts_link( ); ?> | <?php the_tags( __( 'Tags: ' ), ', ', ' ' ); ?>
+			<?php the_author_posts_link( ); ?><?php the_tags( __( ' | Tags: ' ), ', ', ' ' ); ?>
 		</span>
 	</h4>
 	<div class="postcontent">
