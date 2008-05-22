@@ -28,7 +28,7 @@ if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) {
 			<p>Copy this link in your Firefox Bookmarks Toolbar!<br/>
 			Then when you get a link, simply press the "Press it" bookmark to post it on <?php bloginfo( 'name' ); ?>.<br/>
 			<a href="javascript:Q='';if(top.frames.length==0)Q=document.selection.createRange()
-			.text;void (btw=window.open ('<?php get_option('siteurl'); ?>?postcontent='+escape(Q)+
+			.text;void (btw=window.open ('<?php echo get_option('siteurl'); ?>?postcontent='+escape(Q)+
 			'&posturl='+escape (location.href)+'&posttitle='+escape(document.title),'bookmarklet'
 			,&'scrollbars=yes,width=600,height=460,left=100,top=150,status=yes'));btw.focus();">
 			Press it</a>
