@@ -1,6 +1,6 @@
 <h1>Pressmark: Social Bookmark with Wordpress</h1>
 
-<p>Pressmark with a Wordpress installation with all you need to start a social bookmarking website (like <a href="http://del.icio.us">del.icio.us</a>, <a href="http://sabros.us">sabros.us</a>, ...).<br/>
+<p>Pressmark with a Wordpress installation with all you need to start a social bookmarking website (like <a href="http://del.icio.us">del.icio.us</a>, <a href="http://sabros.us">sabros.us</a>, ...).</p>
 
 <h2>Installation</h2>
 
