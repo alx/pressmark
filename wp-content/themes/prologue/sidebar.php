@@ -14,7 +14,7 @@ if( !function_exists('dynamic_sidebar') || !dynamic_sidebar() ) {
 ?>
 
 		<li class="credits">
-			<p><a href="http://wordpress.com/">Blog at WordPress.com</a><br /> Prologue theme by <a href="http://automattic.com/">Automattic</a></p>
+			<p><a href="/wp-login.php">Login</a></p>
 		</li>
 	</ul>
 </div> <!-- // sidebar -->

@@ -9,15 +9,16 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 	check_admin_referer( 'new-post' );
 
 	$user_id		= $current_user->user_id;
+	$post_title		= $_POST['posttitle'];
 	$post_url		= $_POST['posturl'];
 	$post_content	= $_POST['posttext'];
-	$tags			= $_POST['tags'];
+	$tags			= str_replace(" ", ", ", $_POST['tags']);
 
-	$char_limit		= 40;
-	$post_title		= strip_tags( $post_content );
-	if( strlen( $post_title ) > $char_limit ) {
-		$post_title = substr( $post_title, 0, $char_limit ) . ' ... ';
-	}
+	// $char_limit		= 40;
+	// $post_title		= strip_tags( $post_content );
+	// if( strlen( $post_title ) > $char_limit ) {
+	// 	$post_title = substr( $post_title, 0, $char_limit ) . ' ... ';
+	// }
 
 	$post_id = wp_insert_post( array(
 		'post_author'	=> $user_id,

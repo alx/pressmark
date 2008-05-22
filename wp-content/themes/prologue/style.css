@@ -88,6 +88,13 @@ h1 a {
 	padding: 2px;
 	font: 1.4em/1.2em "Lucida Grande",Verdana,"Bitstream Vera Sans",Arial,sans-serif;
 	}
+	#postbox #posttitle {
+		width: 608px;
+		border: 1px solid #c6d9e9;
+		margin-bottom: 10px;
+		padding: 2px;
+		font: 1.4em/1.2em "Lucida Grande",Verdana,"Bitstream Vera Sans",Arial,sans-serif;
+		}
 #postbox textarea#posttext {
 	width: 608px;
 	height: 50px;
