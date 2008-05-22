@@ -12,7 +12,7 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 	$post_title		= $_POST['posttitle'];
 	$post_url		= $_POST['posturl'];
 	$post_content	= $_POST['posttext'];
-	$tags			= str_replace(" ", ", ", $_POST['tags']);
+	$tags			= $_POST['tags'];
 
 	// $char_limit		= 40;
 	// $post_title		= strip_tags( $post_content );
