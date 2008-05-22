@@ -25,7 +25,7 @@
 			<li>In '<em>Plugins</em>': activate '<em>WP-OpenID</em>' plugin</li>
 		</ul>
 	</li>
-<ul>
+</ul>
 
 <h2>Support</h2>
 
