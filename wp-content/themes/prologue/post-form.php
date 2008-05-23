@@ -21,7 +21,10 @@ $first_name		= attribute_escape( $user->first_name );
 	
 		<label for="tags">Tags</label>
 		<input type="text" name="tags" id="tags" autocomplete="off" />
-	
+		
+		<input type="radio" name="status" value="publish" checked="checked"> Public
+		<input type="radio" name="status" value="private"> Private
+		
 		<input id="submit" type="submit" value="Post it" />
 	</form>
 </div> <!-- // postbox -->
