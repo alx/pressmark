@@ -153,6 +153,13 @@ h3 {
 	border: 1px solid #c6d9e9;
 	background: #fff;	
 }
+img.avatar {
+	float: left;
+	margin-right: 12px;
+	margin-left: -70px;
+	padding: 3px;
+	border: 1px solid #ddd;
+}
 #sidebar ul li#authors ul li img.avatar {
 	clear: both;
 	margin: 0 3px 0 0;
@@ -161,12 +168,12 @@ h3 {
 #sidebar ul li#authors, #sidebar ul li#authors ul li {
 	border: none;
 }
-img.avatar {
-	float: left;
-	margin-right: 12px;
-	margin-left: -70px;
+#sidebar img.avatar {
+	float:left;
+	margin-left: 30px;
 	padding: 3px;
-	border: 1px solid #ddd;
+	border: 1px solid #c6d9e9;
+	background: #fff;	
 }
 #main ul li {
 	overflow: visible; 
