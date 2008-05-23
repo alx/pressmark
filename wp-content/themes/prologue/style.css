@@ -170,7 +170,7 @@ img.avatar {
 }
 #sidebar img.avatar {
 	float:left;
-	margin-left: 30px;
+	margin: 5px 0px 5px 50px;
 	padding: 3px;
 	border: 1px solid #c6d9e9;
 	background: #fff;	
