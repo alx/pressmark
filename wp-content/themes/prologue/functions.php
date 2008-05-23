@@ -199,7 +199,7 @@ function prologue_get_avatar( $wpcom_user_id, $email, $size, $rating = '', $defa
 
 function user_cloud() {
 	global $wpdb;
-	$authors = $wpdb->get_results("SELECT ID, user_nicename from $wpdb->users WHERE user_login <> 'admin' ORDER BY display_name");
+	$authors = $wpdb->get_results("SELECT ID, user_nicename from $wpdb->users ORDER BY display_name");
 	
 	$author_count = array();
 	foreach ((array) $wpdb->get_results("SELECT DISTINCT post_author, COUNT(ID) AS count FROM $wpdb->posts WHERE post_type = 'post' AND " . get_private_posts_cap_sql( 'post' ) . " GROUP BY post_author") as $row) {
