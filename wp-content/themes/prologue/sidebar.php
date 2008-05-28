@@ -7,6 +7,10 @@
 			<br clear='left'>
 		</li>
 		
+		<li>
+			<?php wp_widget_recent_comments(); ?>
+		</li>
+		
 		<li class="credits">
 			<p>
 				<?php
