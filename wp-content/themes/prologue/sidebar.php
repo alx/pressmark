@@ -8,7 +8,7 @@
 		</li>
 		
 		<li>
-			<?php wp_widget_recent_comments(); ?>
+			<?php wp_widget_recent_comments(array()); ?>
 		</li>
 		
 		<li class="credits">
