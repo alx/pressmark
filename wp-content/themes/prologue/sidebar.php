@@ -1,6 +1,6 @@
 <div id="sidebar">
 	<ul>
-		<li><?php wp_tag_cloud('smallest=8&largest=14'); ?></li>
+		<li><?php wp_tag_cloud('smallest=4&largest=14&number=500'); ?></li>
 		
 		<li>
 			<?php user_cloud(); ?>
