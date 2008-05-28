@@ -75,7 +75,7 @@ function the_excerpt_rss() {
 }
 
 function the_permalink_rss() {
-	echo apply_filters('the_permalink_rss', get_permalink());
+	echo apply_filters('the_permalink_rss', post_custom("pressmark-url"));
 
 }
 
