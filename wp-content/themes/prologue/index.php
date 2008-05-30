@@ -9,11 +9,11 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 	check_admin_referer( 'new-post' );
 
 	$user_id		= $current_user->user_id;
-	$post_title		= $_POST['posttitle'];
-	$post_url		= $_POST['posturl'];
-	$post_content	= $_POST['posttext'];
-	$tags			= $_POST['tags'];
-	$status			= $_POST['status'];
+	$post_title		= escape($_POST['posttitle']);
+	$post_url		= escape($_POST['posturl']);
+	$post_content	= escape($_POST['posttext']);
+	$tags			= escape($_POST['tags']);
+	$status			= escape($_POST['status']);
 
 	// $char_limit		= 40;
 	// $post_title		= strip_tags( $post_content );
@@ -21,20 +21,40 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 	// 	$post_title = substr( $post_title, 0, $char_limit ) . ' ... ';
 	// }
 
-	$post_id = wp_insert_post( array(
-		'post_author'	=> $user_id,
-		'post_title'	=> $post_title,
-		'post_content'	=> $post_content,
-		'tags_input'	=> $tags,
-		'post_status'	=> $status
-	) );
+
 	
 	global $wpdb;
-	$wpdb->query( "
-			INSERT INTO $wpdb->postmeta
-			(post_id,meta_key,meta_value )
-			VALUES ('$post_id','pressmark-url','$post_url' )
-		" );
+	
+	// Search existing post with this pressmark-url
+	$existing_post_id = $wpdb->get_var("SELECT post_id FROM $wpdb->postmeta 
+									WHERE meta_key = 'pressmark-url' AND meta_value = '$post_url'" );
+	if($existing_post_id){
+		// If exists, add coauthor
+		add_post_meta($existing_post_id, 'coauthor', (int)$user_id, false);
+		// Place post on top
+		$post_modified     = current_time( 'mysql' );
+		$post_modified_gmt = current_time( 'mysql', 1 );
+		$wpdb->query("UPDATE $wpdb->posts 
+					SET post_date = $post_modified 
+					SET post_date_gmt = $post_modified_gmt
+					WHERE ID = '$existing_post_id'")
+	}
+	else {
+		// If not exists, insert new post
+		$post_id = wp_insert_post( array(
+			'post_author'	=> $user_id,
+			'post_title'	=> $post_title,
+			'post_content'	=> $post_content,
+			'tags_input'	=> $tags,
+			'post_status'	=> $status
+		) );
+
+		$wpdb->query( "
+				INSERT INTO $wpdb->postmeta
+				(post_id,meta_key,meta_value )
+				VALUES ('$post_id','pressmark-url','$post_url' )
+			" );
+	}
 
 	wp_redirect( get_bloginfo( 'url' ) . '/' );
 	exit;
