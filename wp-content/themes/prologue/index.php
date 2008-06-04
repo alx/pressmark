@@ -83,11 +83,11 @@ if( have_posts( ) ) {
 
 <?php
 		// Don't show the avatar if the previous post was by the same user
-		$current_user_id = get_the_author_ID( );
-		if( $previous_user_id !== $current_user_id ) {
-			echo prologue_get_avatar( $current_user_id, get_the_author_email( ), 48 );
+		$current_user = get_the_author( );
+		if( $previous_user_id !== $current_user->ID ) {
+			echo '<a href="' . get_author_posts_url($current_user->ID, $current_user->user_nicename) . '" title="' . sprintf(__("Posts by %s"), attribute_escape($current_user->display_name)) . '">' . prologue_get_avatar($current_user->ID, $current_user->user_email, 48 ) . '</a>';
 		}
-		$previous_user_id = $current_user_id;
+		$previous_user_id = $current_user->ID;
 ?>
 	<h3><a href="<?php echo post_custom("pressmark-url"); ?>"><?php echo $post->post_title ?></a></h3>
 	<h4>
