@@ -37,7 +37,7 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 		$wpdb->query("UPDATE $wpdb->posts 
 					SET post_date = $post_modified 
 					SET post_date_gmt = $post_modified_gmt
-					WHERE ID = '$existing_post_id'")
+					WHERE ID = '$existing_post_id'");
 	}
 	else {
 		// If not exists, insert new post
