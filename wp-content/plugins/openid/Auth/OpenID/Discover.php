@@ -52,7 +52,20 @@ class Auth_OpenID_ServiceEndpoint {
         if ($this->display_identifier) {
             return $this->display_identifier;
         }
-        return $this->claimed_id;
+        if (! $this->claimed_id) {
+          return $this->claimed_id;
+        }
+        $parsed = parse_url($this->claimed_id);
+        $scheme = $parsed['scheme'];
+        $host = $parsed['host'];
+        $path = $parsed['path'];
+        if (array_key_exists('query', $parsed)) {
+            $query = $parsed['query'];
+            $no_frag = "$scheme://$host$path?$query";
+        } else {
+            $no_frag = "$scheme://$host$path";
+        }
+        return $no_frag;
     }
 
     function usesExtension($extension_uri)
@@ -454,18 +467,6 @@ function Auth_OpenID_discoverWithYadis($uri, &$fetcher,
 
 function Auth_OpenID_discoverURI($uri, &$fetcher)
 {
-    $parsed = parse_url($uri);
-
-    if ($parsed && isset($parsed['scheme']) &&
-        isset($parsed['host'])) {
-        if (!in_array($parsed['scheme'], array('http', 'https'))) {
-            // raise DiscoveryFailure('URI scheme is not HTTP or HTTPS', None)
-            return array($uri, array());
-        }
-    } else {
-        $uri = 'http://' . $uri;
-    }
-
     $uri = Auth_OpenID::normalizeUrl($uri);
     return Auth_OpenID_discoverWithYadis($uri, $fetcher);
 }
@@ -474,7 +475,7 @@ function Auth_OpenID_discoverWithoutYadis($uri, &$fetcher)
 {
     $http_resp = @$fetcher->get($uri);
 
-    if ($http_resp->status != 200) {
+    if ($http_resp->status != 200 and $http_resp->status != 206) {
         return array($uri, array());
     }
 

@@ -1,7 +1,7 @@
 <?php
 include('logic.php');
 
-$logic = new WordPressOpenIDLogic(null);
+$logic = new WordPressOpenID_Logic(null);
 
 generate('http://willnorris.com');
 generate('https://will.norris.name/');

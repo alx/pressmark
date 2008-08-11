@@ -8,8 +8,8 @@
  *
  * @package OpenID
  * @author JanRain, Inc. <openid@janrain.com>
- * @copyright 2005 Janrain, Inc.
- * @license http://www.gnu.org/copyleft/lesser.html LGPL
+ * @copyright 2005-2008 Janrain, Inc.
+ * @license http://www.apache.org/licenses/LICENSE-2.0 Apache
  */
 
 require_once 'Auth/OpenID/Discover.php';
@@ -32,7 +32,11 @@ define('Auth_OpenID___TLDs',
        'nc|ne|nf|ng|ni|nl|no|np|nr|nu|nz|om|pa|pe|pf|pg|ph|pk|pl|pm|pn|pr|' .
        'ps|pt|pw|py|qa|re|ro|ru|rw|sa|sb|sc|sd|se|sg|sh|si|sj|sk|sl|sm|sn|' .
        'so|sr|st|sv|sy|sz|tc|td|tf|tg|th|tj|tk|tm|tn|to|tp|tr|tt|tv|tw|tz|' .
-       'ua|ug|uk|um|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)$/');
+       'ua|ug|uk|um|us|uy|uz|va|vc|ve|vg|vi|vn|vu|wf|ws|ye|yt|yu|za|zm|zw)' .
+       '\.?$/');
+
+define('Auth_OpenID___HostSegmentRe',
+       "/^(?:[-a-zA-Z0-9!$&'\\(\\)\\*+,;=._~]|%[a-zA-Z0-9]{2})*$/");
 
 /**
  * A wrapper for trust-root related functions
@@ -86,10 +90,20 @@ class Auth_OpenID_TrustRoot {
      */
     function _parse($trust_root)
     {
+        $trust_root = Auth_OpenID_urinorm($trust_root);
+        if ($trust_root === null) {
+            return false;
+        }
+
+        if (preg_match("/:\/\/[^:]+(:\d+){2,}(\/|$)/", $trust_root)) {
+            return false;
+        }
+
         $parts = @parse_url($trust_root);
         if ($parts === false) {
             return false;
         }
+
         $required_parts = array('scheme', 'host');
         $forbidden_parts = array('user', 'pass', 'fragment');
         $keys = array_keys($parts);
@@ -101,9 +115,7 @@ class Auth_OpenID_TrustRoot {
             return false;
         }
 
-        // Return false if the original trust root value has more than
-        // one port specification.
-        if (preg_match("/:\/\/[^:]+(:\d+){2,}(\/|$)/", $trust_root)) {
+        if (!preg_match(Auth_OpenID___HostSegmentRe, $parts['host'])) {
             return false;
         }
 
@@ -139,6 +151,9 @@ class Auth_OpenID_TrustRoot {
 
         if (isset($parts['path'])) {
             $path = strtolower($parts['path']);
+            if (substr($path, 0, 1) != '/') {
+                return false;
+            }
         } else {
             $path = '/';
         }
@@ -147,6 +162,7 @@ class Auth_OpenID_TrustRoot {
         if (!isset($parts['port'])) {
             $parts['port'] = false;
         }
+
 
         $parts['unparsed'] = $trust_root;
 
@@ -189,6 +205,25 @@ class Auth_OpenID_TrustRoot {
         if ($parts['host'] == 'localhost') {
             return true;
         }
+        
+        $host_parts = explode('.', $parts['host']);
+        if ($parts['wildcard']) {
+            // Remove the empty string from the beginning of the array
+            array_shift($host_parts);
+        }
+
+        if ($host_parts && !$host_parts[count($host_parts) - 1]) {
+            array_pop($host_parts);
+        }
+
+        if (!$host_parts) {
+            return false;
+        }
+
+        // Don't allow adjacent dots
+        if (in_array('', $host_parts, true)) {
+            return false;
+        }
 
         // Get the top-level domain of the host. If it is not a valid TLD,
         // it's not sane.
@@ -198,19 +233,20 @@ class Auth_OpenID_TrustRoot {
         }
         $tld = $matches[1];
 
-        // Require at least two levels of specificity for non-country
-        // tlds and three levels for country tlds.
-        $elements = explode('.', $parts['host']);
-        $n = count($elements);
-        if ($parts['wildcard']) {
-            $n -= 1;
-        }
-        if (strlen($tld) == 2) {
-            $n -= 1;
-        }
-        if ($n <= 1) {
+        if (count($host_parts) == 1) {
             return false;
         }
+
+        if ($parts['wildcard']) {
+            // It's a 2-letter tld with a short second to last segment
+            // so there needs to be more than two segments specified
+            // (e.g. *.co.uk is insane)
+            $second_level = $host_parts[count($host_parts) - 2];
+            if (strlen($tld) == 2 && strlen($second_level) <= 3) {
+                return count($host_parts) > 2;
+            }
+        }
+
         return true;
     }
 
@@ -258,8 +294,14 @@ class Auth_OpenID_TrustRoot {
         $base_path = $trust_root_parsed['path'];
         $path = $url_parsed['path'];
         if (!isset($trust_root_parsed['query'])) {
-            if (substr($path, 0, strlen($base_path)) != $base_path) {
-                return false;
+            if ($base_path != $path) {
+                if (substr($path, 0, strlen($base_path)) != $base_path) {
+                    return false;
+                }
+                if (substr($base_path, strlen($base_path) - 1, 1) != '/' &&
+                    substr($path, strlen($base_path), 1) != '/') {
+                    return false;
+                }
             }
         } else {
             $base_query = $trust_root_parsed['query'];
@@ -354,19 +396,24 @@ function Auth_OpenID_getAllowedReturnURLs($relying_party_url, &$fetcher,
         $discover_function = array('Auth_Yadis_Yadis', 'discover');
     }
 
+    $xrds_parse_cb = array('Auth_OpenID_ServiceEndpoint', 'fromXRDS');
+
     list($rp_url_after_redirects, $endpoints) =
-      Auth_OpenID_discoverWithYadis($relying_party_url,
-                                    $fetcher,
-                                    'Auth_OpenID_extractReturnURL',
-                                    $discover_function);
+        Auth_Yadis_getServiceEndpoints($relying_party_url, $xrds_parse_cb,
+                                       $discover_function, $fetcher);
 
     if ($rp_url_after_redirects != $relying_party_url) {
         // Verification caused a redirect
         return false;
     }
 
+    call_user_func_array($discover_function,
+                         array($relying_party_url, $fetcher));
+
     $return_to_urls = array();
-    foreach ($endpoints as $e) {
+    $matching_endpoints = Auth_OpenID_extractReturnURL($endpoints);
+
+    foreach ($matching_endpoints as $e) {
         $return_to_urls[] = $e->server_url;
     }
 

@@ -2,8 +2,8 @@
 Contributors: wnorris, alanjcastonguay, factoryjoe
 Tags: openid, authentication
 Requires at least: 2.2
-Tested up to: 2.5.0
-Stable tag: 2.1.9
+Tested up to: 2.6.0
+Stable tag: 2.2.2
 
 Allow the use of OpenID for authentication of users and commenters.
 
@@ -28,7 +28,7 @@ This plugin follows the [standard WordPress installation method][]:
 
 1. Upload the `openid` folder to the `/wp-content/plugins/` directory
 1. Activate the plugin through the 'Plugins' menu in WordPress
-1. Configure the plugin through the 'OpenID' section of the 'Options' menu
+1. Configure the plugin through the 'WP-OpenID' section of the 'Options' menu
 
 [standard WordPress installation method]: http://codex.wordpress.org/Managing_Plugins#Installing_Plugins
 
@@ -38,8 +38,8 @@ This plugin follows the [standard WordPress installation method][]:
 = Why do I get blank screens when I activate the plugin? =
 
 In some cases the plugin may have problems if not enough memory has been
-allocated to PHP.  Try ensuring that the PHP memory_limit is at least greater
-than 8MB (limits of 64MB are not uncommon).
+allocated to PHP.  Try ensuring that the PHP memory_limit is at least 8MB
+(limits of 64MB are not uncommon).
 
 = Why don't `https` OpenIDs work? =
 
@@ -71,11 +71,9 @@ remove this, you can override the stylesheet or simply change the element id.
 Please direct support questions to the "Plugins and Hacks" section of the
 [WordPress.org Support Forum][].  Just make sure and include the tag 'openid'
 so that I'll see your post.  Additionally, you can file a bug
-report at <http://dev.wp-plugins.org/report>.  Existing bugs and feature
-requests can also be found at [wp-plugins.org][bugs-reports].
+report at <http://code.google.com/p/diso/issues/list>.  
 
 [WordPress.org Support Forum]: http://wordpress.org/support/
-[bugs-reports]: http://dev.wp-plugins.org/report/9?COMPONENT=openid
 
 
 == Screenshots ==
@@ -86,6 +84,25 @@ requests can also be found at [wp-plugins.org][bugs-reports].
 
 
 == Changelog ==
+
+= version 2.2.2 =
+ - fix bug with "unauthorized return_to URL" (only known problem with [openid.pl][])
+ - fix bug with comments containing non-latin characters
+ - respect CUSTOM_USER_META_TABLE constant if present (also added CUSTOM_OPENID_IDENTITY_TABLE constant)
+ - add experimental support for Identity in the Browser
+
+= version 2.2.1 =
+ - fixed EAUT handling code
+ - fixed bug that broke comments containing double quotes (")
+
+= version 2.2.0 =
+ - use POST replay for comments (fixes compatibility with other comment plugins)
+ - only build openid object when needed (much better memory usage)
+ - support for Email Address to URL Transformation (see eaut.org)
+ - fixed bug when using suhosin (hardened php)
+ - use hooks for gathering user data (more extensible)
+ - fixed openid spoofing vulnerability (http://plugins.trac.wordpress.org/ticket/702)
+ - lots code refactoring and UI cleanup
 
 = version 2.1.9 =
  - fix javascript loading issues
@@ -147,3 +164,4 @@ requests can also be found at [wp-plugins.org][bugs-reports].
 Full SVN logs are available at <http://dev.wp-plugins.org/log/openid/>.
 
 [729]: http://dev.wp-plugins.org/ticket/729
+[openid.pl]: http://openid.pl/

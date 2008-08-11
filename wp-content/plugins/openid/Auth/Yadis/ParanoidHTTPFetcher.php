@@ -9,14 +9,16 @@
  *
  * @package OpenID
  * @author JanRain, Inc. <openid@janrain.com>
- * @copyright 2005 Janrain, Inc.
- * @license http://www.gnu.org/copyleft/lesser.html LGPL
+ * @copyright 2005-2008 Janrain, Inc.
+ * @license http://www.apache.org/licenses/LICENSE-2.0 Apache
  */
 
 /**
  * Interface import
  */
 require_once "Auth/Yadis/HTTPFetcher.php";
+
+require_once "Auth/OpenID.php";
 
 /**
  * A paranoid {@link Auth_Yadis_HTTPFetcher} class which uses CURL
@@ -50,8 +52,12 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
      */
     function _writeData($ch, $data)
     {
-        $this->data .= $data;
-        return strlen($data);
+        if (strlen($this->data) > 1024*Auth_OpenID_FETCHER_MAX_RESPONSE_KB) {
+            return 0;
+        } else {
+            $this->data .= $data;
+            return strlen($data);
+        }
     }
 
     /**
@@ -71,7 +77,7 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
 
     function get($url, $extra_headers = null)
     {
-        if ($this->isHTTPS($url) && !$this->supportsSSL()) {
+        if (!$this->canFetchURL($url)) {
             return null;
         }
 
@@ -84,11 +90,21 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
             $this->reset();
 
             $c = curl_init();
+
+            if ($c === false) {
+                Auth_OpenID::log(
+                    "curl_init returned false; could not " .
+                    "initialize for URL '%s'", $url);
+                return null;
+            }
+
             if (defined('CURLOPT_NOSIGNAL')) {
                 curl_setopt($c, CURLOPT_NOSIGNAL, true);
             }
 
             if (!$this->allowedURL($url)) {
+                Auth_OpenID::log("Fetching URL not allowed: %s",
+                                 $url);
                 return null;
             }
 
@@ -101,8 +117,18 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
                 curl_setopt($c, CURLOPT_HTTPHEADER, $extra_headers);
             }
 
+            $cv = curl_version();
+            if(is_array($cv)) {
+              $curl_user_agent = 'curl/'.$cv['version'];
+            } else {
+              $curl_user_agent = $cv;
+            }
+            curl_setopt($c, CURLOPT_USERAGENT,
+                        Auth_OpenID_USER_AGENT.' '.$curl_user_agent);
             curl_setopt($c, CURLOPT_TIMEOUT, $off);
             curl_setopt($c, CURLOPT_URL, $url);
+            curl_setopt($c, CURLOPT_RANGE, 
+                        "0-".(1024 * Auth_OpenID_FETCHER_MAX_RESPONSE_KB));
 
             curl_exec($c);
 
@@ -111,6 +137,9 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
             $headers = $this->headers;
 
             if (!$code) {
+                Auth_OpenID::log("Got no response code when fetching %s", $url);
+                Auth_OpenID::log("CURL error (%s): %s",
+                                 curl_errno($c), curl_error($c));
                 return null;
             }
 
@@ -134,6 +163,10 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
                     }
                 }
 
+                Auth_OpenID::log(
+                    "Successfully fetched '%s': GET response code %s",
+                    $url, $code);
+
                 return new Auth_Yadis_HTTPResponse($url, $code,
                                                     $new_headers, $body);
             }
@@ -146,15 +179,11 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
 
     function post($url, $body, $extra_headers = null)
     {
+        if (!$this->canFetchURL($url)) {
+            return null;
+        }
+
         $this->reset();
-
-        if ($this->isHTTPS($url) && !$this->supportsSSL()) {
-            return null;
-        }
-
-        if (!$this->allowedURL($url)) {
-            return null;
-        }
 
         $c = curl_init();
 
@@ -174,6 +203,7 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
         $code = curl_getinfo($c, CURLINFO_HTTP_CODE);
 
         if (!$code) {
+            Auth_OpenID::log("Got no response code when fetching %s", $url);
             return null;
         }
 
@@ -194,6 +224,9 @@ class Auth_Yadis_ParanoidHTTPFetcher extends Auth_Yadis_HTTPFetcher {
             }
 
         }
+
+        Auth_OpenID::log("Successfully fetched '%s': POST response code %s",
+                         $url, $code);
 
         return new Auth_Yadis_HTTPResponse($url, $code,
                                            $new_headers, $body);

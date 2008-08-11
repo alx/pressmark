@@ -9,9 +9,18 @@
  *
  * @package OpenID
  * @author JanRain, Inc. <openid@janrain.com>
- * @copyright 2005 Janrain, Inc.
- * @license http://www.gnu.org/copyleft/lesser.html LGPL
+ * @copyright 2005-2008 Janrain, Inc.
+ * @license http://www.apache.org/licenses/LICENSE-2.0 Apache
  */
+
+/**
+ * Require logging functionality
+ */
+require_once "Auth/OpenID.php";
+
+define('Auth_OpenID_FETCHER_MAX_RESPONSE_KB', 1024);
+define('Auth_OpenID_USER_AGENT', 
+       'php-openid/'.Auth_OpenID_VERSION.' (php/'.phpversion().')');
 
 class Auth_Yadis_HTTPResponse {
     function Auth_Yadis_HTTPResponse($final_url = null, $status = null,
@@ -35,6 +44,30 @@ class Auth_Yadis_HTTPResponse {
 class Auth_Yadis_HTTPFetcher {
 
     var $timeout = 20; // timeout in seconds.
+
+    /**
+     * Return whether a URL can be fetched.  Returns false if the URL
+     * scheme is not allowed or is not supported by this fetcher
+     * implementation; returns true otherwise.
+     *
+     * @return bool
+     */
+    function canFetchURL($url)
+    {
+        if ($this->isHTTPS($url) && !$this->supportsSSL()) {
+            Auth_OpenID::log("HTTPS URL unsupported fetching %s",
+                             $url);
+            return false;
+        }
+
+        if (!$this->allowedURL($url)) {
+            Auth_OpenID::log("URL fetching not allowed for '%s'",
+                             $url);
+            return false;
+        }
+
+        return true;
+    }
 
     /**
      * Return whether a URL should be allowed. Override this method to

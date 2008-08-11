@@ -1,0 +1,213 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Will Norris
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: WP-OpenID trunk\n"
+"Report-Msgid-Bugs-To: http://wordpress.org/tag/wp-openid\n"
+"POT-Creation-Date: 2008-05-20 15:18-0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: interface.php:54
+#, php-format
+msgid "Or login using your %s url:"
+msgstr ""
+
+#: interface.php:54 interface.php:68
+msgid "OpenID"
+msgstr ""
+
+#: interface.php:68
+#, php-format
+msgid "For faster registration, just %s login with %s."
+msgstr ""
+
+#: interface.php:147
+msgid "The WordPress OpenID plugin is not active."
+msgstr ""
+
+#: interface.php:148
+#, php-format
+msgid "Check %sOpenID Options%s for a full diagnositic report."
+msgstr ""
+
+#: interface.php:159
+msgid "OpenID options"
+msgstr ""
+
+#: interface.php:159
+msgid "WP-OpenID"
+msgstr ""
+
+#: interface.php:164 interface.php:305
+msgid "Your Identity URLs"
+msgstr ""
+
+#: interface.php:188
+msgid "OpenID tables rebuilt."
+msgstr ""
+
+#: interface.php:204
+msgid "At least one of OpenID options was NOT updated"
+msgstr ""
+
+#: interface.php:206
+msgid "Open ID options updated"
+msgstr ""
+
+#: interface.php:218
+msgid "WP-OpenID Registration Options"
+msgstr ""
+
+#: interface.php:220 interface.php:272
+msgid "Update Options"
+msgstr ""
+
+#: interface.php:223
+msgid "Behavior"
+msgstr ""
+
+#: interface.php:227
+msgid "Automatic Approval:"
+msgstr ""
+
+#: interface.php:231
+msgid "Enable OpenID comment auto-approval"
+msgstr ""
+
+#: interface.php:233
+msgid ""
+"For now this option will cause comments made with OpenIDs to be "
+"automatically approved.  Since most spammers haven't started using OpenID "
+"yet, this is probably pretty safe.  More importantly however, this could be "
+"a foundation on which to build more advanced automatic approval such as "
+"whitelists or a third-party trust service."
+msgstr ""
+
+#: interface.php:245
+msgid "Look and Feel"
+msgstr ""
+
+#: interface.php:249
+msgid "Comment Form:"
+msgstr ""
+
+#: interface.php:254
+msgid "Add OpenID text to the WordPress post comment form."
+msgstr ""
+
+#: interface.php:256
+#, php-format
+msgid ""
+"This will work for most themes derived from Kubrick or Sandbox.  Template "
+"authors can tweak the comment form as described in the %sreadme%s."
+msgstr ""
+
+#: interface.php:266
+#, php-format
+msgid ""
+"Occasionally, the WP-OpenID tables don't get setup properly, and it may help "
+"to %srebuild the tables%s.  Don't worry, this won't cause you to lose any "
+"data... it just rebuilds a couple of tables that hold only temprory data."
+msgstr ""
+
+#: interface.php:293
+msgid "Success:"
+msgstr ""
+
+#: interface.php:296
+msgid "Warning:"
+msgstr ""
+
+#: interface.php:299
+msgid "Error:"
+msgstr ""
+
+#: interface.php:307
+#, php-format
+msgid ""
+"The following Identity URLs %s are tied to this user account. You can login "
+"with equivalent permissions using any of the following identities."
+msgstr ""
+
+#: interface.php:309
+msgid "What is OpenID?"
+msgstr ""
+
+#: interface.php:309
+msgid "?"
+msgstr ""
+
+#: interface.php:321
+msgid "ID"
+msgstr ""
+
+#: interface.php:322
+msgid "Identity Url"
+msgstr ""
+
+#: interface.php:323
+msgid "Action"
+msgstr ""
+
+#: interface.php:335
+msgid "Delete"
+msgstr ""
+
+#: interface.php:345
+msgid "There are no OpenIDs associated with this WordPress user."
+msgstr ""
+
+#: interface.php:349
+msgid "Add identity:"
+msgstr ""
+
+#: interface.php:352
+msgid "Add"
+msgstr ""
+
+#: interface.php:427
+msgid "Status information:"
+msgstr ""
+
+#: interface.php:427
+msgid "All Systems Nominal"
+msgstr ""
+
+#: interface.php:428
+msgid "Toggle More/Less"
+msgstr ""
+
+#: interface.php:430
+msgid ""
+"Plugin is currently disabled. Fix the problem, then Deactivate/Reactivate "
+"the plugin."
+msgstr ""
+
+#: interface.php:437
+msgid "FAIL"
+msgstr ""
+
+#: interface.php:438
+msgid "OK"
+msgstr ""
+
+#: interface.php:439
+msgid "INFO"
+msgstr ""
+
+#: logic.php:818
+msgid "Error: please type a comment."
+msgstr ""
+
+#: logic.php:835
+msgid "Sorry, comments are closed for this item."
+msgstr ""

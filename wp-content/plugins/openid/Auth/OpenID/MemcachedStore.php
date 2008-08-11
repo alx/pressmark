@@ -10,8 +10,9 @@
  *
  * @package OpenID
  * @author Artemy Tregubenko <me@arty.name>
- * @copyright Open Web Technologies <http://openwebtech.ru/>
- * @license http://www.gnu.org/copyleft/lesser.html LGPL
+ * @copyright 2008 JanRain, Inc.
+ * @license http://www.apache.org/licenses/LICENSE-2.0 Apache
+ * Contributed by Open Web Technologies <http://openwebtech.ru/>
  */
 
 /**

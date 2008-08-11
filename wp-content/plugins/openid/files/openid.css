@@ -17,3 +17,10 @@ body.login form#loginform a.legacy,
 body.login form#registerform a.legacy {
 	color: #FFF;
 }
+
+#openid_rollup {
+	margin-top: 1em;
+}
+
+#openid_rollup div div { margin: 0.5em; }
+#openid_rollup ul { margin: 0; padding: 0 0 0 5em; }

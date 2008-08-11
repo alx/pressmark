@@ -20,6 +20,8 @@ define('PAPE_AUTH_MULTI_FACTOR',
 define('PAPE_AUTH_PHISHING_RESISTANT',
        'http://schemas.openid.net/pape/policies/2007/06/phishing-resistant');
 
+define('PAPE_TIME_VALIDATOR',
+       '^[0-9]{4,4}-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z$');
 /**
  * A Provider Authentication Policy request, sent from a relying party
  * to a provider
@@ -159,7 +161,7 @@ class Auth_OpenID_PAPE_Response extends Auth_OpenID_Extension {
     var $ns_alias = 'pape';
     var $ns_uri = Auth_OpenID_PAPE_NS_URI;
 
-    function Auth_OpenID_PAPE_Response($auth_policies=null, $auth_age=null,
+    function Auth_OpenID_PAPE_Response($auth_policies=null, $auth_time=null,
                                        $nist_auth_level=null)
     {
         if ($auth_policies) {
@@ -168,7 +170,7 @@ class Auth_OpenID_PAPE_Response extends Auth_OpenID_Extension {
             $this->auth_policies = array();
         }
 
-        $this->auth_age = $auth_age;
+        $this->auth_time = $auth_time;
         $this->nist_auth_level = $nist_auth_level;
     }
 
@@ -235,7 +237,7 @@ class Auth_OpenID_PAPE_Response extends Auth_OpenID_Extension {
     function parseExtensionArgs($args, $strict=false)
     {
         $policies_str = Auth_OpenID::arrayGet($args, 'auth_policies');
-        if ($policies_str) {
+        if ($policies_str && $policies_str != "none") {
             $this->auth_policies = explode(" ", $policies_str);
         }
 
@@ -258,29 +260,24 @@ class Auth_OpenID_PAPE_Response extends Auth_OpenID_Extension {
             }
         }
 
-        $auth_age_str = Auth_OpenID::arrayGet($args, 'auth_age');
-        if ($auth_age_str !== null) {
-            $auth_age = Auth_OpenID::intval($auth_age_str);
-            if ($auth_age === false) {
-                if ($strict) {
-                    return false;
-                }
-            } else {
-                if ($auth_age >= 0) {
-                    $this->auth_age = $auth_age;
-                } else if ($strict) {
-                    return false;
-                }
+        $auth_time = Auth_OpenID::arrayGet($args, 'auth_time');
+        if ($auth_time !== null) {
+            if (ereg(PAPE_TIME_VALIDATOR, $auth_time)) {
+                $this->auth_time = $auth_time;
+            } else if ($strict) {
+                return false;
             }
         }
     }
 
     function getExtensionArgs()
     {
-        $ns_args = array(
-                         'auth_policies' =>
-                           implode(' ', $this->auth_policies)
-                         );
+        $ns_args = array();
+        if (count($this->auth_policies) > 0) {
+            $ns_args['auth_policies'] = implode(' ', $this->auth_policies);
+        } else {
+            $ns_args['auth_policies'] = 'none';
+        }
 
         if ($this->nist_auth_level !== null) {
             if (!in_array($this->nist_auth_level, range(0, 4), true)) {
@@ -289,19 +286,12 @@ class Auth_OpenID_PAPE_Response extends Auth_OpenID_Extension {
             $ns_args['nist_auth_level'] = strval($this->nist_auth_level);
         }
 
-        if ($this->auth_age !== null) {
-            if ($this->auth_age < 0) {
+        if ($this->auth_time !== null) {
+            if (!ereg(PAPE_TIME_VALIDATOR, $this->auth_time)) {
                 return false;
             }
 
-            $result = Auth_OpenID::intval($this->auth_age);
-
-            if ($result === false) {
-                return false;
-            }
-
-            $ns_args['auth_age'] =
-                strval($result);
+            $ns_args['auth_time'] = $this->auth_time;
         }
 
         return $ns_args;

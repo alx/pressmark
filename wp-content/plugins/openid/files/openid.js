@@ -1,17 +1,10 @@
 jQuery(function() {
-	jQuery('body.wp-admin #openid_rollup dl').hide();
+	jQuery('body.wp-admin #openid_rollup > div').hide();
 
 	jQuery('body.wp-admin #openid_rollup_link').click( function() {
-		jQuery('#openid_rollup dl').toggle();
+		jQuery('#openid_rollup > div').toggle();
 		return false;
 	});
-
-	/* 
-	var websiteRow = jQuery('body.wp-admin form#adduser input#url ../..');
-	openidRow = websiteRow.clone().insertAfter(websiteRow);
-	jQuery('th', openidRow).text('OpenID');
-	jQuery('td input', openidRow).attr('id', 'openid_url').attr('name', 'openid_url');
-	*/
 });
 
 function stylize_profilelink() {

@@ -10,8 +10,8 @@
  *
  * @package OpenID
  * @author JanRain, Inc. <openid@janrain.com>
- * @copyright 2005 Janrain, Inc.
- * @license http://www.gnu.org/copyleft/lesser.html LGPL
+ * @copyright 2005-2008 Janrain, Inc.
+ * @license http://www.apache.org/licenses/LICENSE-2.0 Apache
  */
 
 /**
@@ -27,7 +27,7 @@ require_once 'Auth/OpenID/KVForm.php';
 /**
  * @access private
  */
-require_once 'Auth/OpenID/HMACSHA1.php';
+require_once 'Auth/OpenID/HMAC.php';
 
 /**
  * This class represents an association between a server and a
@@ -330,7 +330,7 @@ class Auth_OpenID_Association {
     function _makePairs(&$message)
     {
         $signed = $message->getArg(Auth_OpenID_OPENID_NS, 'signed');
-        if (!$signed) {
+        if (!$signed || Auth_OpenID::isFailure($signed)) {
             // raise ValueError('Message has no signed list: %s' % (message,))
             return null;
         }
@@ -369,7 +369,7 @@ class Auth_OpenID_Association {
         $sig = $message->getArg(Auth_OpenID_OPENID_NS,
                                 'sig');
 
-        if (!$sig) {
+        if (!$sig || Auth_OpenID::isFailure($sig)) {
             return false;
         }
 
