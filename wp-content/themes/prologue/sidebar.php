@@ -28,6 +28,8 @@
 			<a href="javascript:Q='';if(navigator.userAgent.indexOf('Safari')>=0){Q=getSelection();}else{Q=document.selection?document.selection.createRange().text:document.getSelection();}location.href='<?php echo get_option('siteurl');?>/index.php?posttext='+encodeURIComponent(Q)+'&posturl='+encodeURIComponent(location.href)+'&posttitle='+encodeURIComponent(document.title);">
 			Press it</a>
 			</p>
+			
+			<p>Ubiquity: <b>press</b><link rel="commands" href="<?php bloginfo('template_url'); ?>/ubiquity.php" name="Press" /></p>
 		</li>
 		<?php } ?>
 	</ul>
