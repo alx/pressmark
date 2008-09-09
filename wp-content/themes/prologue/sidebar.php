@@ -26,7 +26,7 @@
 		<li class="bookmarlet">
 			<p>Copy this link in your Bookmarks Toolbar to add bookmark in 2 clicks!<br>
 			<a href="javascript:Q='';if(navigator.userAgent.indexOf('Safari')>=0){Q=getSelection();}else{Q=document.selection?document.selection.createRange().text:document.getSelection();}location.href='<?php echo get_option('siteurl');?>/index.php?posttext='+encodeURIComponent(Q)+'&posturl='+encodeURIComponent(location.href)+'&posttitle='+encodeURIComponent(document.title);">
-			Press it</a>
+			Press it</a><br/>
 			Ubiquity: <b>press</b><link rel="commands" href="<?php bloginfo('template_url'); ?>/ubiquity.js" name="press" />
 			</p>
 
