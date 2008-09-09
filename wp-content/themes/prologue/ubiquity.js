@@ -1,8 +1,8 @@
 CmdUtils.CreateCommand({
   name: "press",
   description: "Posts content from the current page to Pressmark.",
-  icon: "<?php bloginfo('template_url'); ?>/favicon.png",
-  homepage: "<?php bloginfo('template_url'); ?>/ubiquity.html",
+  icon: "http:://bookmark.alexgirard.com/favicon.png",
+  homepage: "http:://bookmark.alexgirard.com",
   author: { name: "Alex Payne", email: "al3x@al3x.net"},
   contributors: ["Alex Girard"],
   license: "WTFPL",
@@ -21,7 +21,7 @@ CmdUtils.CreateCommand({
       }
     }
 
-    var url = '<?php bloginfo('site_url'); ?>/index.php?posttext=' + e(sel) + '&posturl=' + e(d.location.href) + '&posttitle=' + e(d.title);
+    var url = 'http:://bookmark.alexgirard.com/index.php?posttext=' + e(sel) + '&posturl=' + e(d.location.href) + '&posttitle=' + e(d.title);
 
     CmdUtils.getHiddenWindow().open(url, 'press', 'toolbar = 0, resizable = 1, scrollbars = yes, status = 1, width = 450, height = 400');
   }
