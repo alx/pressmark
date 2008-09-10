@@ -7,13 +7,16 @@ CmdUtils.CreateCommand({
   author: { name: "Alex Girard", email: "alex@lasindias.com"},
   contributors: ["Alex Payne"],
   license: "WTFPL",
-  execute: function() {
+  takes: {"link description": noun_arb_text},
+  execute: function(directObj) {
     var d = Application.activeWindow.activeTab.document;
-    var w = context.focusedWindow;
-    var sel = w.getSelection();
     var e = encodeURIComponent;
 
-    var url = 'http://bookmark.alexgirard.com/index.php?posttext=' + e(sel) + '&posturl=' + e(d.location.href) + '&posttitle=' + e(d.title);
+	var post_text = context.focusedWindow.getSelection();
+	var post_url = directObj.text || d.location.href;
+	var post_title = d.title;
+
+    var url = 'http://bookmark.alexgirard.com/index.php?posttext=' + e(sel) + '&posturl=' + e(post_url) + '&posttitle=' + e(d.title);
 
 	Utils.openUrlInBrowser(url);
   }
