@@ -2,7 +2,7 @@ CmdUtils.CreateCommand({
   name: "press",
   description: "Posts selected content from the current page to Pressmark.",
   help: "Posts selected content from the current page to Pressmark.",
-  icon: "http://bookmark.alexgirard.com/favicon.png",
+  icon: "http://bookmark.alexgirard.com/favicon.ico",
   homepage: "http://bookmark.alexgirard.com",
   author: { name: "Alex Girard", email: "alex@lasindias.com"},
   contributors: ["Alex Payne"],
