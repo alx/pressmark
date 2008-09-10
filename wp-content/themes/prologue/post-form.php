@@ -17,7 +17,7 @@ $first_name		= attribute_escape( $user->first_name );
 		<input type="text" id="posturl" name="posturl" class="text" value="<?php echo $_GET['posturl']; ?>"/>
 		
 		<label for="posttext">Descripción:</label>
-		<textarea name="posttext" id="posttext" rows="3" cols="60" value="<?php echo $_GET['posttext']; ?>"></textarea>
+		<textarea name="posttext" id="posttext" rows="3" cols="60"><?php echo $_GET['posttext']; ?></textarea>
 	
 		<label for="tags">Tags</label>
 		<input type="text" name="tags" id="tags" autocomplete="off" />
