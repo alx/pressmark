@@ -16,7 +16,7 @@ CmdUtils.CreateCommand({
 	var post_url = directObj.text || d.location.href;
 	var post_title = d.title;
 
-    var url = 'http://bookmark.alexgirard.com/index.php?posttext=' + e(sel) + '&posturl=' + e(post_url) + '&posttitle=' + e(d.title);
+    var url = 'http://bookmark.alexgirard.com/index.php?posttext=' + e(post_text) + '&posturl=' + e(post_url) + '&posttitle=' + e(post_title);
 
 	Utils.openUrlInBrowser(url);
   }
