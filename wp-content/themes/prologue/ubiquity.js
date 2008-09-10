@@ -12,8 +12,8 @@ CmdUtils.CreateCommand({
     var d = Application.activeWindow.activeTab.document;
     var e = encodeURIComponent;
 
-	var post_text = context.focusedWindow.getSelection();
-	var post_url = directObj.text || d.location.href;
+	var post_text = directObj.text || context.focusedWindow.getSelection();
+	var post_url = d.location.href;
 	var post_title = d.title;
 
     var url = 'http://bookmark.alexgirard.com/index.php?posttext=' + e(post_text) + '&posturl=' + e(post_url) + '&posttitle=' + e(post_title);
