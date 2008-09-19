@@ -10,13 +10,13 @@ $first_name		= attribute_escape( $user->first_name );
 
 		<?php echo prologue_get_avatar( $user->ID, $user->user_email, 48 ); ?>
 
-		<label for="posttitle">T&iacute;tulo:</label>
+		<label for="posttitle">Title:</label>
 		<input type="text" name="posttitle" value="<?php echo $_GET['posttitle']; ?>" id="posttitle" class="text"/>
 		
-		<label for="posturl">Enlace:</label>
+		<label for="posturl">Link:</label>
 		<input type="text" id="posturl" name="posturl" class="text" value="<?php echo $_GET['posturl']; ?>"/>
 		
-		<label for="posttext">Descripción:</label>
+		<label for="posttext">Description:</label>
 		<textarea name="posttext" id="posttext" rows="3" cols="60"><?php echo $_GET['posttext']; ?></textarea>
 	
 		<label for="tags">Tags</label>
