@@ -1,11 +1,19 @@
 <?php
-if( !@include(ABSPATH . 'wp-content/wp-cache-config.php') ) {
+// Pre-2.6 compatibility
+if( !defined('WP_CONTENT_DIR') )
+	define( 'WP_CONTENT_DIR', ABSPATH . 'wp-content' );
+
+if( !include( WP_CONTENT_DIR . '/wp-cache-config.php' ) )
 	return;
-}
 if( !defined( 'WPCACHEHOME' ) )
 	define('WPCACHEHOME', dirname(__FILE__).'/');
 
 include( WPCACHEHOME . 'wp-cache-base.php');
+
+if(defined('DOING_CRON')) {
+	require_once( WPCACHEHOME . 'wp-cache-phase2.php');
+	return;
+}
 
 $mutex_filename = 'wp_cache_mutex.lock';
 $new_cache = false;
@@ -82,14 +90,14 @@ function wp_cache_postload() {
 
 	if (!$cache_enabled) 
 		return;
-	require( WPCACHEHOME . 'wp-cache-phase2.php');
+	require_once( WPCACHEHOME . 'wp-cache-phase2.php');
 	wp_cache_phase2();
 }
 
 function wp_cache_get_cookies_values() {
 	$string = '';
 	while ($key = key($_COOKIE)) {
-		if (preg_match("/^wp-postpass|^wordpress|^comment_author_email_/", $key)) {
+		if (preg_match("/^wp-postpass|^wordpress|^comment_author_/", $key)) {
 			$string .= $_COOKIE[$key] . ",";
 		}
 		next($_COOKIE);

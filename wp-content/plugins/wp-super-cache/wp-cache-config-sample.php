@@ -5,7 +5,7 @@ WP-Cache Config Sample File
 See wp-cache.php for author details.
 */
 
-define( 'WPCACHEHOME', ABSPATH . 'wp-content/plugins/wp-super-cache/' );
+define( 'WPCACHEHOME', WP_CONTENT_DIR . '/plugins/wp-super-cache/' );
 
 $cache_compression = 0; // Super cache compression
 $cache_enabled = false;
@@ -13,7 +13,7 @@ $super_cache_enabled = false;
 $cache_max_time = 3600; //in seconds
 //$use_flock = true; // Set it true or false if you know what to use
 $super_cache_max_time = 21600; // in seconds
-$cache_path = ABSPATH . 'wp-content/cache/';
+$cache_path = WP_CONTENT_DIR . '/cache/';
 $file_prefix = 'wp-cache-';
 
 // We want to be able to identify each blog in a WordPress MU install
@@ -38,7 +38,7 @@ if( defined( 'VHOST' ) ) {
 }
 
 // Array of files that have 'wp-' but should still be cached 
-$cache_acceptable_files = array( 'wp-atom.php', 'wp-comments-popup.php', 'wp-commentsrss2.php', 'wp-links-opml.php', 'wp-locations.php', 'wp-rdf.php', 'wp-rss.php', 'wp-rss2.php');
+$cache_acceptable_files = array( 'wp-comments-popup.php', 'wp-links-opml.php', 'wp-locations.php' );
 
 $cache_rejected_uri = array('wp-.*.php', 'index.php');
 $cache_rejected_user_agent = array ( 0 => 'bot', 1 => 'ia_archive', 2 => 'slurp', 3 => 'crawl', 4 => 'spider');

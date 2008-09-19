@@ -1,12 +1,5 @@
 <?php
 
-/** Diable here because PHP4.3 does not make the global
- Serious bug?
-
-$mutex_filename = 'wp_cache_mutex.lock';
-$new_cache = false;
-*/
-
 function wp_cache_phase2() {
 	global $cache_filename, $cache_acceptable_files, $wp_cache_meta_object;
 	global $wp_cache_gzip_encoding;
@@ -28,6 +21,8 @@ function wp_cache_phase2() {
 		add_action('delete_comment', 'wp_cache_no_postid', 0);
 		add_action('switch_theme', 'wp_cache_no_postid', 0); 
 
+		add_action('wp_cache_gc','wp_cache_gc_cron');
+
 		do_cacheaction( 'add_cacheaction' );
 	}
 	if( $_SERVER["REQUEST_METHOD"] == 'POST' || get_option('gzipcompression')) 
@@ -38,6 +33,10 @@ function wp_cache_phase2() {
 		return;
 	if (wp_cache_user_agent_is_rejected()) return;
 	$wp_cache_meta_object = new CacheMeta;
+	if($wp_cache_gzip_encoding)
+		header('Vary: Accept-Encoding, Cookie');
+	else
+		header('Vary: Cookie');
 	ob_start('wp_cache_ob_callback'); 
 	register_shutdown_function('wp_cache_shutdown_callback');
 }
@@ -131,20 +130,34 @@ function wp_cache_ob_callback($buffer) {
 	global $cache_path, $cache_filename, $meta_file, $wp_start_time, $supercachedir;
 	global $new_cache, $wp_cache_meta_object, $file_expired, $blog_id, $cache_compression;
 	global $wp_cache_gzip_encoding, $super_cache_enabled, $cached_direct_pages;
+	global $wp_cache_404;
+
+	$new_cache = true;
 
 	/* Mode paranoic, check for closing tags 
 	 * we avoid caching incomplete files */
-	if (is_404() || !preg_match('/(<\/html>|<\/rss>|<\/feed>)/i',$buffer) ) {
+	if( $wp_cache_404 ) {
 		$new_cache = false;
-		return $buffer;
+		$buffer .= "\n<!-- Page not cached by WP Super Cache. 404. -->\n";
 	}
+
+	if (!preg_match('/(<\/html>|<\/rss>|<\/feed>)/i',$buffer) ) {
+		$new_cache = false;
+		$buffer .= "\n<!-- Page not cached by WP Super Cache. No closing HTML tag. Check your theme. -->\n";
+	}
+	
+	if( !$new_cache )
+		return $buffer;
 
 	$duration = wp_cache_microtime_diff($wp_start_time, microtime());
 	$duration = sprintf("%0.3f", $duration);
 	$buffer .= "\n<!-- Dynamic Page Served (once) in $duration seconds -->\n";
 
-	if( !wp_cache_writers_entry() )
-		return false;
+	if( !wp_cache_writers_entry() ) {
+		$buffer .= "\n<!-- Page not cached by WP Super Cache. Could not get mutex lock. -->\n";
+		return $buffer;
+	}
+
 	$mtime = @filemtime($cache_path . $cache_filename);
 	/* Return if:
 		the file didn't exist before but it does exist now (another connection created)
@@ -204,11 +217,12 @@ function wp_cache_ob_callback($buffer) {
 				$gzsize = strlen($gzdata);
 
 				array_push($wp_cache_meta_object->headers, 'Content-Encoding: ' . $wp_cache_gzip_encoding);
-				array_push($wp_cache_meta_object->headers, 'Vary: Accept-Encoding');
+				array_push($wp_cache_meta_object->headers, 'Vary: Accept-Encoding, Cookie');
 				array_push($wp_cache_meta_object->headers, 'Content-Length: ' . strlen($gzdata));
 				// Return uncompressed data & store compressed for later use
 				fputs($fr, $gzdata);
 			}else{ // no compression
+				array_push($wp_cache_meta_object->headers, 'Vary: Cookie');
 				fputs($fr, $buffer.$log);
 			}
 			if( $fr2 )
@@ -310,8 +324,7 @@ function wp_cache_phase2_clean_expired($file_prefix) {
 }
 
 function wp_cache_shutdown_callback() {
-	global $cache_path, $cache_max_time, $file_expired, $file_prefix, $meta_file, $new_cache;
-	global $wp_cache_meta_object, $known_headers, $blog_id;
+	global $cache_path, $cache_max_time, $file_expired, $file_prefix, $meta_file, $new_cache, $wp_cache_meta_object, $known_headers, $blog_id, $wp_cache_gc;
 
 	$wp_cache_meta_object->uri = $_SERVER["SERVER_NAME"].preg_replace('/[ <>\'\"\r\n\t\(\)]/', '', $_SERVER['REQUEST_URI']); // To avoid XSS attacs
 	$wp_cache_meta_object->blog_id=$blog_id;
@@ -319,8 +332,8 @@ function wp_cache_shutdown_callback() {
 
 	$response = wp_cache_get_response_headers();
 	foreach ($known_headers as $key) {
-		if(isset($response{$key})) {
-			array_push($wp_cache_meta_object->headers, "$key: " . $response{$key});
+		if(isset($response[$key])) {
+			array_push($wp_cache_meta_object->headers, "$key: " . $response[$key]);
 		}
 	}
 	/* Not used because it gives problems with some
@@ -332,13 +345,13 @@ function wp_cache_shutdown_callback() {
 		array_push($wp_cache_meta_object->headers, "Content-Length: $content_size");
 	}
 	*/
-	if (!$response{'Last-Modified'}) {
+	if (!isset( $response['Last-Modified'] )) {
 		$value = gmdate('D, d M Y H:i:s') . ' GMT';
 		/* Dont send this the first time */
 		/* @header('Last-Modified: ' . $value); */
 		array_push($wp_cache_meta_object->headers, "Last-Modified: $value");
 	}
-	if (!$response{'Content-Type'} && !$response{'Content-type'}) {
+	if (!$response['Content-Type'] && !$response['Content-type']) {
 		// On some systems, headers set by PHP can't be fetched from
 		// the output buffer. This is a last ditch effort to set the
 		// correct Content-Type header for feeds, if we didn't see
@@ -367,7 +380,8 @@ function wp_cache_shutdown_callback() {
 		array_push($wp_cache_meta_object->headers, "Content-Type: $value");
 	}
 
-	ob_end_flush();
+	@ob_end_flush();
+	flush(); //Ensure we send data to the client
 	if ($new_cache) {
 		$serial = serialize($wp_cache_meta_object);
 		if( !wp_cache_writers_entry() )
@@ -381,12 +395,14 @@ function wp_cache_shutdown_callback() {
 		wp_cache_writers_exit();
 	}
 
-	if( mt_rand( 0, 500 ) != 1 )
+	if( !isset( $wp_cache_gc ) )
+		$wp_cache_gc = 100;
+	if( mt_rand( 0, $wp_cache_gc ) != 1 )
 		return;
 
-	// we delete expired files
-	flush(); //Ensure we send data to the client
-	wp_cache_phase2_clean_expired($file_prefix);
+	// we delete expired files, using a wordpress cron event
+	// since flush() does not guarantee hand-off to client - problem on Win32 and suPHP
+	if(!wp_next_scheduled('wp_cache_gc')) wp_schedule_single_event(time() + 10 , 'wp_cache_gc');
 }
 
 function wp_cache_no_postid($id) {
@@ -395,7 +411,7 @@ function wp_cache_no_postid($id) {
 
 function wp_cache_get_postid_from_comment($comment_id) {
 	global $super_cache_enabled;
-	$comment = get_commentdata($comment_id, 1, true);
+	$comment = get_comment($comment_ID, ARRAY_A);
 	$postid = $comment['comment_post_ID'];
 	// Do nothing if comment is not moderated
 	// http://ocaoimh.ie/2006/12/05/caching-wordpress-with-wp-cache-in-a-spam-filled-world
@@ -433,6 +449,7 @@ function wp_cache_post_change($post_id) {
 				@unlink( $cache_file );
 				@unlink( $cache_file . '.gz' );
 			}
+			prune_super_cache( $dir . $permalink, true ); // remove pages under permalink.
 		}
 	}
 
@@ -476,8 +493,14 @@ function wp_cache_post_id() {
 	if ($post_ID > 0 ) return $post_ID;
 	if ($comment_post_ID > 0 )  return $comment_post_ID;
 	if (is_single() || is_page()) return $posts[0]->ID;
-	if ($_GET['p'] > 0) return $_GET['p'];
-	if ($_POST['p'] > 0) return $_POST['p'];
+	if (isset( $_GET[ 'p' ] ) && $_GET['p'] > 0) return $_GET['p'];
+	if (isset( $_POST[ 'p' ] ) && $_POST['p'] > 0) return $_POST['p'];
 	return 0;
 }
+
+function wp_cache_gc_cron() {
+	global $file_prefix;
+	wp_cache_phase2_clean_expired($file_prefix);
+}
+
 ?>
