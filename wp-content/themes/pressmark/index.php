@@ -1,19 +1,19 @@
 <?php 
 if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST['action'] == 'post' ) {
-	auth_redirect();
+	
 	if( !current_user_can( 'publish_posts' ) ) {
-		wp_redirect( get_bloginfo( 'url' ) . '/' );
+		wp_redirect( get_bloginfo( 'url' ) );
 		exit;
 	}
-
+	
 	check_admin_referer( 'new-post' );
 
 	$user_id		= $current_user->user_id;
-	$post_title		= escape($_POST['posttitle']);
-	$post_url		= escape($_POST['posturl']);
-	$post_content	= escape($_POST['posttext']);
-	$tags			= escape($_POST['tags']);
-	$status			= escape($_POST['status']);
+	$post_title		= urldecode($_POST['posttitle']);
+	$post_url		= urldecode($_POST['posturl']);
+	$post_content	= urldecode($_POST['posttext']);
+	$tags			= urldecode($_POST['tags']);
+	$status			= urldecode($_POST['status']);
 
 	// $char_limit		= 40;
 	// $post_title		= strip_tags( $post_content );
