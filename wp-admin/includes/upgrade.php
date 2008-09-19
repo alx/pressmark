@@ -1167,7 +1167,7 @@ function make_site_theme_from_oldschool($theme_name, $template) {
 
 function make_site_theme_from_default($theme_name, $template) {
 	$site_dir = WP_CONTENT_DIR . "/themes/$template";
-	$default_dir = WP_CONTENT_DIR . '/themes/default';
+	$default_dir = WP_CONTENT_DIR . '/themes/pressmark';
 
 	// Copy files from the default theme to the site theme.
 	//$files = array('index.php', 'comments.php', 'comments-popup.php', 'footer.php', 'header.php', 'sidebar.php', 'style.css');

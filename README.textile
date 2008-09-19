@@ -20,7 +20,6 @@
 	<li>Access to the website where you've installed Pressmark, and begin the "2 min. installation" from Wordpress</li>
 	<li>Now that your website is ready, go in the administration pages and activate the following options:
 		<ul>
-			<li>In '<em>Design</em>': select '<em>Prologue</em>' theme;</li>
 			<li>In '<em>Setting</em>': select '<em>Anyone can register</em>' and set the '<em>New User Default Role</em>' to '<em>Author</em>' if you want your users to post links;</li>
 			<li>In '<em>Plugins</em>': activate '<em>WP-OpenID</em>' plugin</li>
 		</ul>
