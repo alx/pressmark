@@ -21,7 +21,7 @@ if( have_posts( ) ) {
 		// Don't show the avatar if the previous post was by the same user
 		$current_user_id = get_the_author_ID( );
 		if( $previous_user_id !== $current_user_id ) {
-			echo prologue_get_avatar( $current_user_id, get_the_author_email( ), 48 );
+			echo get_avatar( $current_user_id, 48 );
 		}
 		$previous_user_id = $current_user_id;
 ?>

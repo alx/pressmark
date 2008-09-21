@@ -8,7 +8,7 @@ $first_name		= attribute_escape( $user->first_name );
 		<input type="hidden" name="action" value="post" />
 		<?php wp_nonce_field( 'new-post' ); ?>
 
-		<?php echo prologue_get_avatar( $user->ID, $user->user_email, 48 ); ?>
+		<?php echo get_avatar( $user->ID, 48 ); ?>
 
 		<label for="posttitle">Title:</label>
 		<input type="text" name="posttitle" value="<?php echo $_GET['posttitle']; ?>" id="posttitle" class="text"/>

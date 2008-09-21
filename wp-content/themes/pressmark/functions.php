@@ -173,30 +173,6 @@ function prologue_admin_header_style( ) {
 }
 add_custom_image_header( '', 'prologue_admin_header_style' );
 
-
-function prologue_get_avatar( $wpcom_user_id, $email, $size, $rating = '', $default = 'http://s.wordpress.com/i/mu.gif' ) {
-	if( !empty( $wpcom_user_id ) && $wpcom_user_id !== false && function_exists( 'get_avatar' ) ) {
-		return get_avatar( $wpcom_user_id, $size );
-	}
-	elseif( !empty( $email ) && $email !== false ) {
-		$default = urlencode( $default );
-
-		$out = 'http://www.gravatar.com/avatar.php?gravatar_id=';
-		$out .= md5( $email );
-		$out .= "&amp;size={$size}";
-		$out .= "&amp;default={$default}";
-
-		if( !empty( $rating ) ) {
-			$out .= "&amp;rating={$rating}";
-		}
-
-		return "<img alt='' src='{$out}' class='avatar avatar-{$size}' height='{$size}' width='{$size}' />";
-	}
-	else {
-		return "<img alt='' src='{$default}' />";
-	}
-}
-
 function user_cloud() {
 	global $wpdb;
 	$authors = $wpdb->get_results("SELECT ID, user_nicename from $wpdb->users ORDER BY display_name");
@@ -209,6 +185,6 @@ function user_cloud() {
 	foreach ( (array) $authors as $author ) {
 		$author = get_userdata( $author->ID );
 		echo '<a href="' . get_author_posts_url($author->ID, $author->user_nicename) . '" title="' . sprintf(__("Posts by %s"), attribute_escape($author->display_name)) . '">';
-		echo prologue_get_avatar( $author->ID, $author->user_email, 48 )."</a>";
+		echo get_avatar( $author->ID, 48 )."</a>";
 	}
 }

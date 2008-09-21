@@ -14,7 +14,7 @@ if( have_posts( ) ) {
 <div id="postpage">
 <div id="main">
 	<h2>
-		<?php echo prologue_get_avatar( get_the_author_ID( ), get_the_author_email( ), 48 ); ?>
+		<?php echo get_avatar( get_the_author_ID( ), 48 ); ?>
 		<?php the_author_posts_link( ); ?>
 	</h2>
 	<ul>
