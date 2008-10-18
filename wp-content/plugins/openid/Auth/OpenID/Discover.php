@@ -22,14 +22,18 @@ define('Auth_OpenID_TYPE_2_0', 'http://specs.openid.net/auth/2.0/signon');
 define('Auth_OpenID_RP_RETURN_TO_URL_TYPE',
        'http://specs.openid.net/auth/2.0/return_to');
 
+function Auth_OpenID_getOpenIDRPTypeURIs()
+{
+    return array(Auth_OpenID_RP_RETURN_TO_URL_TYPE);
+}
+
 function Auth_OpenID_getOpenIDTypeURIs()
 {
     return array(Auth_OpenID_TYPE_2_0_IDP,
                  Auth_OpenID_TYPE_2_0,
                  Auth_OpenID_TYPE_1_2,
                  Auth_OpenID_TYPE_1_1,
-                 Auth_OpenID_TYPE_1_0,
-                 Auth_OpenID_RP_RETURN_TO_URL_TYPE);
+                 Auth_OpenID_TYPE_1_0);
 }
 
 /**
@@ -189,6 +193,20 @@ class Auth_OpenID_ServiceEndpoint {
 
         return null;
     }
+
+    function rpFromXRDS($uri, $xrds_text)
+    {
+        $xrds =& Auth_Yadis_XRDS::parseXRDS($xrds_text);
+
+        if ($xrds) {
+            $yadis_services =
+              $xrds->services(array('filter_MatchesAnyOpenIDRPType'));
+            return Auth_OpenID_makeOpenIDEndpoints($uri, $yadis_services);
+        }
+
+        return null;
+    }
+
 
     /*
      * Create endpoints from a DiscoveryResult.

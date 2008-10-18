@@ -20,7 +20,7 @@
 /**
  * The library version string
  */
-define('Auth_OpenID_VERSION', '2.1.0');
+define('Auth_OpenID_VERSION', '2.1.2');
 
 /**
  * Require the fetcher code.
@@ -350,38 +350,6 @@ class Auth_OpenID {
         }
 
         return $url . $sep . Auth_OpenID::httpBuildQuery($args);
-    }
-
-    /**
-     * Turn a string into an ASCII string.
-     *
-     * Replace non-ascii characters with a %-encoded, UTF-8
-     * encoding. This function will fail if the input is a string and
-     * there are non-7-bit-safe characters. It is assumed that the
-     * caller will have already translated the input into a Unicode
-     * character sequence, according to the encoding of the HTTP POST
-     * or GET.
-     *
-     * Do not escape anything that is already 7-bit safe, so we do the
-     * minimal transform on the identity URL
-     *
-     * @access private
-     */
-    function quoteMinimal($s)
-    {
-        $res = array();
-        for ($i = 0; $i < strlen($s); $i++) {
-            $c = $s[$i];
-            if ($c >= "\x80") {
-                for ($j = 0; $j < count(utf8_encode($c)); $j++) {
-                    array_push($res, sprintf("%02X", ord($c[$j])));
-                }
-            } else {
-                array_push($res, $c);
-            }
-        }
-    
-        return implode('', $res);
     }
 
     /**

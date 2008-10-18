@@ -3,7 +3,7 @@
 Plugin Name: WP Super Cache
 Plugin URI: http://ocaoimh.ie/wp-super-cache/
 Description: Very fast caching module for WordPress. Once activated, you must <a href="options-general.php?page=wpsupercache">enable the cache</a>. Based on WP-Cache by <a href="http://mnm.uib.es/gallir/">Ricardo Galli Granada</a>.
-Version: 0.7.1
+Version: 0.8.3
 Author: Donncha O Caoimh
 Author URI: http://ocaoimh.ie/
 */
@@ -90,6 +90,9 @@ function wpsupercache_deactivate() {
 	if( !function_exists( 'prune_super_cache' ) )
 		include_once( 'wp-cache-phase2.php' );
 	prune_super_cache ($cache_path, true);
+	@unlink( $cache_path . '.htaccess' );
+	@unlink( $cache_path . 'meta' );
+	@unlink( $cache_path . 'supercache' );
 }
 register_deactivation_hook( __FILE__, 'wpsupercache_deactivate' );
 
@@ -106,7 +109,7 @@ function wp_cache_add_pages() {
 add_action('admin_menu', 'wp_cache_add_pages');
 
 function wp_cache_manager() {
-	global $wp_cache_config_file, $valid_nonce, $supercachedir, $cache_path, $cache_enabled, $cache_compression, $super_cache_enabled, $wp_cache_hello_world;
+	global $wp_cache_config_file, $valid_nonce, $supercachedir, $cache_path, $cache_enabled, $cache_compression, $super_cache_enabled, $wp_cache_hello_world, $wp_cache_clear_on_post_edit, $cache_rebuild_files;
 
 	if( function_exists( 'is_site_admin' ) )
 		if( !is_site_admin() )
@@ -115,6 +118,9 @@ function wp_cache_manager() {
 	$supercachedir = $cache_path . 'supercache/' . preg_replace('/:.*$/', '',  $_SERVER["HTTP_HOST"]);
 	if( get_option( 'gzipcompression' ) == 1 )
 		update_option( 'gzipcompression', 0 );
+	if( !isset( $cache_rebuild_files ) )
+		$cache_rebuild_files = 0;
+
 	$valid_nonce = wp_verify_nonce($_REQUEST['_wpnonce'], 'wp-cache');
 	/* http://www.netlobo.com/div_hiding.html */
 	?>
@@ -154,7 +160,7 @@ function toggleLayer( whichLayer ) {
 	}
 	if(isset($_REQUEST['wp_restore_config']) && $valid_nonce) {
 		unlink($wp_cache_config_file);
-		echo '<strong>Configuration file changed, some values might be wrong. Load the page again from the "Options" menu to reset them.</strong>';
+		echo '<strong>Configuration file changed, some values might be wrong. Load the page again from the "Settings" menu to reset them.</strong>';
 	}
 
 	if ( !wp_cache_check_link() ||
@@ -214,11 +220,17 @@ function toggleLayer( whichLayer ) {
 					break;
 			}
 			if( isset( $_POST[ 'wp_cache_hello_world' ] ) ) {
-				$wp_cache_hello_world = (int)$_POST[ 'wp_cache_hello_world' ];
+				$wp_cache_hello_world = 1;
 			} else {
 				$wp_cache_hello_world = 0;
 			}
 			wp_cache_replace_line('^ *\$wp_cache_hello_world', '$wp_cache_hello_world = ' . (int)$wp_cache_hello_world . ";", $wp_cache_config_file);
+			if( isset( $_POST[ 'wp_cache_clear_on_post_edit' ] ) ) {
+				$wp_cache_clear_on_post_edit = 1;
+			} else {
+				$wp_cache_clear_on_post_edit = 0;
+			}
+			wp_cache_replace_line('^ *\$wp_cache_clear_on_post_edit', "\$wp_cache_clear_on_post_edit = " . $wp_cache_clear_on_post_edit . ";", $wp_cache_config_file);
 		}
 		if( isset( $_POST[ 'cache_compression' ] ) && $_POST[ 'cache_compression' ] != $cache_compression ) {
 			$cache_compression_changed = true;
@@ -235,9 +247,10 @@ function toggleLayer( whichLayer ) {
 	echo '<form name="wp_manager" action="'. $_SERVER["REQUEST_URI"] . '" method="post">';
 	?>
 	<label><input type='radio' name='wp_cache_status' value='all' <?php if( $cache_enabled == true && $super_cache_enabled == true ) { echo 'checked=checked'; } ?>> <strong>ON</strong> (WP Cache and Super Cache enabled)</label><br />
-	<label><input type='radio' name='wp_cache_status' value='none' <?php if( $cache_enabled == false ) { echo 'checked=checked'; } ?>> <strong>OFF</strong> (WP Cache and Super Cache disabled)</label><br />
 	<label><input type='radio' name='wp_cache_status' value='wpcache' <?php if( $cache_enabled == true && $super_cache_enabled == false ) { echo 'checked=checked'; } ?>> <strong>HALF ON</strong> (Super Cache Disabled, only legacy WP-Cache caching.)</label><br />
+	<label><input type='radio' name='wp_cache_status' value='none' <?php if( $cache_enabled == false ) { echo 'checked=checked'; } ?>> <strong>OFF</strong> (WP Cache and Super Cache disabled)</label><br />
 	<p><label><input type='checkbox' name='wp_cache_hello_world' <?php if( $wp_cache_hello_world ) echo "checked"; ?> value='1'> Proudly tell the world your server is Digg proof! (places a message in your blog's footer)</label></p>
+	<p><label><input type='checkbox' name='wp_cache_clear_on_post_edit' <?php if( $wp_cache_clear_on_post_edit ) echo "checked"; ?> value='1'> Clear all cache files when a post or page is published. (This may significantly slow down saving of posts.)</label></p>
 	<p>Note: if uninstalling this plugin, make sure the directory <em><?php echo WP_CONTENT_DIR; ?></em> is writeable by the webserver so the files <em>advanced-cache.php</em> and <em>cache-config.php</em> can be deleted automatically. (Making sure those files are writeable too is probably a good idea!)</p>
 	<?php
 	echo "<div><input type='submit' " . SUBMITDISABLED . " value='Update Status &raquo;' /></div>";
@@ -316,36 +329,12 @@ function wsc_mod_rewrite() {
 	$wprules = str_replace( "RewriteBase $home_root\n", '', $wprules );
 	$scrules = implode( "\n", extract_from_markers( $home_path.'.htaccess', 'WPSuperCache' ) );
 
-	$dohtaccess = true;
-	if( !$wprules || $wprules == '' ) {
-		echo "<h4 style='color: #a00'>Mod Rewrite rules cannot be updated!</h4>";
-		echo "<p>You must have <strong>BEGIN</strong> and <strong>END</strong> markers in {$home_path}.htaccess for the auto update to work. They look like this and surround the main WordPress mod_rewrite rules:
-		<blockquote><code><em># BEGIN WordPress</em><br /> RewriteCond %{REQUEST_FILENAME} !-f<br /> RewriteCond %{REQUEST_FILENAME} !-d<br /> RewriteRule . /index.php [L]<br /> <em># END WordPress</em></code></blockquote>
-		Refresh this page when you have updated your .htaccess file.";
-		echo "</fieldset></div>";
-		return;
-	} elseif( strpos( $wprules, 'wordpressuser' ) ) { // Need to clear out old mod_rewrite rules
-		echo "<p><strong>Thank you for upgrading.</strong> The mod_rewrite rules changed since you last installed this plugin. Unfortunately you must remove the old supercache rules before the new ones are updated. Refresh this page when you have edited your .htaccess file. If you wish to manually upgrade, change the following line: <blockquote><code>RewriteCond %{HTTP_COOKIE} !^.*wordpressuser.*\$</code></blockquote> so it looks like this: <blockquote><code>RewriteCond %{HTTP:Cookie} !^.*wordpress.*\$</code></blockquote> The only changes are 'HTTP_COOKIE' becomes 'HTTP:Cookie' and 'wordpressuser' becomes 'wordpress'. This is a WordPress 2.5 change but it's backwards compatible with older versions if you're brave enough to use them.</p>";
-		echo "</fieldset></div>";
-		return;
-	} elseif( $scrules != '' && strpos( $scrules, '%{REQUEST_URI} !^.*[^/]$' ) === false && substr( get_option( 'permalink_structure' ), -1 ) == '/' ) { // permalink structure has a trailing slash, need slash check in rules.
-		echo "<div style='padding: 2px; background: #ff0'><h4>Trailing slash check required.</h4><p>It looks like your blog has URLs that end with a '/'. Unfortunately since you installed this plugin a duplicate content bug has been found where URLs not ending in a '/' end serve the same content as those with the '/' and do not redirect to the proper URL.<br />";
-		echo "To fix, you must edit your .htaccess file and add these two rules to the two groups of Super Cache rules:</p>";
-		echo "<blockquote><code>RewriteCond %{REQUEST_URI} !^.*[^/]$<br />RewriteCond %{REQUEST_URI} !^.*//.*$<br /></code></blockquote>";
-		echo "<p>You can see where the rules go and examine the complete rules by clicking the 'View mod_rewrite rules' link below.</p></div>";
-		$dohtaccess = false;
-	} elseif( strpos( $scrules, 'supercache' ) || strpos( $wprules, 'supercache' ) ) { // only write the rules once
-		$dohtaccess = false;
-	}
 	if( substr( get_option( 'permalink_structure' ), -1 ) == '/' ) {
 		$condition_rules[] = "RewriteCond %{REQUEST_URI} !^.*[^/]$";
 		$condition_rules[] = "RewriteCond %{REQUEST_URI} !^.*//.*$";
 	}
 	$condition_rules[] = "RewriteCond %{REQUEST_METHOD} !=POST";
-	$condition_rules[] = "RewriteCond %{QUERY_STRING} !.*s=.*";
-	$condition_rules[] = "RewriteCond %{QUERY_STRING} !.*p=.*";
-	$condition_rules[] = "RewriteCond %{QUERY_STRING} !.*attachment_id=.*";
-	$condition_rules[] = "RewriteCond %{QUERY_STRING} !.*wp-subscription-manager=.*";
+	$condition_rules[] = "RewriteCond %{QUERY_STRING} !.*=.*";
 	$condition_rules[] = "RewriteCond %{HTTP:Cookie} !^.*(comment_author_|wordpress|wp-postpass_).*$";
 	$condition_rules = apply_filters( 'supercacherewriteconditions', $condition_rules );
 
@@ -366,9 +355,34 @@ function wsc_mod_rewrite() {
 	$rules = apply_filters( 'supercacherewriterules', $rules );
 
 	$rules = str_replace( "CONDITION_RULES", implode( "\n", $condition_rules ) . "\n", $rules );
+
+	$dohtaccess = true;
+	if( function_exists( 'is_site_admin' ) ) {
+		echo "<h4 style='color: #a00'>WordPress MU Detected</h4><p>Unfortunately the rewrite rules cannot be updated automatically when running WordPress MU. Please open your .htaccess and add the following mod_rewrite rules above any other rules in that file.</p>";
+	} elseif( !$wprules || $wprules == '' ) {
+		echo "<h4 style='color: #a00'>Mod Rewrite rules cannot be updated!</h4>";
+		echo "<p>You must have <strong>BEGIN</strong> and <strong>END</strong> markers in {$home_path}.htaccess for the auto update to work. They look like this and surround the main WordPress mod_rewrite rules:
+		<blockquote><code><em># BEGIN WordPress</em><br /> RewriteCond %{REQUEST_FILENAME} !-f<br /> RewriteCond %{REQUEST_FILENAME} !-d<br /> RewriteRule . /index.php [L]<br /> <em># END WordPress</em></code></blockquote>
+		Refresh this page when you have updated your .htaccess file.";
+		echo "</fieldset></div>";
+		return;
+	} elseif( strpos( $wprules, 'wordpressuser' ) ) { // Need to clear out old mod_rewrite rules
+		echo "<p><strong>Thank you for upgrading.</strong> The mod_rewrite rules changed since you last installed this plugin. Unfortunately you must remove the old supercache rules before the new ones are updated. Refresh this page when you have edited your .htaccess file. If you wish to manually upgrade, change the following line: <blockquote><code>RewriteCond %{HTTP_COOKIE} !^.*wordpressuser.*\$</code></blockquote> so it looks like this: <blockquote><code>RewriteCond %{HTTP:Cookie} !^.*wordpress.*\$</code></blockquote> The only changes are 'HTTP_COOKIE' becomes 'HTTP:Cookie' and 'wordpressuser' becomes 'wordpress'. This is a WordPress 2.5 change but it's backwards compatible with older versions if you're brave enough to use them.</p>";
+		echo "</fieldset></div>";
+		return;
+	} elseif( $scrules != '' && strpos( $scrules, '%{REQUEST_URI} !^.*[^/]$' ) === false && substr( get_option( 'permalink_structure' ), -1 ) == '/' ) { // permalink structure has a trailing slash, need slash check in rules.
+		echo "<div style='padding: 2px; background: #ff0'><h4>Trailing slash check required.</h4><p>It looks like your blog has URLs that end with a '/'. Unfortunately since you installed this plugin a duplicate content bug has been found where URLs not ending in a '/' end serve the same content as those with the '/' and do not redirect to the proper URL.<br />";
+		echo "To fix, you must edit your .htaccess file and add these two rules to the two groups of Super Cache rules:</p>";
+		echo "<blockquote><code>RewriteCond %{REQUEST_URI} !^.*[^/]$<br />RewriteCond %{REQUEST_URI} !^.*//.*$<br /></code></blockquote>";
+		echo "<p>You can see where the rules go and examine the complete rules by clicking the 'View mod_rewrite rules' link below.</p></div>";
+		$dohtaccess = false;
+	} elseif( strpos( $scrules, 'supercache' ) || strpos( $wprules, 'supercache' ) ) { // only write the rules once
+		$dohtaccess = false;
+	}
 	if( $dohtaccess && !$_POST[ 'updatehtaccess' ] ) {
 		if( !is_writeable_ACLSafe( $home_path . ".htaccess" ) ) {
-			echo "<div style='padding: 2px; background: #ff0'><h4>Cannot update .htaccess</h4><p>The file <code>{$home_path}.htaccess</code> cannot be modified by the web server. Please correct this using the chmod command or your ftp client.</p><p>Refresh this page when the file permissions have been modified.</p></div>";
+			echo "<div style='padding: 2px; background: #ff0'><h4>Cannot update .htaccess</h4><p>The file <code>{$home_path}.htaccess</code> cannot be modified by the web server. Please correct this using the chmod command or your ftp client.</p><p>Refresh this page when the file permissions have been modified.</p><p>Alternatively, you can edit your <code>{$home_path}.htaccess</code> file manually and add the following code (before any WordPress rules):</p>";
+			echo "<p><pre># BEGIN WPSuperCache\n" . wp_specialchars( $rules ) . "# END WPSuperCache</pre></p></div>";
 		} else {
 			echo "<div style='padding: 2px; background: #ff0'><p>To serve static html files your server must have the correct mod_rewrite rules added to a file called <code>{$home_path}.htaccess</code><br /> This can be done automatically by clicking the <em>'Update mod_rewrite rules &raquo;'</em> button or you can edit the file yourself and add the following rules. Make sure they appear before any existing WordPress rules.";
 			echo "<pre># BEGIN WPSuperCache\n" . wp_specialchars( $rules ) . "# END WPSuperCache</pre></p>";
@@ -399,11 +413,10 @@ function wsc_mod_rewrite() {
 	}
 	// http://allmybrain.com/2007/11/08/making-wp-super-cache-gzip-compression-work/
 	if( !is_file( $cache_path . '.htaccess' ) ) {
-		$gziprules = "AddEncoding x-gzip .gz\n";
-		$gziprules .= "AddType text/html .gz\n";
-		$gziprules .= "<IfModule mod_deflate.c>\n";
-		$gziprules .= "  SetEnvIfNoCase Request_URI \.gz$ no-gzip\n";
-		$gziprules .= "</IfModule>";
+		$gziprules =  "<IfModule mod_mime.c>\n  AddEncoding gzip .gz\n  AddType text/html .gz\n</IfModule>\n";
+		$gziprules .= "<IfModule mod_deflate.c>\n  SetEnvIfNoCase Request_URI \.gz$ no-gzip\n</IfModule>\n";
+		$gziprules .= "<IfModule mod_headers.c>\n  Header set Cache-Control 'max-age=300, must-revalidate'\n</IfModule>\n";
+		$gziprules .= "<IfModule mod_expires.c>\n  ExpiresActive On\n  ExpiresByType text/html A300\n</IfModule>\n";
 		$gziprules = insert_with_markers( $cache_path . '.htaccess', 'supercache', explode( "\n", $gziprules ) );
 		echo "<h4>Gzip encoding rules in {$cache_path}.htaccess created.</h4>";
 	}
@@ -592,23 +605,16 @@ function RecursiveFolderDelete ( $folderPath ) { // from http://www.php.net/manu
 }
 
 function wp_cache_edit_max_time () {
-	global $super_cache_max_time, $cache_max_time, $wp_cache_config_file, $valid_nonce, $cache_enabled, $super_cache_enabled, $wp_cache_gc;
+	global $cache_max_time, $wp_cache_config_file, $valid_nonce, $cache_enabled, $super_cache_enabled, $wp_cache_gc;
 
-	if( !isset( $super_cache_max_time ) )
-		$super_cache_max_time = 3600;
+	if( !isset( $cache_max_time ) )
+		$cache_max_time = 3600;
 
 	if(isset($_POST['wp_max_time']) && $valid_nonce) {
 		$max_time = (int)$_POST['wp_max_time'];
 		if ($max_time > 0) {
 			$cache_max_time = $max_time;
 			wp_cache_replace_line('^ *\$cache_max_time', "\$cache_max_time = $cache_max_time;", $wp_cache_config_file);
-		}
-	}
-	if(isset($_POST['super_cache_max_time']) && $valid_nonce) {
-		$max_time = (int)$_POST['super_cache_max_time'];
-		if ($max_time > 0) {
-			$super_cache_max_time = $max_time;
-			wp_cache_replace_line('^ *\$super_cache_max_time', "\$super_cache_max_time = $super_cache_max_time;", $wp_cache_config_file);
 		}
 	}
 	if(isset($_POST['wp_cache_gc']) && $valid_nonce) {
@@ -620,18 +626,12 @@ function wp_cache_edit_max_time () {
 	echo '<form name="wp_edit_max_time" action="'. $_SERVER["REQUEST_URI"] . '" method="post">';
 	echo '<label for="wp_max_time">Expire time:</label> ';
 	echo "<input type=\"text\" size=6 name=\"wp_max_time\" value=\"$cache_max_time\" /> seconds<br />";
-	if( $cache_enabled == true && $super_cache_enabled == true ) {
-		echo '<label for="super_cache_max_time">Super Cache Expire time:</label> ';
-		echo "<input type=\"text\" size=6 name=\"super_cache_max_time\" value=\"$super_cache_max_time\" /> seconds";
-	}
 	if( !isset( $wp_cache_gc ) )
-		$wp_cache_gc = 100;
+		$wp_cache_gc = 1000;
 	echo "<h4>Garbage Collection</h4><p>How often should expired files be deleted? Once every:</p>";
-	echo "<ul><li><input type='radio' name='wp_cache_gc' value='100'" . ( $wp_cache_gc == 100 ? ' checked' : '' ) . " /> 100 requests (very often)</li>\n";
-	echo "<li><input type='radio' name='wp_cache_gc' value='500'" . ( $wp_cache_gc == 500 ? ' checked' : '' ) . " /> 500 requests</li>\n";
-	echo "<li><input type='radio' name='wp_cache_gc' value='1000'" . ( $wp_cache_gc == 1000 ? ' checked' : '' ) . " /> 1000 requests</li>\n";
-	echo "<li><input type='radio' name='wp_cache_gc' value='2000'" . ( $wp_cache_gc == 2000 ? ' checked' : '' ) . " /> 2000 requests</li>\n";
-	echo "<li><input type='radio' name='wp_cache_gc' value='5000'" . ( $wp_cache_gc == 5000 ? ' checked' : '' ) . " /> 5000 requests (very seldom)</li></ul>\n";
+	echo "<ul><li><input type='radio' name='wp_cache_gc' value='1000'" . ( $wp_cache_gc == 1000 ? ' checked=checked' : '' ) . " /> 1000 requests</li>\n";
+	echo "<li><input type='radio' name='wp_cache_gc' value='2000'" . ( $wp_cache_gc == 2000 ? ' checked=checked' : '' ) . " /> 2000 requests</li>\n";
+	echo "<li><input type='radio' name='wp_cache_gc' value='5000'" . ( $wp_cache_gc == 5000 ? ' checked=checked' : '' ) . " /> 5000 requests</li></ul>\n";
 	echo "<p>Checking for and deleting expired files is expensive, but it's expensive leaving them there too. On a very busy site you can leave this fairly high. Experiment with different values and visit this page to see how many expired files remain at different times during the day.</p><p>Simple rule of thumb: divide your number of daily page views by 5 and pick the closest number above.</p>";
 	echo '<div><input type="submit" ' . SUBMITDISABLED . 'value="Change expiration &raquo;" /></div>';
 	wp_nonce_field('wp-cache');
@@ -863,7 +863,7 @@ function wp_cache_verify_cache_dir() {
 }
 
 function wp_cache_verify_config_file() {
-	global $wp_cache_config_file, $wp_cache_config_file_sample;
+	global $wp_cache_config_file, $wp_cache_config_file_sample, $sem_id, $cache_path;
 
 	$new = false;
 	$dir = dirname($wp_cache_config_file);
@@ -895,6 +895,10 @@ function wp_cache_verify_config_file() {
 			wp_cache_replace_line('WPCACHEHOME', "define( 'WPCACHEHOME', ABSPATH . " . str_replace( '\\', '/', str_replace( ABSPATH, ' "', dirname(__FILE__) ) ) . "/wp-super-cache/\" );", $wp_cache_config_file);
 		}
 		$new = true;
+	}
+	if( $sem_id == 5419 && $cache_path != '' ) {
+		$sem_id = crc32( $_SERVER[ 'HTTP_HOST' ] . $cache_path ) & 0x7fffffff;
+		wp_cache_replace_line('sem_id', '$sem_id = ' . $sem_id . ';', $wp_cache_config_file);
 	}
 	require($wp_cache_config_file);
 	return true;
@@ -957,7 +961,7 @@ function wp_cache_check_global_config() {
 }
 
 function wp_cache_files() {
-	global $cache_path, $file_prefix, $cache_max_time, $super_cache_max_time, $valid_nonce, $supercachedir, $cache_enabled, $super_cache_enabled;
+	global $cache_path, $file_prefix, $cache_max_time, $valid_nonce, $supercachedir, $cache_enabled, $super_cache_enabled;
 
 	if ( '/' != substr($cache_path, -1)) {
 		$cache_path .= '/';
@@ -1042,7 +1046,7 @@ function wp_cache_files() {
 				}
 			}
 		} else {
-			if(is_file($supercachedir) && filemtime( $supercachedir ) + $super_cache_max_time <= $now )
+			if(is_file($supercachedir) && filemtime( $supercachedir ) + $cache_max_time <= $now )
 				$sizes[ 'expired' ] ++;
 		}
 		$sizes[ 'ts' ] = time();
@@ -1074,8 +1078,19 @@ function wp_cache_files() {
 	echo '</fieldset>';
 }
 
+function delete_cache_dashboard() {
+	if( function_exists( 'is_site_admin' ) && !is_site_admin() )
+		return false;
+
+	if( function_exists('current_user_can') && !current_user_can('manage_options') )
+		return false;
+
+	echo "<li><a href='" . wp_nonce_url( 'options-general.php?page=wpsupercache&wp_delete_cache=1#list', 'wp-cache' ) . "' target='_blank' title='Delete Super Cache cached files (opens in new window)'>Delete Cache</a></li>";
+}
+add_action( 'dashmenu', 'delete_cache_dashboard' );
+
 function wpsc_dirsize($directory, $sizes) {
-	global $super_cache_max_time;
+	global $cache_max_time;
 	$now = time();
 
 	if (is_dir($directory)) {
@@ -1087,7 +1102,7 @@ function wpsc_dirsize($directory, $sizes) {
 		}
 	} else {
 		if(is_file($directory) ) {
-			if( filemtime( $directory ) + $super_cache_max_time <= $now ) {
+			if( filemtime( $directory ) + $cache_max_time <= $now ) {
 				$sizes[ 'expired' ]+=1;
 			} else {
 				$sizes[ 'cached' ]+=1;

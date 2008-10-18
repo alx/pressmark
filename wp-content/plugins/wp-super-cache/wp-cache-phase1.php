@@ -42,8 +42,7 @@ function gzip_accepted(){
 		return false;
 
 	if (strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') === false) return false;
-	if (strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'x-gzip') === false) return 'gzip';
-	return 'x-gzip';
+	return 'gzip';
 }
 
 if ($cache_compression) {
@@ -103,9 +102,8 @@ function wp_cache_get_cookies_values() {
 		next($_COOKIE);
 	}
 	reset($_COOKIE);
-	if( $string != '' )
-		return $string;
 
+	// If you use this hook, make sure you update your .htaccess rules with the same conditions
 	$string = do_cacheaction( 'wp_cache_get_cookies_values', $string );
 	return $string;
 }
