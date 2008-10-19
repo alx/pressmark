@@ -148,12 +148,15 @@ function openid_activate_plugin() {
 	add_option( 'openid_xrds_returnto', true );
 	add_option( 'openid_xrds_idib', true );
 	add_option( 'openid_xrds_eaut', true );
+	add_option( 'openid_comment_displayname_length', 12 );
 
 	openid_create_tables();
 	openid_migrate_old_data();
 
 	wp_schedule_event(time(), 'hourly', 'cleanup_openid');
 
+	// set current revision
+	update_option( 'openid_plugin_revision', OPENID_PLUGIN_REVISION );
 
 
 	// cleanup old option names
@@ -278,15 +281,17 @@ function finish_openid_auth() {
  * Generate a unique WordPress username for the given OpenID URL.
  *
  * @param string $url OpenID URL to generate username for
- * @return string generated username
+ * @param boolean $append should we try appending a number if the username is already taken
+ * @return mixed generated username or null if unable to generate
  */
-function openid_generate_new_username($url) {
+function openid_generate_new_username($url, $append = true) {
 	$base = openid_normalize_username($url);
 	$i='';
 	while(true) {
 		$username = openid_normalize_username( $base . $i );
 		$user = get_userdatabylogin($username);
 		if ( $user ) {
+			if (!$append) return null;
 			$i++;
 			continue;
 		}
@@ -474,16 +479,25 @@ function openid_create_new_user($identity_url, &$user_data) {
 	@include_once( ABSPATH . WPINC . '/registration-functions.php'); // 2.0.4
 
 	// use email address for username if URL is from emailtoid.net
-	$username = $identity_url;
-	if (null != $_SESSION['openid_login_email'] and strpos($username, 'http://emailtoid.net/') == 0) {
-		if($user_data['user_email'] == NULL) {
+	if (null != $_SESSION['openid_login_email'] and strpos($identity_url, 'http://emailtoid.net/') === 0) {
+		if (empty($user_data['user_email'])) {
 			$user_data['user_email'] = $_SESSION['openid_login_email'];
 		}
-		$username = $_SESSION['openid_login_email'];
+		$username = openid_generate_new_username($_SESSION['openid_login_email']);
 		unset($_SESSION['openid_login_email']);
 	}
 
-	$user_data['user_login'] = $wpdb->escape( openid_generate_new_username($username) );
+	// otherwise, try to use preferred username
+	if (empty($username) && $user_data['nickname']) {
+		$username = openid_generate_new_username($user_data['nickname'], false);
+	}
+
+	// finally, build username from OpenID URL
+	if (empty($username)) {
+		$username = openid_generate_new_username($identity_url);
+	}
+
+	$user_data['user_login'] = $username;
 	$user_data['user_pass'] = substr( md5( uniqid( microtime() ) ), 0, 7);
 	$user_id = wp_insert_user( $user_data );
 		
@@ -552,6 +566,14 @@ function openid_get_user_data($identity_url) {
 	}
 
 	$data = apply_filters('openid_user_data', $data, $identity_url);
+
+	// if display_name is still the same as the URL, clean that up a bit
+	if ($data['display_name'] == $identity_url) {
+		$parts = parse_url($identity_url);
+		if ($parts !== false) {
+			$data['display_name'] = preg_replace('/^www./', '', $parts['host']) . substr($parts['path'], 0, get_option('openid_comment_displayname_length'));
+		}
+	}
 
 	return $data;
 }

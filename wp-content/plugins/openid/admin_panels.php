@@ -90,6 +90,7 @@ function openid_options_page() {
 		
 		update_option( 'openid_enable_commentform', isset($_POST['enable_commentform']) ? true : false );
 		update_option( 'openid_enable_approval', isset($_POST['enable_approval']) ? true : false );
+		update_option( 'openid_no_require_name', isset($_POST['no_require_name']) ? true : false );
 		update_option( 'openid_enable_email_mapping', isset($_POST['enable_email_mapping']) ? true : false );
 		update_option( 'openid_required_for_registration', isset($_POST['openid_required_for_registration']) ? true : false );
 		update_option( 'openid_blog_owner', $_POST['openid_blog_owner']);
@@ -131,14 +132,20 @@ function openid_options_page() {
 
 			<table class="form-table optiontable editform" cellspacing="2" cellpadding="5" width="100%">
 				<tr valign="top">
-					<th scope="row"><?php _e('Automatic Approval', 'openid') ?></th>
+					<th scope="row"><?php _e('Comment Approval', 'openid') ?></th>
 					<td>
 						<p><input type="checkbox" name="enable_approval" id="enable_approval" <?php 
 							echo get_option('openid_enable_approval') ? 'checked="checked"' : ''; ?> />
-							<label for="enable_approval"><?php _e('Automatically approve comments left with verified OpenIDs.', 'openid') ?></label>
+							<label for="enable_approval"><?php _e('Automatically approve comments left with verified OpenIDs.  '
+								. 'These comments will bypass all comment moderation.', 'openid'); ?></label>
+						</p>
 
-						<p><?php _e('OpenID-verified comments will bypass comment moderation even if you have '
-							. 'enabled the option "An administrator must always approve the comment".', 'openid') ?></p>
+						<?php if (get_option('require_name_email')) { ?>
+						<p><input type="checkbox" name="no_require_name" id="no_require_name" <?php 
+							echo get_option('openid_no_require_name') ? 'checked="checked"' : ''; ?> />
+							<label for="no_require_name"><?php _e('Don\'t require name and e-mail for comments left with verified OpenIDs.', 'openid') ?></label>
+						</p>
+						<?php } ?>
 						
 					</td>
 				</tr>
@@ -534,7 +541,8 @@ function openid_printSystemStatus() {
 
 	$paths = explode(PATH_SEPARATOR, get_include_path());
 	for($i=0; $i<sizeof($paths); $i++ ) { 
-		$paths[$i] = realpath($paths[$i]); 
+		$paths[$i] = @realpath($paths[$i]); 
+		if (empty($paths[$i])) unset($paths[$i]);
 	}
 	
 	$status = array();

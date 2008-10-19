@@ -14,6 +14,20 @@ add_action( 'wp_head', 'openid_provider_link_tags');
  * dependant on the requested URL and plugin configuration.
  */
 function openid_provider_xrds_simple($xrds) {
+	global $wp_roles;
+
+	$provider_enabled = false;
+	foreach ($wp_roles->role_names as $key => $name) {
+		$role = $wp_roles->get_role($key);
+		if ($role->has_cap('use_openid_provider')) {
+			$provider_enabled = true;
+			break;
+		}
+	}
+
+	if (!$provider_enabled) return $xrds;
+
+
 	$user = openid_server_requested_user();
 	
 	if (!$user && get_option('openid_blog_owner')) {

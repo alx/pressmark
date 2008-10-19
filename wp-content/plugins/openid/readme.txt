@@ -3,7 +3,7 @@ Contributors: wnorris, factoryjoe
 Tags: openid, authentication
 Requires at least: 2.2
 Tested up to: 2.6.2
-Stable tag: 3.0
+Stable tag: 3.1
 
 Allows WordPress to provide and consumer OpenIDs for authentication of users and comments.
 
@@ -92,6 +92,13 @@ report at <http://code.google.com/p/diso/issues/list>.
 
 
 == Changelog ==
+
+= version 3.1 =
+ - added hidden constant to set custom comments post page (OPENID_COMMENTS_POST_PAGE)
+ - additional option to skip name and email check for OpenID comments
+ - use preferred username (from SREG) if possible when creating new account
+ - truncate long URLs when used as display_name for comments
+ - numerous bug fixes, including bug with registration form
 
 = version 3.0 =
  - includes OpenID Provider

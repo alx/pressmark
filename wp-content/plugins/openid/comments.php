@@ -76,7 +76,7 @@ function openid_comment_approval($approved) {
 
 /**
  * If the comment contains a valid OpenID, skip the check for requiring a name and email address.  Even if
- * this data is provided in the form, we may get it through other methods, so we don't want to bail out
+ * this data isn't provided in the form, we may get it through other methods, so we don't want to bail out
  * prematurely.  After OpenID authentication has completed (and $_REQUEST['openid_skip'] is set), we don't
  * interfere so that this data can be required if desired.
  *
@@ -86,8 +86,14 @@ function openid_comment_approval($approved) {
  */
 function openid_option_require_name_email( $value ) {
 		
-	if ($_REQUEST['openid_skip']) {
+	$comment_page = (defined('OPENID_COMMENTS_POST_PAGE') ? OPENID_COMMENTS_POST_PAGE : 'wp-comments-post.php');
+
+	if ($GLOBALS['pagenow'] != $comment_page) {
 		return $value;
+	}
+
+	if ($_REQUEST['openid_skip']) {
+		return get_option('openid_no_require_name') ? false : $value;
 	}
 
 	if (array_key_exists('openid_identifier', $_POST)) {
@@ -172,7 +178,8 @@ function update_comment_openid($comment_ID) {
  * @action: comment_form
  **/
 function openid_comment_profilelink() {
-	if (is_user_openid()) {
+	global $wp_scripts;
+	if ((is_single() || is_comments_popup()) && is_user_openid() && $wp_scripts->query('openid')) {
 		echo '<script type="text/javascript">stylize_profilelink()</script>';
 	}
 }
@@ -192,12 +199,14 @@ function openid_comment_form() {
 
 
 function openid_repost_comment_anonymously($post) {
+	$comment_page = (defined('OPENID_COMMENTS_POST_PAGE') ? OPENID_COMMENTS_POST_PAGE : 'wp-comments-post.php');
+
 	$html = '
 	<h1>'.__('OpenID Authentication Error', 'openid').'</h1>
 	<p id="error">'.__('We were unable to authenticate your claimed OpenID, however you '
 	. 'can continue to post your comment without OpenID:', 'openid').'</p>
 
-	<form action="' . get_option('siteurl') . '/wp-comments-post.php" method="post">
+	<form action="' . site_url("/$comment_page") . '" method="post">
 		<p>Name: <input name="author" value="'.$post['author'].'" /></p>
 		<p>Email: <input name="email" value="'.$post['email'].'" /></p>
 		<p>URL: <input name="url" value="'.$post['url'].'" /></p>
@@ -252,9 +261,9 @@ function openid_finish_comment($identity_url) {
 	// We can't actually record it in the database until after the repost below.
 	$_SESSION['openid_posted_comment'] = true;
 
-	$wpp = parse_url(get_option('siteurl'));
-	openid_repost($wpp['path'] . '/wp-comments-post.php',
-	array_filter($_SESSION['openid_comment_post']));
+	$comment_page = (defined('OPENID_COMMENTS_POST_PAGE') ? OPENID_COMMENTS_POST_PAGE : 'wp-comments-post.php');
+
+	openid_repost(site_url("/$comment_page"), array_filter($_SESSION['openid_comment_post']));
 }
 
 
