@@ -63,10 +63,10 @@ function wp_install_defaults($user_id) {
 	$wpdb->query("INSERT INTO $wpdb->term_taxonomy (term_id, taxonomy, description, parent, count) VALUES ('1', 'category', '', '0', '1')");
 
 	// Default link category
-	$cat_name = $wpdb->escape(__('Blogroll'));
-	$cat_slug = sanitize_title(_c('Blogroll|Default link category slug'));
-	$wpdb->query("INSERT INTO $wpdb->terms (name, slug, term_group) VALUES ('$cat_name', '$cat_slug', '0')");
-	$wpdb->query("INSERT INTO $wpdb->term_taxonomy (term_id, taxonomy, description, parent, count) VALUES ('2', 'link_category', '', '0', '7')");
+	// $cat_name = $wpdb->escape(__('Blogroll'));
+	// $cat_slug = sanitize_title(_c('Blogroll|Default link category slug'));
+	// $wpdb->query("INSERT INTO $wpdb->terms (name, slug, term_group) VALUES ('$cat_name', '$cat_slug', '0')");
+	// $wpdb->query("INSERT INTO $wpdb->term_taxonomy (term_id, taxonomy, description, parent, count) VALUES ('2', 'link_category', '', '0', '7')");
 
 	// Now drop in some default links
 	// $wpdb->query("INSERT INTO $wpdb->links (link_url, link_name, link_category, link_rss, link_notes) VALUES ('http://codex.wordpress.org/', 'Documentation', 0, '', '');");
