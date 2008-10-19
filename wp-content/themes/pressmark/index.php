@@ -88,8 +88,10 @@ if( have_posts( ) ) {
 			echo '<a href="' . get_author_posts_url($current_author->ID, $current_author->user_nicename) . '" title="' . sprintf(__("Posts by %s"), attribute_escape($current_author->display_name)) . '">' . prologue_get_avatar($current_author->ID, $current_author->user_email, 48 ) . '</a>';
 		}
 		$previous_user_id = $current_author->ID;
+		
+		$url = post_custom("pressmark-url");
 ?>
-	<h3><a href="<?php echo post_custom("pressmark-url"); ?>"><?php echo $post->post_title ?></a></h3>
+	<h3><a href="<?php $url ?>"><?php echo $post->post_title ?></a></h3>
 	<h4>
 		<span class="meta">
 			<?php the_time( "h:i:s a" ); ?> on <?php the_time( "F j, Y" ); ?> |
@@ -101,6 +103,13 @@ if( have_posts( ) ) {
 		</span>
 	</h4>
 	<div class="postcontent">
+		<?php
+		// Insert youtube video
+		if(preg_match("/http:\/\/([a-zA-Z0-9\-\_]+\.|)youtube\.com\/watch(\?v\=|\/v\/)([a-zA-Z0-9\-\_]{11})([^<\s]*)/", $url, $match)){
+			echo '<span class="youtube"><object type="application/x-shockwave-flash" width="425" height="344" data="'.htmlspecialchars('http://www.youtube.com/v/'.$match[3].'&rel=1&fs=1&ap=%2526fmt%3D18', ENT_QUOTES).'"><param name="movie" value="'.htmlspecialchars('http://www.youtube.com/v/'.$match[3].'&rel=1&fs=1&ap=%2526fmt%3D18', ENT_QUOTES).'"></param><param name="allowFullScreen" value="true"></param><param name="wmode" value="transparent" /></object></span>';
+		}
+		
+		?>
 		<?php the_content( __( '(More ...)' ) ); ?>
 	</div> <!-- // postcontent -->
 	<div class="bottom_of_entry">&nbsp;</div>

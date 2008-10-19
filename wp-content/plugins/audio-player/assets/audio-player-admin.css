@@ -1,0 +1,266 @@
+#ap_intro {
+	width: 100%;
+	float: left;
+	margin-bottom: 20px;
+}
+
+.ap_warning {
+	background:  #FFEFF7;
+	border:  1px solid #c69;
+	padding: 10px;
+	
+}
+
+.wrap form {
+	width: 100%;
+}
+
+#ap_top-submit {
+	float: right;
+	margin: -10px 0 0 0;
+	position: relative;
+}
+
+ul#ap_tabs {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	height: 1%;
+}
+
+ul#ap_tabs li {
+	float: left;
+	border-top: 1px solid #EAF3FA;
+	border-left: 1px solid #EAF3FA;
+	margin: 0;
+	padding: 0;
+}
+
+ul#ap_tabs li.last {
+	border-right: 1px solid #EAF3FA;
+}
+
+ul#ap_tabs li a {
+	font-family: "Lucida Grande","Lucida Sans Unicode",Tahoma,Verdana;
+	font-weight: bold;
+	font-size: 1.1em;
+	float: left;
+	border: none;
+	color: #00019B;
+	padding: 5px 10px;
+	outline: none;
+	text-decoration: none;
+	-moz-outline: none;
+}
+
+ul#ap_tabs li a:hover {
+	background: #F8F8F8;
+	text-decoration: underline;
+}
+
+ul#ap_tabs li.ap_active a {
+	background: #EAF3FA;
+}
+
+div.ap_panel {
+	clear: both;
+	height: 1%;
+	background: #EAF3FA;
+	padding: 10px;
+}
+
+div.ap_active {
+	display: block;
+}
+
+div.ap_panel h3 {
+	clear: left;
+	margin-top: 0;
+}
+
+div.ap_panel p {
+	margin-bottom: 20px;
+}
+
+ul.ap_optionlist {
+	padding-left: 2px;
+	margin-left: 0;
+	list-style-type: none;
+}
+
+ul.ap_optionlist li {
+	margin-bottom: 15px;
+}
+
+#ap_transparentpagebg,
+ul.ap_optionlist label input {
+	border: none; background: none;
+}
+
+#ap_audiofolder-check {
+	display: none;
+	float: left;
+	width: 100%;
+	margin:  0 0 20px 0;
+	border:  none;
+	padding:  0;
+}
+
+#ap_audiofolder-check input {
+	float: left;
+	overflow: visible;
+	margin:  0;
+}
+
+#ap_audiofolder-check span {
+	float: left;
+	margin-left: 10px;
+	margin-top: 4px;
+	padding-bottom: 1px;
+	padding-left: 20px;
+	text-align: left;
+	width: 80%;
+}
+
+#ap_audiofolder-check span#ap_info-message {
+	background: url(arrow.png) no-repeat 0 1px;
+}
+
+#ap_audiofolder-check span#ap_disabled-message {
+	background: url(error.png) no-repeat 0 1px;
+}
+
+#ap_audiofolder-check span#ap_checking-message {
+	background: url(loader.gif) no-repeat 0 1px;
+}
+
+#ap_audiofolder-check span#ap_success-message {
+	background: url(tick.png) no-repeat 0 1px;
+}
+
+#ap_audiofolder-check span#ap_failure-message {
+	background: url(error.png) no-repeat 0 1px;
+}
+
+#ap_audiofolder-check span strong {
+	display: block;
+}
+
+#ap_colorscheme {
+	float: left;
+	margin-bottom: 20px;
+	background: #e5e5e5;
+	border: 1px solid #CCCCCC;
+}
+
+#ap_audioplayer-wrapper {
+	clear: both;
+	width: 650px;
+	background: #FFFFFF;
+	padding: 30px 15px;
+	border-top: 1px solid #CCCCCC;
+}
+
+#ap_colorselector {
+	float: left;
+	padding: 5px 10px;
+}
+#ap_colorselector select,
+#ap_colorselector input {
+	float: left;
+	margin: 0 5px 0 0;
+	padding: 2px;
+}
+
+#ap_colorselector input {
+	padding: 2px;
+}
+
+#ap_colorsample {
+	float: left;
+	width: 19px;
+	height: 19px;
+	border: 1px solid #000000;
+	background: #FFFFFF;
+}
+
+#ap_picker-btn {
+	display: block;
+	float: left;
+	height: 21px;
+	background: url(picker-icon.png) no-repeat left top;
+	padding-left: 28px;
+	padding-top: 3px;
+	margin-left: 10px;
+	font-size: 11px;
+	cursor: pointer;
+	color: #0000FF;
+	text-decoration: underline;
+}
+
+#ap_themecolor-btn {
+	display: block;
+	float: left;
+	height: 21px;
+	background: url(theme-picker-icon.png) no-repeat left top;
+	padding-left: 28px;
+	padding-top: 3px;
+	margin-left: 10px;
+	font-size: 11px;
+	cursor: pointer;
+	color: #0000FF;
+	text-decoration: underline;
+}
+
+#ap_themecolor {
+	position: absolute;
+	display: none;
+	width: 134px;
+	padding: 0 0 13px 0;
+	float: left;
+	background: url(thcpck-bottom.png) no-repeat left bottom;
+}
+
+#ap_themecolor span {
+	display: block;
+	text-indent: -9999px;
+	height: 13px;
+	line-height: 0;
+	font-size: 0;
+	background: url(thcpck-top.png) no-repeat left top;
+}
+
+#ap_themecolor ul {
+	background: url(thcpck-slice.png) repeat-y left top;
+	padding: 1px 14px 1px 15px;
+	float: left;
+	width: 105px;
+	margin: 0;
+}
+
+#ap_themecolor li {
+	cursor: pointer;
+	display: block;
+	text-indent: -9999px;
+	float: left;
+	width: 20px;
+	height: 20px;
+	margin: 0 1px 1px 0;
+	line-height: 0;
+	font-size: 0;
+}
+
+#ap_panel-colour .submit {
+	text-align: left;
+}
+
+#ap_reset-color {
+	border: none;
+	margin-top: 0;
+	padding-top: 0;
+}
+
+#ap_reset-color input {
+	margin: 0;
+	overflow: visible;
+}

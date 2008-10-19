@@ -1,0 +1,287 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Audio Player\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2008-08-25 15:41-0000\n"
+"Last-Translator: Martin Laine <martin@1pixelout.net>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-SourceCharset: utf-8\n"
+"X-Poedit-KeywordsList: _e;__\n"
+"X-Poedit-Basepath: .\n"
+"X-Poedit-SearchPath-0: C:\\Documents and Settings\\Martin Laine.THEPC\\My Documents\\workspace\\Audio Player\n"
+
+msgid "Settings"
+msgstr ""
+
+msgid "Download audio file"
+msgstr ""
+
+msgid "Audio clip: Adobe Flash Player (version 9 or above) is required to play this audio clip. Download the latest version <a href=\"%s\" title=\"Download Adobe Flash Player\">here</a>. You also need to have JavaScript enabled in your browser."
+msgstr ""
+
+msgid "Settings for the Audio Player plugin. Visit <a href=\"%s\">1 Pixel Out</a> for usage information and project news."
+msgstr ""
+
+msgid "Current version"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "Display"
+msgstr ""
+
+msgid "Feed options"
+msgstr ""
+
+msgid "Podcasting"
+msgstr ""
+
+msgid "Advanced"
+msgstr ""
+
+msgid "How do you want to use the audio player?"
+msgstr ""
+
+msgid "This set of options allows you to customize when your audio players appear."
+msgstr ""
+
+msgid "Replace [audio] syntax"
+msgstr ""
+
+msgid "This is the default behaviour and is the only way to apply options to a player instance. Use this option if you want to have more than one audio player per posting."
+msgstr ""
+
+msgid "Replace all links to mp3 files"
+msgstr ""
+
+msgid "When selected, this option will replace all your links to mp3 files with a player instance. Be aware that this could produce odd results when links are in the middle of paragraphs."
+msgstr ""
+
+msgid "Enable in comments"
+msgstr ""
+
+msgid "When selected, Audio Player will be enabled for all comments on your blog."
+msgstr ""
+
+msgid "Enclosure integration"
+msgstr ""
+
+msgid "Ideal for podcasting. If you set your enclosures manually, this option will automatically insert a player at the end of posts with an mp3 enclosure. The player will appear at the bottom of your posting."
+msgstr ""
+
+msgid "Move enclosures to the beginning of posts"
+msgstr ""
+
+msgid "When selected, players will be inserted at the beginning of the post when the enclosure integration option is selected."
+msgstr ""
+
+msgid "Default audio folder location"
+msgstr ""
+
+msgid "Verify"
+msgstr ""
+
+msgid "Click this button to verify that the audio folder is correctly configured"
+msgstr ""
+
+msgid "Custom audio folder locations cannot be verified"
+msgstr ""
+
+msgid "Checking..."
+msgstr ""
+
+msgid "Audio folder location verified"
+msgstr ""
+
+msgid "Audio folder location not found. Please check that the following folder exists on your server:"
+msgstr ""
+
+msgid "This is the default location for your audio files. When you use the [audio] syntax and don't provide an absolute URL for the mp3 file (the full URL including \"http://\") Audio Player will automatically look for the file in this location. You can set this to a folder located inside your blog folder structure or, alternatively, if you wish to store your audio files outside your blog (maybe even on a different server), choose \"Custom\" from the drop down and enter the absolute URL to that location."
+msgstr ""
+
+msgid "Player width"
+msgstr ""
+
+msgid "You can enter a value in pixels (e.g. 200) or as a percentage (e.g. 100%)"
+msgstr ""
+
+msgid "Colour scheme"
+msgstr ""
+
+msgid "Background"
+msgstr ""
+
+msgid "Left background"
+msgstr ""
+
+msgid "Left icon"
+msgstr ""
+
+msgid "Volume control track"
+msgstr ""
+
+msgid "Volume control slider"
+msgstr ""
+
+msgid "Right background"
+msgstr ""
+
+msgid "Right background (hover)"
+msgstr ""
+
+msgid "Right icon"
+msgstr ""
+
+msgid "Right icon (hover)"
+msgstr ""
+
+msgid "Text"
+msgstr ""
+
+msgid "Progress bar"
+msgstr ""
+
+msgid "Progress bar track"
+msgstr ""
+
+msgid "Progress bar border"
+msgstr ""
+
+msgid "Loading bar"
+msgstr ""
+
+msgid "Next/Previous buttons"
+msgstr ""
+
+msgid "Pick"
+msgstr ""
+
+msgid "From your theme"
+msgstr ""
+
+msgid "Theme colors"
+msgstr ""
+
+msgid "Here, you can set the page background of the player. In most cases, simply select \"transparent\" and it will match the background of your page. In some rare cases, the player will stop working in Firefox if you use the transparent option. If this happens, untick the transparent box and enter the color of your page background in the box below (in the vast majority of cases, it will be white: msgstr ""
+
+msgid "Page background color"
+msgstr ""
+
+msgid "Transparent"
+msgstr ""
+
+msgid "Reset colour scheme"
+msgstr ""
+
+msgid "Options"
+msgstr ""
+
+msgid "Disable animation"
+msgstr ""
+
+msgid "If you don't like the open/close animation, you can disable it here."
+msgstr ""
+
+msgid "Show remaining time"
+msgstr ""
+
+msgid "This will make the time display count down rather than up."
+msgstr ""
+
+msgid "Disable track information"
+msgstr ""
+
+msgid "Select this if you wish to disable track information display (the player won't show titles or artist names even if they are available.)"
+msgstr ""
+
+msgid "Switch to RTL layout"
+msgstr ""
+
+msgid "Select this to switch the player layout to RTL mode (right to left) for Arabic and Hebrew language blogs."
+msgstr ""
+
+msgid "The following options determine what is included in your feeds. The plugin doesn't place a player instance in the feed. Instead, you can choose what the plugin inserts. You have three choices:"
+msgstr ""
+
+msgid "Download link"
+msgstr ""
+
+msgid "Choose this if you are OK with subscribers downloading the file."
+msgstr ""
+
+msgid "Nothing"
+msgstr ""
+
+msgid "Choose this if you feel that your feed shouldn't contain any reference to the audio file."
+msgstr ""
+
+msgid "Custom"
+msgstr ""
+
+msgid "Choose this to use your own alternative content for all player instances. You can use this option to tell subscribers that they can listen to the audio file if they read the post on your blog."
+msgstr ""
+
+msgid "Alternate content for  feeds"
+msgstr ""
+
+msgid "Custom  alternate content"
+msgstr ""
+
+msgid "Pre and Post appended audio clips"
+msgstr ""
+
+msgid "You may wish to pre-append or post-append audio clips into your players. The pre-appended audio will be played before the main audio, and the post-appended will come after. A typical podcasting use-case for this feature is adding a sponsorship message or simple instructions that help casual listeners become subscribers. <strong>This will apply to all audio players on your site</strong>. Your chosen audio clips should be substantially shorter than your main feature."
+msgstr ""
+
+msgid "Pre-appended audio clip URL"
+msgstr ""
+
+msgid "Leave this value blank for no pre-appended audio"
+msgstr ""
+
+msgid "Post-appended audio clip URL"
+msgstr ""
+
+msgid "Leave this value blank for no post-appended audio"
+msgstr ""
+
+msgid "Alternate content for excerpts"
+msgstr ""
+
+msgid "WordPress automatically creates excerpts (summaries) for your posts. These are used by some themes to show on archive pages instead of the full post. By default, WordPress strips all HTML from these excerpts. Here you can choose what Audio Player inserts in excerpts in place of the player."
+msgstr ""
+
+msgid "Initial volume"
+msgstr ""
+
+msgid "This is the volume at which the player defaults to (0 is off, 100 is full volume)"
+msgstr ""
+
+msgid "Buffer time"
+msgstr ""
+
+msgid "If you think your target audience is likely to have a slow internet connection, you can increase the player's buffering time (for standard broadband connections, 5 seconds is enough)"
+msgstr ""
+
+msgid "Buffer time (in seconds)"
+msgstr ""
+
+msgid "Check for policy file"
+msgstr ""
+
+msgid "Enable this to tell Audio Player to check for a policy file on the server. This allows Flash to read ID3 tags on remote servers. Only enable this if all your mp3 files are located on a server with a policy file."
+msgstr ""
+
+msgid "Encoding"
+msgstr ""
+
+msgid "Enable this to encode the URLs to your mp3 files. This is the only protection possible against people downloading the mp3 file to their computers."
+msgstr ""
+
+msgid "Encode mp3 URLs"
+msgstr ""
+
