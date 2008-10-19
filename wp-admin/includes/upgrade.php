@@ -1221,7 +1221,8 @@ function make_site_theme_from_default($theme_name, $template) {
 
 // Create a site theme from the default theme.
 function make_site_theme() {
-	$theme_name = "presssmark";
+	// Name the theme after the blog.
+	$theme_name = __get_option('blogname');
 	$template = sanitize_title($theme_name);
 	$site_dir = WP_CONTENT_DIR . "/themes/$template";
 
