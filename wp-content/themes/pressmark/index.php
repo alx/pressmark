@@ -103,14 +103,14 @@ if( have_posts( ) ) {
 		</span>
 	</h4>
 	<div class="postcontent">
+		<?php the_content( __( '(More ...)' ) ); ?>
 		<?php
 		// Insert youtube video
 		if(preg_match("/http:\/\/([a-zA-Z0-9\-\_]+\.|)youtube\.com\/watch(\?v\=|\/v\/)([a-zA-Z0-9\-\_]{11})([^<\s]*)/", $url, $match)){
-			echo '<p><span class="youtube"><object type="application/x-shockwave-flash" width="400" height="324" data="'.htmlspecialchars('http://www.youtube.com/v/'.$match[3].'&rel=1&fs=1&ap=%2526fmt%3D18', ENT_QUOTES).'"><param name="movie" value="'.htmlspecialchars('http://www.youtube.com/v/'.$match[3].'&rel=1&fs=1&ap=%2526fmt%3D18', ENT_QUOTES).'"></param><param name="allowFullScreen" value="true"></param><param name="wmode" value="transparent" /></object></span></p>';
+			echo '<p><span class="youtube"><object type="application/x-shockwave-flash" width="380" height="308" data="'.htmlspecialchars('http://www.youtube.com/v/'.$match[3].'&rel=1&fs=1&ap=%2526fmt%3D18', ENT_QUOTES).'"><param name="movie" value="'.htmlspecialchars('http://www.youtube.com/v/'.$match[3].'&rel=1&fs=1&ap=%2526fmt%3D18', ENT_QUOTES).'"></param><param name="allowFullScreen" value="true"></param><param name="wmode" value="transparent" /></object></span></p>';
 		}
 		
 		?>
-		<?php the_content( __( '(More ...)' ) ); ?>
 	</div> <!-- // postcontent -->
 	<div class="bottom_of_entry">&nbsp;</div>
 </li>
