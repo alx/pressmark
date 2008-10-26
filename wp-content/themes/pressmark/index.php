@@ -85,7 +85,7 @@ if( have_posts( ) ) {
 		// Don't show the avatar if the previous post was by the same user
 		$current_author = get_the_author( );
 		if( $previous_user_id !== $current_author->ID ) {
-			echo '<a href="' . get_author_posts_url($current_author->ID, $current_author->user_nicename) . '" title="' . sprintf(__("Posts by %s"), attribute_escape($current_author->display_name)) . '">' . get_avatar($current_author->ID, 48 ) . '</a>';
+			echo '<a href="' . get_author_posts_url($current_author->ID, $current_author->user_nicename) . '" title="' . sprintf(__("Posts by %s"), attribute_escape($current_author->display_name)) . '">' . get_avatar($current_author->user_email, 48 ) . '</a>';
 		}
 		$previous_user_id = $current_author->ID;
 		
