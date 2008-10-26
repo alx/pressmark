@@ -74,7 +74,7 @@ if( current_user_can( 'publish_posts' ) ) {
 <?php
 if( have_posts( ) ) {
 
-	$previous_user_id = 0;
+	$previous_user_id = -1;
 	while( have_posts( ) ) {
 		the_post( );
 ?>
@@ -83,11 +83,10 @@ if( have_posts( ) ) {
 
 <?php
 		// Don't show the avatar if the previous post was by the same user
-		$current_author = get_the_author( );
-		if( $previous_user_id !== $current_author->ID ) {
-			echo '<a href="' . get_author_posts_url($current_author->ID, $current_author->user_nicename) . '" title="' . sprintf(__("Posts by %s"), attribute_escape($current_author->display_name)) . '">' . get_avatar($current_author->user_email, 48 ) . '</a>';
+		if( $previous_user_id !== get_the_author_ID() ) {
+			echo '<a href="' . get_author_posts_url(get_the_author_ID(), get_the_author_name()) . '" title="' . sprintf(__("Posts by %s"), attribute_escape(get_the_author_name())) . '">' . get_avatar(get_the_author_email(), 48 ) . '</a>';
 		}
-		$previous_user_id = $current_author->ID;
+		$previous_user_id = get_the_author_ID();
 		
 		$url = post_custom("pressmark-url");
 ?>
