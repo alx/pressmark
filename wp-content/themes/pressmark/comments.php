@@ -21,7 +21,7 @@ if( $comments ) {
 ?>
 
 <li id="comment-<?php comment_ID( ); ?>">
-	<?php echo prologue_get_avatar( $comment->user_id, $comment->comment_author_email, 32 ); ?>
+	<?php echo get_avatar($comment->comment_author_email, 32 ); ?>
 	<h4>
 		<?php comment_author_link( ); ?>
 		<span class="meta"><?php comment_time( ); ?> on <?php comment_date( ); ?> | <a href="#comment-<?php comment_ID( ); ?>">#</a><?php edit_comment_link( __( 'e' ), '&nbsp;|&nbsp;',''); ?></span>

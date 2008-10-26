@@ -23,7 +23,7 @@ if( have_posts( ) ) {
 
 <?php if( $first_post === true ) { ?>
 	<h2>
-		<?php echo prologue_get_avatar( get_the_author_id( ), get_the_author_email( ), 48 ); ?>
+		<?php echo get_avatar( get_the_author_id( ), 48 ); ?>
 		Updates from <?php the_author_posts_link( ); ?>
 		<a class="rss" href="<?php echo $author_feed_url; ?>">RSS</a>
 	</h2>
