@@ -83,7 +83,7 @@ if( have_posts( ) ) {
 
 <?php
 		// Don't show the avatar if the previous post was by the same user
-		if( strcmp($previous_user, get_the_author()) == 0 ) {
+		if( strcmp($previous_user, get_the_author()) != 0 ) {
 			echo '<a href="' . get_author_posts_url(get_the_author_ID(), get_the_author()) . '" title="' . sprintf(__("Posts by %s"), attribute_escape(get_the_author())) . '">' . get_avatar(get_the_author_email(), 48 ) . '</a>';
 		}
 		$previous_user = get_the_author();
