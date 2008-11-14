@@ -90,7 +90,13 @@ if( have_posts( ) ) {
 		
 		$url = post_custom("pressmark-url");
 ?>
-	<h3><a href="<?php echo $url ?>"><?php echo $post->post_title ?></a></h3>
+	<h3>
+		<a href="<?php echo $url ?>"><?php echo $post->post_title ?></a>
+		<?php
+		// PDF to Scribd
+		if(preg_match("/http:\/\/.*\.mp3$/", $url)){ echo ' - [<a href=http://www.scribd.com/vacuum?url='.$url.'>Scribd</a>]';}
+		?>
+		</h3>
 	<h4>
 		<span class="meta">
 			<?php the_time( "h:i:s a" ); ?> on <?php the_time( "F j, Y" ); ?> |
