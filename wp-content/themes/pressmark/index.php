@@ -94,7 +94,7 @@ if( have_posts( ) ) {
 		<a href="<?php echo $url ?>"><?php echo $post->post_title ?></a>
 		<?php
 		// PDF to Scribd
-		if(preg_match("/http:\/\/.*\.pdf$/", $url)){ echo ' - [<a href=http://www.scribd.com/vacuum?url='.$url.'>Scribd</a>]';}
+		if(preg_match("/http:\/\/.*\.pdf$/", $url)){ echo ' - [<a href="http://www.scribd.com/vacuum?url='.$url.'">Scribd</a>]';}
 		?>
 		</h3>
 	<h4>
