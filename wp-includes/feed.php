@@ -214,7 +214,7 @@ function the_excerpt_rss() {
  * @uses apply_filters() Call 'the_permalink_rss' on the post permalink
  */
 function the_permalink_rss() {
-	echo apply_filters('the_permalink_rss', post_custom("pressmark-url"));
+	echo apply_filters('the_permalink_rss', get_permalink());
 }
 
 /**
@@ -495,10 +495,14 @@ function prep_atom_text_construct($data) {
  * @since 2.5
  */
 function self_link() {
-	echo 'http'
-		. ( $_SERVER['https'] == 'on' ? 's' : '' ) . '://'
-		. $_SERVER['HTTP_HOST']
-		. wp_specialchars(stripslashes($_SERVER['REQUEST_URI']), 1);
+	$host = @parse_url(get_option('home'));
+	$host = $host['host'];
+	echo clean_url( 
+		'http'
+		. ( (isset($_SERVER['https']) && $_SERVER['https'] == 'on') ? 's' : '' ) . '://'
+		. $host
+		. stripslashes($_SERVER['REQUEST_URI'])
+		);
 }
 
 ?>

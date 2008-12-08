@@ -3,7 +3,7 @@
 Plugin Name: Akismet
 Plugin URI: http://akismet.com/
 Description: Akismet checks your comments against the Akismet web service to see if they look like spam or not. You need a <a href="http://wordpress.com/api-keys/">WordPress.com API key</a> to use it. You can review the spam it catches under "Comments." To show off your Akismet stats just put <code>&lt;?php akismet_counter(); ?&gt;</code> in your template. See also: <a href="http://wordpress.org/extend/plugins/stats/">WP Stats plugin</a>.
-Version: 2.2.1
+Version: 2.2.3
 Author: Matt Mullenweg
 Author URI: http://ma.tt/
 */
@@ -24,6 +24,15 @@ function akismet_init() {
 	add_action('admin_menu', 'akismet_stats_page');
 }
 add_action('init', 'akismet_init');
+
+function akismet_admin_init() {
+	if ( function_exists( 'get_plugin_page_hook' ) )
+		$hook = get_plugin_page_hook( 'akismet-stats-display', 'index.php' );
+	else
+		$hook = 'dashboard_page_akismet-stats-display';
+	add_action('admin_head-'.$hook, 'akismet_stats_script');
+}
+add_action('admin_init', 'akismet_admin_init');
 
 if ( !function_exists('wp_nonce_field') ) {
 	function akismet_nonce_field($action = -1) { return; }
@@ -163,7 +172,6 @@ addLoadEvent(resizeIframeInit);
 </script><?php
 }
 
-add_action('admin_head-dashboard_page_akismet-stats-display', 'akismet_stats_script');
 
 function akismet_stats_display() {
 	global $akismet_api_host, $akismet_api_port, $wpcom_api_key;
@@ -702,11 +710,14 @@ add_action('activity_box_end', 'akismet_stats');
 
 // WP 2.5+
 function akismet_rightnow() {
-	global $submenu;
-	if ( isset( $submenu['edit-comments.php'] ) )
-		$link = 'edit-comments.php';
+	global $submenu, $wp_db_version;
+
+	if ( 8645 < $wp_db_version  ) // 2.7
+		$link = 'edit-comments.php?comment_status=spam';
+	elseif ( isset( $submenu['edit-comments.php'] ) )
+		$link = 'edit-comments.php?page=akismet-admin';
 	else
-		$link = 'edit.php';
+		$link = 'edit.php?page=akismet-admin';
 
 	if ( $count = get_option('akismet_spam_count') ) {
 		$intro = sprintf( __ngettext(
@@ -723,9 +734,9 @@ function akismet_rightnow() {
 			'and there\'s <a href="%2$s">%1$s comment</a> in your spam queue right now.',
 			'and there are <a href="%2$s">%1$s comments</a> in your spam queue right now.',
 			$queue_count
-		), number_format_i18n( $queue_count ), clean_url("$link?page=akismet-admin") );
+		), number_format_i18n( $queue_count ), clean_url($link) );
 	} else {
-		$queue_text = sprintf( __( "but there's nothing in your <a href='%1\$s'>spam queue</a> at the moment." ), clean_url("$link?page=akismet-admin") );
+		$queue_text = sprintf( __( "but there's nothing in your <a href='%1\$s'>spam queue</a> at the moment." ), clean_url($link) );
 	}
 
 	$text = sprintf( _c( '%1$s %2$s|akismet_rightnow' ), $intro, $queue_text );

@@ -209,8 +209,8 @@ function populate_options() {
 	add_option('default_email_category', 1);
 	add_option('recently_edited');
 	add_option('use_linksupdate', 0);
-	add_option('template', 'pressmark');
-	add_option('stylesheet', 'pressmark');
+	add_option('template', 'default');
+	add_option('stylesheet', 'default');
 	add_option('comment_whitelist', 1);
 	add_option('page_uris');
 	add_option('blacklist_keys');
