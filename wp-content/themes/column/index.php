@@ -9,13 +9,13 @@ if( have_posts( ) ) {
 		the_post();
 		$url = post_custom("pressmark-url");
 		
-		$the_date = the_date('', '', '', FALSE);
 		if($the_date) {
 			?>
 			<h2 style="margin-bottom: 0;"><a style="color: #000; text-decoration: none;" href=""><?php echo $my_date; ?></a></h2>
 			<div style="text-align: right; font-family: Verdana; font-size: 11px; margin: 0 0 10px 0;"></div>
 			<?php
 		}
+		the_date();
 ?>
 	
 	<div class="article_bar" id="article_bar_<?php the_ID(); ?>">
