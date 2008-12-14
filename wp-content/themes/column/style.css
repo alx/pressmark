@@ -7,18 +7,6 @@ Tags: blue, one columns, fixed width, custom header, microblog, bookmark
 Description: A bookmark blog theme, inspired by Give Me Something To Read
 */
 
-/* The Reset ---------------------------------- */
-body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,
-h6,pre,form,fieldset,input,p,blockquote,table,
-th,td { margin: 0; padding: 0; }
-fieldset,img,abbr { border: 0; }
-address,caption,cite,code,dfn,em,h1,h2,h3,
-h4,h5,h6,strong,th,var { font-style: normal; font-weight: normal; }
-caption,th { text-align: left; }
-q:before,q:after { content: ''; }
-a { text-decoration: none; }
-/* -------------------------------------------- */
-
 body {
      font-family: Georgia, 'Times New Roman', Times, serif;
      font-size: 100%;
