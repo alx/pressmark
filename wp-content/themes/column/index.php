@@ -23,9 +23,10 @@ if( have_posts( ) ) {
 		<a id="article_link_<?php the_ID(); ?>" class="content_link" href="<?php echo $url; ?>"><?php the_title(); ?></a>
 		
 		<div style="padding-top: 0.5em;">
+			<blockquote>
 			<?php the_content(); ?>
-			
-			
+			</blockquote>
+
 			<?php
 
 			// Youtube embed

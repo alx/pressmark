@@ -216,3 +216,8 @@ a.logo {
 }
 
 .content_link { font-weight: bold; }
+
+.youtube .vimeo {
+	margin-top:10px;
+	margin-left:5px;
+}
