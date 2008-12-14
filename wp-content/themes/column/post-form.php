@@ -55,6 +55,14 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 }
 ?>
 
+<script type="text/javascript" src="<?php bloginfo( 'url' ); ?>/wp-includes/js/tinymce/tiny_mce.js"></script>
+<script type="text/javascript">
+tinyMCE.init({
+	mode : "textareas",
+	theme : "simple"
+});
+</script>
+
 <div id="postbox">
 	<form id="new_post" name="new_post" method="post" action="<?php bloginfo( 'url' ); ?>/">
 		<input type="hidden" name="action" value="post" />

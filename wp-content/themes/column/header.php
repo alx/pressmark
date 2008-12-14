@@ -32,7 +32,7 @@
             		<a href="/archive">Archive</a>
             		&bull;
             		<a href="/rss">RSS</a>
-            		<a href="/rss"><img style="border: 0; width: 14px; height: 14px; margin-bottom: -2px;" src="http://www.instapaper.com/images/rss.png" alt="RSS feed" title="RSS feed"/></a>
+            		<a href="/rss"><img style="border: 0; width: 14px; height: 14px; margin-bottom: -2px;" src="<?php bloginfo( 'template_url' ); ?>/images/rss.png" alt="RSS feed" title="RSS feed"/></a>
         		</div>
 
 				<form action="/search" method="get" style="float: right;">
