@@ -39,7 +39,7 @@ if( have_posts( ) ) {
 			// mp3 embed
 			if(class_exists('AudioPlayer') and preg_match("/http:\/\/.*\.mp3$/", $url)){
 				global $AudioPlayer;
-				echo $AudioPlayer->getPlayer($url);
+				echo '<div class="audio" style="text-align:center;">'.$AudioPlayer->getPlayer($url).'</div>';
 			}
 			?>
 		</div>
