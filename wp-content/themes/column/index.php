@@ -61,7 +61,7 @@ if( have_posts( ) ) {
 } // end if( have_posts( ) )
 ?>
     <div style="text-align: center; margin-top: 40px;">
-		<?php posts_nav_link('&nbsp;&nbsp;', __('&#171; Previous'), __('Next &#187;')); ?><a href="/page/2">Next &#188;</a>
+		<?php posts_nav_link('&nbsp;&nbsp;', __('&#171; Previous'), __('Next &#187;')); ?>
     </div>
 
 <?php
