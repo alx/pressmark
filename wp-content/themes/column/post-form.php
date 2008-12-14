@@ -72,7 +72,11 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 			
 		<p>
 		<label for="posttext">Description:</label><br>
-		<textarea name="posttext" id="posttext" rows="3" cols="50">&#8220;<i><?php echo $_GET['posttext']; ?></i>&#8221;</textarea>
+		<textarea name="posttext" id="posttext" rows="3" cols="50">
+			<?php if(isset($_GET['posttext'])):?>
+				&#8220;<i><?php echo $_GET['posttext']; ?></i>&#8221;
+			<?php endif; ?>
+		</textarea>
 		</p>
 			
 		<p>
