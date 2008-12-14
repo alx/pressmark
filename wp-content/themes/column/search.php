@@ -1,7 +1,7 @@
 <?php get_header(); ?>
 
 	<p id="blurb">
-        Search results for: 
+        Search results for: <?php echo $_GET["s"]; ?>
     </p>
 
 <?php
