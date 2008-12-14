@@ -29,8 +29,6 @@
 
     		<div id="not_navigation">
         		<div style="float: left;">
-            		<a href="/archive">Archive</a>
-            		&bull;
             		<a href="<?php bloginfo('rss2_url'); ?>">RSS</a>
             		<a href="<?php bloginfo('rss2_url'); ?>"><img style="border: 0; width: 14px; height: 14px; margin-bottom: -2px;" src="<?php bloginfo( 'template_url' ); ?>/images/rss.png" alt="RSS feed" title="RSS feed"/></a>
         		</div>
