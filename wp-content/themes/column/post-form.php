@@ -1,0 +1,80 @@
+<?php
+$user			= get_userdata( $current_user->ID );
+$first_name		= attribute_escape( $user->first_name );
+
+if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST['action'] == 'post' ) {
+	
+	if( !current_user_can( 'publish_posts' ) ) {
+		wp_redirect( get_bloginfo( 'url' ) );
+		exit;
+	}
+	
+	check_admin_referer( 'new-post' );
+
+	$post_title		= urldecode($_POST['posttitle']);
+	$post_url		= urldecode($_POST['posturl']);
+	$post_content	= urldecode($_POST['posttext']);
+	$tags			= urldecode($_POST['tags']);
+	$status			= urldecode($_POST['status']);
+	
+	global $wpdb;
+	
+	// Search existing post with this pressmark-url
+	$existing_post_id = $wpdb->get_var("SELECT post_id FROM $wpdb->postmeta 
+									WHERE meta_key = 'pressmark-url' AND meta_value = '$post_url'" );
+	if($existing_post_id){
+		// If exists, add coauthor
+		add_post_meta($existing_post_id, 'coauthor', (int)$user->ID, false);
+		// Place post on top
+		$post_modified     = current_time( 'mysql' );
+		$post_modified_gmt = current_time( 'mysql', 1 );
+		$wpdb->query("UPDATE $wpdb->posts 
+					SET post_date = $post_modified 
+					SET post_date_gmt = $post_modified_gmt
+					WHERE ID = '$existing_post_id'");
+	}
+	else {
+		// If not exists, insert new post
+		$post_id = wp_insert_post( array(
+			'post_author'	=> $user->ID,
+			'post_title'	=> $post_title,
+			'post_content'	=> $post_content,
+			'tags_input'	=> $tags,
+			'post_status'	=> $status
+		) );
+
+		$wpdb->query( "
+				INSERT INTO $wpdb->postmeta
+				(post_id,meta_key,meta_value )
+				VALUES ('$post_id','pressmark-url','$post_url' )
+			" );
+	}
+
+	wp_redirect( get_bloginfo( 'url' ) . '/' );
+	exit;
+}
+?>
+
+<div id="postbox">
+	<form id="new_post" name="new_post" method="post" action="<?php bloginfo( 'url' ); ?>/">
+		<input type="hidden" name="action" value="post" />
+		<?php wp_nonce_field( 'new-post' ); ?>
+
+		<label for="posttitle">Title:</label>
+		<input type="text" name="posttitle" value="<?php echo $_GET['posttitle']; ?>" id="posttitle" class="text"/>
+		
+		<label for="posturl">Link:</label>
+		<input type="text" id="posturl" name="posturl" class="text" value="<?php echo $_GET['posturl']; ?>"/>
+		
+		<label for="posttext">Description:</label>
+		<textarea name="posttext" id="posttext" rows="3" cols="60"><?php echo $_GET['posttext']; ?></textarea>
+	
+		<label for="tags">Tags</label>
+		<input type="text" name="tags" id="tags" autocomplete="off" />
+		
+		<input type="radio" name="status" value="publish" checked="checked"> Public
+		<input type="radio" name="status" value="private"> Private
+		
+		<input id="submit" type="submit" value="Post it" />
+	</form>
+</div> <!-- // postbox -->

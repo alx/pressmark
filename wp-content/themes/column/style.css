@@ -1,0 +1,218 @@
+/*  
+Theme Name: Pressmark- Column
+Version: 1.0
+Author: Alexandre Girard - Inspired by Marco Arment
+Author URI: http://alexgirard.com/
+Tags: blue, one columns, fixed width, custom header, microblog, bookmark
+Description: A bookmark blog theme, inspired by Give Me Something To Read
+*/
+
+/* The Reset ---------------------------------- */
+body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,
+h6,pre,form,fieldset,input,p,blockquote,table,
+th,td { margin: 0; padding: 0; }
+fieldset,img,abbr { border: 0; }
+address,caption,cite,code,dfn,em,h1,h2,h3,
+h4,h5,h6,strong,th,var { font-style: normal; font-weight: normal; }
+caption,th { text-align: left; }
+q:before,q:after { content: ''; }
+a { text-decoration: none; }
+/* -------------------------------------------- */
+
+body {
+     font-family: Georgia, 'Times New Roman', Times, serif;
+     font-size: 100%;
+     margin: 0px auto 0px auto;
+     width: 450px;
+}
+
+h2 { text-align: center; }
+
+    #changes h2, #faq h2 { text-align: left; }
+
+#logo {
+    font-size: 40pt;
+    text-align: center;
+    border-bottom: 2px solid #000;
+}
+#logo a { color: #000; text-decoration: none; }
+
+#navigation { float: left; }
+
+#right_navigation { float: right; }
+
+#userpanel {
+    font-size: 12pt;
+    text-align: right;
+}
+
+a { color: #00c; }    
+a:visited { color: #00c; }
+
+.clear { clear: both; line-height: 1px; font-size: 1px; margin: 1px; }
+
+#header { margin-bottom: 50px; }
+
+#content { clear: both; }
+ 
+#footer {
+    clear: both;
+    width: 70%;
+    margin: 80px auto 20px auto;
+    border-top: 1px solid #aaa;
+    padding-top: 10px;
+    text-align: center;
+    font-size: 12px;
+    color: #555;
+}
+
+a.article {
+    display: block;
+    padding-top: 0.25em;
+}
+
+#rss {
+    display: block;
+    float: right;
+    margin-bottom: 2px; 
+    margin-top: -10px; 
+    line-height: 1px; 
+    font-size: 1px;
+}
+
+    #rss img {
+        width: 14px;
+        height: 14px;
+        border: 0px;
+    }
+    
+#password_explanation {
+    font-size: 0.8em; 
+    font-style: italic; 
+    text-align: center;
+}
+
+#registration_explanation {
+    font-size: 0.8em; 
+    font-style: italic; 
+    text-align: left; 
+    margin: 30px;
+}
+
+.errors {
+    color: #800;
+    margin-bottom: 20px;
+    font-family: Helvetica, Verdana, Arial, sans-serif; 
+    padding: 5px;
+    background-color: #fee;
+    text-align: center;
+}
+
+.host {
+    margin-top: 10px; 
+    text-align: right; 
+    font-family: Helvetica, Verdana, Arial, sans-serif; 
+    font-size: 11px; 
+    color: #555;
+}
+
+.article_bar {
+    clear: both;
+    padding-bottom: 10px;
+    border-top: 1px solid #777;
+}
+
+.article_render {
+    float: left; 
+    width: 320px;
+}
+
+/* --------------------------- Buttons on Unread ------------- */
+
+a.button {
+    font-family: Helvetica, Verdana, Arial, sans-serif;
+    display: block;
+    border-width: 1px;
+    border-style: solid;
+    -moz-border-radius: 8px;
+    -webkit-border-radius: 8px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 12px;
+}
+a.button:visited { color: #fff; }
+   
+.skip_button {
+    float: left;
+    width: 3em;
+    background-color: #f77;
+    border-color: #f77;
+    color: #fff;
+    margin: 0.5em 2em 0.5em 0em;
+    padding: 0.75em 0em;
+}
+.skip_button:hover { background-color: #d22; border-color: #d22; }
+
+.unread_button {
+    float: left;
+    border-color: #0a0;
+    background-color: #0a0;
+    color: #fff;
+    width: 4em;
+    margin: 0.5em 1em 0.5em 0em;
+    padding: 0.75em 0em;
+}
+.unread_button:hover { background-color: #3c3; border-color: #3c3; }
+        
+.text_button {
+    float: right; 
+    width: 3em;
+    background-color: #88b; 
+    color: #fff; 
+    border-color: #88b;
+    margin: 0.5em 0em 0.5em 10px;
+    padding: 0.75em 0em;
+}
+.text_button:hover { background-color: #448; border-color: #448; }
+.text_button:visited { color: #448; }
+
+.delete_button {
+    float: right;
+    width: 3.5em;
+    background-color: #f77;    
+    border-color: #f77;
+    color: #fff;
+    margin: 0.5em 0em 0.5em 10px;
+    padding: 1.25em 0em;
+}
+.delete_button:hover { background-color: #d22; border-color: #d22; }
+.delete_button:visited { color: #c00; }
+
+.readlater {
+   float: right;
+}
+
+.host {
+   float: right;
+   padding-bottom: 5px;
+}
+
+a.day_permalink { color: #777; text-decoration: none; }
+a.day_permalink:hover { text-decoration: underline; }
+
+.article_bar {
+   padding-top: 20px;
+   padding-bottom: 40px;
+   border-top: 1px solid #ccc;
+}
+
+#logo {
+   margin-top: 10px;
+   margin-bottom: 5px;
+}
+
+a.logo {
+   font-size: 32px;
+}
+
+.content_link { font-weight: bold; }
