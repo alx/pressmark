@@ -1,15 +1,23 @@
-<?php
+<?php get_header(); ?>
 
-get_header();
-?>
-
-	<p id="blurb">
-        Pressmark is a bookmark manager using Wordpress.<br>
-		You can download it on <a href="http://github.com/alx/pressmark">GitHub</a> and install it on your webhost.
-    </p>
-
-<?php
-if( have_posts( ) ) {
+<?php if( have_posts( ) ) { ?>
+	
+	  <?php $post = $posts[0]; // Hack. Set $post so that the_date() works. ?>
+	  <?php /* If this is a category archive */ if (is_category()) { ?>
+		<p id="blurb">Archive for the &#8216;<?php single_cat_title(); ?>&#8217; Category</p>
+	  <?php /* If this is a tag archive */ } elseif( is_tag() ) { ?>
+		<p id="blurb">Posts Tagged &#8216;<?php single_tag_title(); ?>&#8217;</p>
+	  <?php /* If this is a daily archive */ } elseif (is_day()) { ?>
+		<p id="blurb">Archive for <?php the_time('F jS, Y'); ?></p>
+	  <?php /* If this is a monthly archive */ } elseif (is_month()) { ?>
+		<p id="blurb">Archive for <?php the_time('F, Y'); ?></p>
+	  <?php /* If this is a yearly archive */ } elseif (is_year()) { ?>
+		<p id="blurb">Archive for <?php the_time('Y'); ?></p>
+	  <?php /* If this is an author archive */ } elseif (is_author()) { ?>
+		<p id="blurb">Author Archive</p>
+	  <?php /* If this is a paged archive */ } elseif (isset($_GET['paged']) && !empty($_GET['paged'])) { ?>
+		<p id="blurb">Blog Archives</p>
+	  <?php } ?>
 
 	$previous_user = "";
 	while( have_posts( ) ) {

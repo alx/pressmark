@@ -1,11 +1,7 @@
-<?php
-
-get_header();
-?>
+<?php get_header(); ?>
 
 	<p id="blurb">
-        Pressmark is a bookmark manager using Wordpress.<br>
-		You can download it on <a href="http://github.com/alx/pressmark">GitHub</a> and install it on your webhost.
+        Search results for: 
     </p>
 
 <?php
