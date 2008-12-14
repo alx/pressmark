@@ -43,6 +43,12 @@
 		</div>
 
 		<div id="content">
+			
+			<p id="blurb">
+                Pressmark is your personnal bookmark manager using Wordpress CMS.<br>
+				You can download it on <a href="http://github.com/alx/pressmark">GitHub</a> and install it on your webhost.
+            </p>
+            
 <?php
 
 if( current_user_can( 'publish_posts' ) ) require_once dirname( __FILE__ ) . '/post-form.php';
