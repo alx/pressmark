@@ -60,22 +60,30 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 		<input type="hidden" name="action" value="post" />
 		<?php wp_nonce_field( 'new-post' ); ?>
 
+		<p>
 		<label for="posttitle">Title:</label><br>
 		<input type="text" name="posttitle" value="<?php echo $_GET['posttitle']; ?>" id="posttitle" class="text"/>
-		
+		</p>
+			
+		<p>
 		<label for="posturl">Link:</label><br>
 		<input type="text" id="posturl" name="posturl" class="text" value="<?php echo $_GET['posturl']; ?>"/>
-		
+		</p>
+			
+		<p>
 		<label for="posttext">Description:</label><br>
 		<textarea name="posttext" id="posttext" rows="3" cols="60"><?php echo $_GET['posttext']; ?></textarea>
-	
+		</p>
+			
+		<p>
 		<label for="tags">Tags</label><br>
 		<input type="text" name="tags" id="tags" autocomplete="off" />
+		</p>
 		
-		<br>
+		<p>
 		<input type="radio" name="status" value="publish" checked="checked"> Public
 		<input type="radio" name="status" value="private"> Private
-		<br>
+		</p>
 		
 		<input id="submit" type="submit" value="Post it" />
 	</form>
