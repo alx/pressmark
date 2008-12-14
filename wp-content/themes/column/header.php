@@ -33,8 +33,8 @@
             		<a href="<?php bloginfo('rss2_url'); ?>"><img style="border: 0; width: 14px; height: 14px; margin-bottom: -2px;" src="<?php bloginfo( 'template_url' ); ?>/images/rss.png" alt="RSS feed" title="RSS feed"/></a>
         		</div>
 
-				<form action="/search" method="get" style="float: right;">
-					<input type="text" name="q" value="" style="width: 115px;"/>
+				<form action="<?php bloginfo( 'url' ); ?>" method="get" style="float: right;">
+					<input type="text" name="s" value="" style="width: 115px;"/>
 					<input type="submit" value="Search"/>
 				</form>
     		</div>
