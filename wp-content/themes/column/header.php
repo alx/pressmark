@@ -45,7 +45,7 @@
 		<div id="content">
 			
 			<p id="blurb">
-                Pressmark is your personnal bookmark manager using Wordpress CMS.<br>
+                Pressmark is a bookmark manager using Wordpress.<br>
 				You can download it on <a href="http://github.com/alx/pressmark">GitHub</a> and install it on your webhost.
             </p>
             
