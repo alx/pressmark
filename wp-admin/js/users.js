@@ -1,1 +1,5 @@
-jQuery( function($) { $('#users').wpList(); } );
+jQuery( function($) {
+	$('#users').wpList();
+
+	columns.init('users');
+});

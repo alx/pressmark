@@ -1,8 +1,15 @@
 <?php
+/**
+ * Revisions administration panel.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
 
+/** WordPress Administration Bootstrap */
 require_once('admin.php');
 
-wp_reset_vars(array('revision', 'left', 'right', 'action'));
+wp_reset_vars(array('revision', 'left', 'right', 'diff', 'action'));
 $revision_id = absint($revision);
 $diff        = absint($diff);
 $left        = absint($left);
@@ -84,7 +91,7 @@ case 'diff' :
 		( !wp_get_post_revision( $left_revision->ID ) && !wp_get_post_revision( $right_revision->ID ) )
 	)
 		break;
-	
+
 	$post_title = '<a href="' . get_edit_post_link() . '">' . get_the_title() . '</a>';
 	$h2 = sprintf( __( 'Compare Revisions of &#8220;%1$s&#8221;' ), $post_title );
 
@@ -154,7 +161,7 @@ require_once( 'admin-header.php' );
 </tr>
 <?php endif;
 
-// use get_post_to_edit filters? 
+// use get_post_to_edit filters?
 $identical = true;
 foreach ( _wp_post_revision_fields() as $field => $field_title ) :
 	if ( 'diff' == $action ) {

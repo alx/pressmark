@@ -1,4 +1,12 @@
 <?php
+/**
+ * Edit plugin editor administration panel.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/** WordPress Administration Bootstrap */
 require_once('admin.php');
 
 $title = __("Edit Plugins");
@@ -87,13 +95,13 @@ default:
 	<?php } ?>
 </div>
 <?php endif; ?>
- <div class="wrap">
-<div class="bordertitle">
-	<h2><?php _e('Plugin Editor'); ?></h2>
-</div>
+<div class="wrap">
+<?php screen_icon(); ?>
+<h2><?php echo wp_specialchars( $title ); ?></h2>
+
 <div class="tablenav">
 <div class="alignleft">
-<big><strong><?php
+<big><?php
 	if ( is_plugin_active($file) ) {
 		if ( is_writeable($real_file) )
 			echo sprintf(__('Editing <strong>%s</strong> (active)'), $file);
@@ -105,7 +113,7 @@ default:
 		else
 			echo sprintf(__('Browsing <strong>%s</strong> (inactive)'), $file);
 	}
-	?></strong></big>
+	?></big>
 </div>
 <br class="clear" />
 </div>
@@ -134,9 +142,9 @@ default:
 	<p class="submit">
 	<?php
 		if ( isset($_GET['phperror']) )
-			echo "<input type='hidden' name='phperror' value='1' /><input type='submit' name='submit' value='" . __('Update File and Attempt to Reactivate') . "' tabindex='2' />";
+			echo "<input type='hidden' name='phperror' value='1' /><input type='submit' name='submit' class='button-primary' value='" . __('Update File and Attempt to Reactivate') . "' tabindex='2' />";
 		else
-			echo "<input type='submit' name='submit' value='" . __('Update File') . "' tabindex='2' />";
+			echo "<input type='submit' name='submit' class='button-primary' value='" . __('Update File') . "' tabindex='2' />";
 	?>
 	</p>
 <?php else : ?>

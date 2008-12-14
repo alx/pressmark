@@ -1,14 +1,38 @@
 <?php
+/**
+ * Upgrade WordPress Page.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/**
+ * We are upgrading WordPress.
+ *
+ * @since unknown
+ * @var bool
+ */
 define('WP_INSTALLING', true);
 
+/** Load WordPress Bootstrap */
 require('../wp-load.php');
+
 timer_start();
 require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
-if (isset($_GET['step']))
-	$step = (int) $_GET['step'];
+if ( isset($_GET['step']) )
+	$step = $_GET['step'];
 else
 	$step = 0;
+
+// Do it.  No output.
+if ( 'upgrade_db' === $step ) {
+	wp_upgrade();
+	die('0');
+}
+
+$step = (int) $step;
+
 @header('Content-Type: ' . get_option('html_type') . '; charset=' . get_option('blog_charset'));
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -21,7 +45,7 @@ else
 <body>
 <h1 id="logo"><img alt="WordPress" src="images/wordpress-logo.png" /></h1>
 
-<?php if ( get_option('db_version') == $wp_db_version ) : ?>
+<?php if ( get_option('db_version') == $wp_db_version || !is_blog_installed()) : ?>
 
 <h2><?php _e('No Upgrade Required'); ?></h2>
 <p><?php _e('Your WordPress database is already up-to-date!'); ?></p>

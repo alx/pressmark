@@ -1,8 +1,8 @@
 var autosaveLast = '';
 var autosavePeriodical;
 var autosaveOldMessage = '';
-var autosaveDelayURL = null;
-var previewwin;
+var autosaveDelayPreview = false;
+var autosaveFirst = true;
 
 jQuery(function($) {
 	autosaveLast = $('#post #title').val()+$('#post #content').val();
@@ -10,16 +10,6 @@ jQuery(function($) {
 
 	//Disable autosave after the form has been submitted
 	$("#post").submit(function() { $.cancel(autosavePeriodical); });
-	
-	// Autosave when the preview button is clicked. 
-	$('#previewview a').click(function(e) {
-		autosave();
-		autosaveDelayURL = this.href;
-		previewwin = window.open('','_blank');
-
-		e.preventDefault();
-		return false;
-	});
 });
 
 function autosave_parse_response(response) {
@@ -41,11 +31,10 @@ function autosave_parse_response(response) {
 			});
 		}
 
-		// if no errors: add preview link and slug UI
+		// if no errors: add slug UI
 		if ( !res.errors ) {
 			var postID = parseInt( res.responses[0].id );
 			if ( !isNaN(postID) && postID > 0 ) {
-				autosave_update_preview_link(postID);
 				autosave_update_slug(postID);
 			}
 		}
@@ -69,10 +58,14 @@ function autosave_saved_new(response) {
 		var tempID = jQuery('#post_ID').val();
 		var postID = parseInt( res.responses[0].id );
 		autosave_update_post_ID( postID ); // disabled form buttons are re-enabled here
-		if ( tempID < 0 && postID > 0) // update media buttons
+		if ( tempID < 0 && postID > 0 ) // update media buttons
 			jQuery('#media-buttons a').each(function(){
 				this.href = this.href.replace(tempID, postID);
 			});
+		// activate preview
+		autosaveFirst = false;
+		if ( autosaveDelayPreview )
+			jQuery('#post-preview').click();
 	} else {
 		autosave_enable_buttons(); // re-enable disabled form buttons
 	}
@@ -97,31 +90,6 @@ function autosave_update_post_ID( postID ) {
 	}
 }
 
-function autosave_update_preview_link(post_id) {
-	// Add preview button if not already there
-	if ( !jQuery('#previewview > *').size() ) {
-		var post_type = jQuery('#post_type').val();
-		var previewText = 'page' == post_type ? autosaveL10n.previewPageText : autosaveL10n.previewPostText;
-		jQuery.post(autosaveL10n.requestFile, {
-			action: "get-permalink",
-			post_id: post_id,
-			getpermalinknonce: jQuery('#getpermalinknonce').val()
-		}, function(permalink) {
-			jQuery('#previewview').html('<a target="_blank" href="'+permalink+'" tabindex="4">'+previewText+'</a>');
-
-			// Autosave when the preview button is clicked.  
-			jQuery('#previewview a').click(function(e) {
-				autosave();
-				autosaveDelayURL = this.href;
-				previewwin = window.open('','_blank');
-
-				e.preventDefault();
-				return false;
-			});
-		});
-	}
-}
-
 function autosave_update_slug(post_id) {
 	// create slug area only if not already there
 	if ( jQuery.isFunction(make_slugedit_clickable) && !jQuery('#edit-slug-box > *').size() ) {
@@ -130,7 +98,7 @@ function autosave_update_slug(post_id) {
 			{
 				action: 'sample-permalink',
 				post_id: post_id,
-				new_title: jQuery('#title').val(), 
+				new_title: jQuery('#title').val(),
 				samplepermalinknonce: jQuery('#samplepermalinknonce').val()
 			},
 			function(data) {
@@ -147,10 +115,6 @@ function autosave_loading() {
 
 function autosave_enable_buttons() {
 	jQuery("#submitpost :button:disabled, #submitpost :submit:disabled").attr('disabled', '');
-	if ( autosaveDelayURL ) {
-		previewwin.location = autosaveDelayURL;
-		autosaveDelayURL = null;
-	}
 }
 
 function autosave_disable_buttons() {
@@ -180,13 +144,13 @@ var autosave = function() {
 		doAutoSave = false;
 
 	/* Gotta do this up here so we can check the length when tinyMCE is in use */
-	if ( rich ) {		
+	if ( rich ) {
 		var ed = tinyMCE.activeEditor;
 		if ( 'mce_fullscreen' == ed.id )
 			tinyMCE.get('content').setContent(ed.getContent({format : 'raw'}), {format : 'raw'});
 		tinyMCE.get('content').save();
 	}
-	
+
 	post_data["content"] = jQuery("#content").val();
 	if ( jQuery('#post_name').val() )
 		post_data["post_name"] = jQuery('#post_name').val();
@@ -215,6 +179,7 @@ var autosave = function() {
 		post_data["excerpt"] = jQuery("#excerpt").val();
 	if ( jQuery("#post_author").size() )
 		post_data["post_author"] = jQuery("#post_author").val();
+	post_data["user_ID"] = jQuery("#user-id").val();
 
 	// Don't run while the TinyMCE spellcheck is on.  Why?  Who knows.
 	if ( rich && tinyMCE.activeEditor.plugins.spellchecker && tinyMCE.activeEditor.plugins.spellchecker.active ) {
@@ -223,7 +188,7 @@ var autosave = function() {
 
 	if(parseInt(post_data["post_ID"]) < 1) {
 		post_data["temp_ID"] = post_data["post_ID"];
-		var successCallback = autosave_saved_new;; // new post
+		var successCallback = autosave_saved_new; // new post
 	} else {
 		var successCallback = autosave_saved; // pre-existing post
 	}

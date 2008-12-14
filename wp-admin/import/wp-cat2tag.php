@@ -1,5 +1,19 @@
 <?php
+/**
+ * WordPress Categories to Tags Converter.
+ *
+ * @package WordPress
+ * @subpackage Importer
+ */
 
+/**
+ * WordPress categories to tags converter class.
+ *
+ * Will convert WordPress categories to tags, removing the category after the
+ * process is complete and updating all posts to switch to the tag.
+ *
+ * @since unknown
+ */
 class WP_Categories_to_Tags {
 	var $categories_to_convert = array();
 	var $all_categories = array();
@@ -50,6 +64,7 @@ class WP_Categories_to_Tags {
 		echo '<br class="clear" />';
 
 		if ( $cat_num > 0 ) {
+			screen_icon();
 			echo '<h2>' . sprintf( __ngettext( 'Convert Category to Tag.', 'Convert Categories (%d) to Tags.', $cat_num ), $cat_num ) . '</h2>';
 			echo '<div class="narrow">';
 			echo '<p>' . __('Hey there. Here you can selectively convert existing categories to tags. To get started, check the categories you wish to be converted, then click the Convert button.') . '</p>';
@@ -103,7 +118,7 @@ function check_all_rows() {
 
 				 if ( in_array( intval($category->term_id),  $this->hybrids_ids ) )
 				 	echo ' <a href="#note"> * </a>';
-				
+
 				if ( isset($hier[$category->term_id]) )
 					$this->_category_children($category, $hier); ?></li>
 <?php		}
@@ -125,6 +140,7 @@ function check_all_rows() {
 		echo '<br class="clear" />';
 
 		if ( $tags_num > 0 ) {
+			screen_icon();
 			echo '<h2>' . sprintf( __ngettext( 'Convert Tag to Category.', 'Convert Tags (%d) to Categories.', $tags_num ), $tags_num ) . '</h2>';
 			echo '<div class="narrow">';
 			echo '<p>' . __('Here you can selectively converts existing tags to categories. To get started, check the tags you wish to be converted, then click the Convert button.') . '</p>';
@@ -243,7 +259,7 @@ function check_all_tagrows() {
 
 					if ( ! ($id = is_term( $category->slug, 'post_tag' ) ) )
 						$id = wp_insert_term($category->name, 'post_tag', array('slug' => $category->slug));
-					
+
 					$id = $id['term_taxonomy_id'];
 					$posts = get_objects_in_term($category->term_id, 'category');
 					$term_order = 0;
@@ -252,7 +268,7 @@ function check_all_tagrows() {
 						$values[] = $wpdb->prepare( "(%d, %d, %d)", $post, $id, $term_order);
 						clean_post_cache($post);
 					}
-					
+
 					if ( $values ) {
 						$wpdb->query("INSERT INTO $wpdb->term_relationships (object_id, term_taxonomy_id, term_order) VALUES " . join(',', $values) . " ON DUPLICATE KEY UPDATE term_order = VALUES(term_order)");
 
@@ -262,7 +278,7 @@ function check_all_tagrows() {
 					echo __('Converted successfully.') . "</li>\n";
 					continue;
 				}
-				
+
 				// if tag already exists, add it to all posts in the category
 				if ( $tag_ttid = $wpdb->get_var( $wpdb->prepare("SELECT term_taxonomy_id FROM $wpdb->term_taxonomy WHERE term_id = %d AND taxonomy = 'post_tag'", $category->term_id) ) ) {
 					$objects_ids = get_objects_in_term($category->term_id, 'category');

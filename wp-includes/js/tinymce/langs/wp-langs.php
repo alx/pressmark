@@ -1,5 +1,18 @@
 <?php
 
+function mce_put_file( $path, $content ) {
+	if ( function_exists('file_put_contents') )
+		return @file_put_contents( $path, $content );
+
+	$newfile = false;
+	$fp = @fopen( $path, 'wb' );
+	if ($fp) {
+		$newfile = fwrite( $fp, $content );
+		fclose($fp);
+	}
+	return $newfile;
+}
+
 // escape text only if it needs translating
 function mce_escape($text) {
 	global $language;
@@ -8,7 +21,7 @@ function mce_escape($text) {
 	else return js_escape($text);
 }
 
-$strings = 'tinyMCE.addI18n({' . $language . ':{
+$lang = 'tinyMCE.addI18n({' . $language . ':{
 common:{
 edit_confirm:"' . mce_escape( __('Do you want to use the WYSIWYG mode for this textarea?') ) . '",
 apply:"' . mce_escape( __('Apply') ) . '",
@@ -399,7 +412,9 @@ wp_page_alt:"' . mce_escape( __('Next page...') ) . '",
 add_media:"' . mce_escape( __('Add Media') ) . '",
 add_image:"' . mce_escape( __('Add an Image') ) . '",
 add_video:"' . mce_escape( __('Add Video') ) . '",
-add_audio:"' . mce_escape( __('Add Audio') ) . '"
+add_audio:"' . mce_escape( __('Add Audio') ) . '",
+editgallery:"' . mce_escape( __('Edit Gallery') ) . '",
+delgallery:"' . mce_escape( __('Delete Gallery') ) . '"
 });
 
 tinyMCE.addI18n("' . $language . '.wpeditimage",{
@@ -438,4 +453,3 @@ caption:"' . mce_escape( __('Edit Image Caption') ) . '",
 alt:"' . mce_escape( __('Edit Alternate Text') ) . '"
 });
 ';
-?>

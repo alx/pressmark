@@ -1,4 +1,12 @@
 <?php
+/**
+ * Discussion settings administration panel.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/** WordPress Administration Bootstrap */
 require_once('admin.php');
 
 $title = __('Discussion Settings');
@@ -8,9 +16,12 @@ include('admin-header.php');
 ?>
 
 <div class="wrap">
-<h2><?php _e('Discussion Settings') ?></h2>
+<?php screen_icon(); ?>
+<h2><?php echo wp_specialchars( $title ); ?></h2>
+
 <form method="post" action="options.php">
-<?php wp_nonce_field('update-options') ?>
+<?php settings_fields('discussion'); ?>
+
 <table class="form-table">
 <tr valign="top">
 <th scope="row"><?php _e('Default article settings') ?></th>
@@ -28,6 +39,65 @@ include('admin-header.php');
 <?php _e('Allow people to post comments on the article') ?></label>
 <br />
 <small><em><?php echo '(' . __('These settings may be overridden for individual articles.') . ')'; ?></em></small>
+</fieldset></td>
+</tr>
+<tr valign="top">
+<th scope="row"><?php _e('Other comment settings') ?></th>
+<td><fieldset><legend class="hidden"><?php _e('Other comment settings') ?></legend>
+<label for="require_name_email"><input type="checkbox" name="require_name_email" id="require_name_email" value="1" <?php checked('1', get_option('require_name_email')); ?> /> <?php _e('Comment author must fill out name and e-mail') ?></label>
+<br />
+<label for="comment_registration">
+<input name="comment_registration" type="checkbox" id="comment_registration" value="1" <?php checked('1', get_option('comment_registration')); ?> />
+<?php _e('Users must be registered and logged in to comment') ?>
+</label>
+<br />
+
+<label for="close_comments_for_old_posts">
+<input name="close_comments_for_old_posts" type="checkbox" id="close_comments_for_old_posts" value="1" <?php checked('1', get_option('close_comments_for_old_posts')); ?> />
+<?php printf( __('Automatically close comments on articles older than %s days'), '</label><input name="close_comments_days_old" type="text" id="close_comments_days_old" value="' . attribute_escape(get_option('close_comments_days_old')) . '" class="small-text" />') ?>
+<br />
+<label for="thread_comments">
+<input name="thread_comments" type="checkbox" id="thread_comments" value="1" <?php checked('1', get_option('thread_comments')); ?> />
+<?php
+
+$maxdeep = (int) apply_filters( 'thread_comments_depth_max', 10 );
+
+$thread_comments_depth = '</label><select name="thread_comments_depth" id="thread_comments_depth">';
+for ( $i = 1; $i <= $maxdeep; $i++ ) {
+	$thread_comments_depth .= "<option value='$i'";
+	if ( get_option('thread_comments_depth') == $i ) $thread_comments_depth .= " selected='selected'";
+	$thread_comments_depth .= ">$i</option>";
+}
+$thread_comments_depth .= '</select>';
+
+printf( __('Enable threaded (nested) comments %s levels deep'), $thread_comments_depth );
+
+?><br />
+<label for="page_comments">
+<input name="page_comments" type="checkbox" id="page_comments" value="1" <?php checked('1', get_option('page_comments')); ?> />
+<?php
+
+$default_comments_page = '</label><label for="default_comments_page"><select name="default_comments_page" id="default_comments_page"><option value="newest"';
+if ( 'newest' == get_option('default_comments_page') ) $default_comments_page .= ' selected="selected"';
+$default_comments_page .= '>' . __('last') . '</option><option value="oldest"';
+if ( 'oldest' == get_option('default_comments_page') ) $default_comments_page .= ' selected="selected"';
+$default_comments_page .= '>' . __('first') . '</option></select>';
+
+printf( __('Break comments into pages with %1$s comments per page and the %2$s page displayed by default'), '</label><label for="comments_per_page"><input name="comments_per_page" type="text" id="comments_per_page" value="' . attribute_escape(get_option('comments_per_page')) . '" class="small-text" />', $default_comments_page );
+
+?></label>
+<br />
+<label for="comment_order"><?php
+
+$comment_order = '<select name="comment_order" id="comment_order"><option value="asc"';
+if ( 'asc' == get_option('comment_order') ) $comment_order .= ' selected="selected"';
+$comment_order .= '>' . __('older') . '</option><option value="desc"';
+if ( 'desc' == get_option('comment_order') ) $comment_order .= ' selected="selected"';
+$comment_order .= '>' . __('newer') . '</option></select>';
+
+printf( __('Comments should be displayed with the %s comments at the top of each page'), $comment_order );
+
+?></label>
 </fieldset></td>
 </tr>
 <tr valign="top">
@@ -49,19 +119,17 @@ include('admin-header.php');
 <input name="comment_moderation" type="checkbox" id="comment_moderation" value="1" <?php checked('1', get_option('comment_moderation')); ?> />
 <?php _e('An administrator must always approve the comment') ?> </label>
 <br />
-<label for="require_name_email"><input type="checkbox" name="require_name_email" id="require_name_email" value="1" <?php checked('1', get_option('require_name_email')); ?> /> <?php _e('Comment author must fill out name and e-mail') ?></label>
-<br />
 <label for="comment_whitelist"><input type="checkbox" name="comment_whitelist" id="comment_whitelist" value="1" <?php checked('1', get_option('comment_whitelist')); ?> /> <?php _e('Comment author must have a previously approved comment') ?></label>
 </fieldset></td>
 </tr>
 <tr valign="top">
 <th scope="row"><?php _e('Comment Moderation') ?></th>
 <td><fieldset><legend class="hidden"><?php _e('Comment Moderation') ?></legend>
-<p><label for="comment_max_links"><?php printf(__('Hold a comment in the queue if it contains %s or more links. (A common characteristic of comment spam is a large number of hyperlinks.)'), '<input name="comment_max_links" type="text" id="comment_max_links" size="3" value="' . get_option('comment_max_links'). '" />' ) ?></label></p>
+<p><label for="comment_max_links"><?php printf(__('Hold a comment in the queue if it contains %s or more links. (A common characteristic of comment spam is a large number of hyperlinks.)'), '<input name="comment_max_links" type="text" id="comment_max_links" value="' . get_option('comment_max_links'). '" class="small-text" />' ) ?></label></p>
 
 <p><label for="moderation_keys"><?php _e('When a comment contains any of these words in its content, name, URL, e-mail, or IP, it will be held in the <a href="edit-comments.php?comment_status=moderated">moderation queue</a>. One word or IP per line. It will match inside words, so "press" will match "WordPress".') ?></label></p>
 <p>
-<textarea name="moderation_keys" cols="60" rows="10" id="moderation_keys" style="width: 98%; font-size: 12px;" class="code"><?php form_option('moderation_keys'); ?></textarea>
+<textarea name="moderation_keys" rows="10" cols="50" id="moderation_keys" class="large-text code"><?php form_option('moderation_keys'); ?></textarea>
 </p>
 </fieldset></td>
 </tr>
@@ -70,10 +138,11 @@ include('admin-header.php');
 <td><fieldset><legend class="hidden"><?php _e('Comment Blacklist') ?></legend>
 <p><label for="blacklist_keys"><?php _e('When a comment contains any of these words in its content, name, URL, e-mail, or IP, it will be marked as spam. One word or IP per line. It will match inside words, so "press" will match "WordPress".') ?></label></p>
 <p>
-<textarea name="blacklist_keys" cols="60" rows="10" id="blacklist_keys" style="width: 98%; font-size: 12px;" class="code"><?php form_option('blacklist_keys'); ?></textarea>
+<textarea name="blacklist_keys" rows="10" cols="50" id="blacklist_keys" class="large-text code"><?php form_option('blacklist_keys'); ?></textarea>
 </p>
 </fieldset></td>
 </tr>
+<?php do_settings_fields('discussion', 'default'); ?>
 </table>
 
 <h3><?php _e('Avatars') ?></h3>
@@ -145,14 +214,13 @@ echo apply_filters('default_avatar_select', $avatar_list);
 
 </fieldset></td>
 </tr>
-
+<?php do_settings_fields('discussion', 'avatars'); ?>
 </table>
 
+<?php do_settings_sections('discussion'); ?>
 
 <p class="submit">
-<input type="hidden" name="action" value="update" />
-<input type="hidden" name="page_options" value="default_pingback_flag,default_ping_status,default_comment_status,comments_notify,moderation_notify,comment_moderation,require_name_email,comment_whitelist,comment_max_links,moderation_keys,blacklist_keys,show_avatars,avatar_rating,avatar_default" />
-<input type="submit" name="Submit" value="<?php _e('Save Changes') ?>" />
+<input type="submit" name="Submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
 </p>
 </form>
 </div>

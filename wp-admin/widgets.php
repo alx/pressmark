@@ -1,6 +1,15 @@
 <?php
+/**
+ * Widgets administration panel.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
 
+/** WordPress Administration Bootstrap */
 require_once( 'admin.php' );
+
+/** WordPress Administration Widgets API */
 require_once(ABSPATH . 'wp-admin/includes/widgets.php');
 
 if ( ! current_user_can('switch_themes') )
@@ -25,12 +34,13 @@ if ( isset($_GET['sidebar']) && isset($wp_registered_sidebars[$_GET['sidebar']])
 	require_once( 'admin-header.php' );
 ?>
 
-	<div class="error">
-		<p><?php _e( 'No Sidebars Defined' ); ?></p>
-	</div>
-
 	<div class="wrap">
-		<p><?php _e( 'You are seeing this message because the theme you are currently using isn&#8217;t widget-aware, meaning that it has no sidebars that you are able to change. For information on making your theme widget-aware, please <a href="http://automattic.com/code/widgets/themes/">follow these instructions</a>.' ); /* TODO: article on codex */; ?></p>
+	<?php screen_icon(); ?>
+	<h2><?php echo wp_specialchars( $title ); ?></h2>
+		<div class="error">
+			<p><?php _e( 'No Sidebars Defined' ); ?></p>
+		</div>
+		<p><?php _e( 'The theme you are currently using isn&#8217;t widget-aware, meaning that it has no sidebars that you are able to change. For information on making your theme widget-aware, please <a href="http://codex.wordpress.org/Widgetizing_Themes">follow these instructions</a>.' ); ?></p>
 	</div>
 
 <?php
@@ -92,9 +102,6 @@ if ( $http_post && isset($sidebars_widgets[$_POST['sidebar']]) ) {
 	exit;
 }
 
-
-
-
 // What widget (if any) are we editing
 $edit_widget = -1;
 
@@ -132,7 +139,7 @@ if ( isset($_GET['add']) && $_GET['add'] ) {
 		<h2><?php _e( 'Add Widget' ); ?></h2>
 		<br />
 		<form action="<?php echo clean_url( remove_query_arg( $query_args ) ); ?>" method="post">
-		
+
 			<ul class="widget-control-list">
 				<li class="widget-list-control-item">
 					<div class="widget-top">
@@ -216,29 +223,21 @@ $show_values = array(
 
 $show = isset($_GET['show']) && isset($show_values[$_GET['show']]) ? attribute_escape( $_GET['show'] ) : false;
 
-
 $messages = array(
 	'updated' => __('Changes saved.')
 );
 
-require_once( 'admin-header.php' );
+require_once( 'admin-header.php' ); ?>
 
-if ( isset($_GET['message']) && isset($messages[$_GET['message']]) ) : ?>
-
+<?php if ( isset($_GET['message']) && isset($messages[$_GET['message']]) ) : ?>
 <div id="message" class="updated fade"><p><?php echo $messages[$_GET['message']]; ?></p></div>
-
 <?php endif; ?>
 
 <div class="wrap">
+<?php screen_icon(); ?>
+<h2><?php echo wp_specialchars( $title ); ?></h2>
 
 	<form id="widgets-filter" action="" method="get">
-
-	<h2><?php _e( 'Widgets' ); ?></h2>
-	<p id="widget-search">
-		<label class="hidden" for="widget-search-input"><?php _e( 'Search Widgets' ); ?>:</label>
-		<input type="text" id="widget-search-input" name="s" value="<?php echo attribute_escape( $widget_search ); ?>" />
-		<input type="submit" class="button" value="<?php _e( 'Search Widgets' ); ?>" />
-	</p>
 
 	<div class="widget-liquid-left-holder">
 	<div id="available-widgets-filter" class="widget-liquid-left">
@@ -308,7 +307,7 @@ if ( isset($_GET['message']) && isset($messages[$_GET['message']]) ) : ?>
 		<p class="submit">
 			<input type="hidden" id='sidebar' name='sidebar' value="<?php echo $sidebar; ?>" />
 			<input type="hidden" id="generated-time" name="generated-time" value="<?php echo time() - 1199145600; // Jan 1, 2008 ?>" />
-			<input type="submit" name="save-widgets" value="<?php _e( 'Save Changes' ); ?>" />
+			<input type="submit" name="save-widgets" class="button-primary" value="<?php _e( 'Save Changes' ); ?>" />
 <?php
 			wp_nonce_field( 'edit-sidebar_' . $sidebar );
 ?>
@@ -316,12 +315,12 @@ if ( isset($_GET['message']) && isset($messages[$_GET['message']]) ) : ?>
 	</div>
 
 	</form>
+	<br class="clear" />
 
 </div>
 
 <?php do_action( 'sidebar_admin_page' ); ?>
 
-<br class="clear" />
-
 <?php require_once( 'admin-footer.php' ); ?>
+
 

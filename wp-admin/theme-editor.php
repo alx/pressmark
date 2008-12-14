@@ -1,4 +1,12 @@
 <?php
+/**
+ * Theme editor administration panel.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/** WordPress Administration Bootstrap */
 require_once('admin.php');
 
 $title = __("Edit Themes");
@@ -91,9 +99,10 @@ $description = get_file_description($file);
 $desc_header = ( $description != $file_show ) ? "$description</strong> (%s)" : "%s";
 ?>
 <div class="wrap">
+<?php screen_icon(); ?>
+<h2><?php echo wp_specialchars( $title ); ?></h2>
 <div class="bordertitle">
-	<h2><?php _e('Theme Editor'); ?></h2>
-	<form id="themeselector" name="theme" action="theme-editor.php" method="post">
+	<form id="themeselector" action="theme-editor.php" method="post">
 		<strong><label for="theme"><?php _e('Select theme to edit:'); ?> </label></strong>
 		<select name="theme" id="theme">
 <?php
@@ -124,25 +133,47 @@ if ($allowed_files) :
 ?>
 	<h4><?php _e('Templates'); ?></h4>
 	<ul>
-<?php foreach($themes[$theme]['Template Files'] as $template_file) :
-		$description = get_file_description($template_file);
+<?php
+	$template_mapping = array();
+	$template_dir = $themes[$theme]['Template Dir'];
+	foreach($themes[$theme]['Template Files'] as $template_file) {
+		$description = trim( get_file_description($template_file) );
 		$template_show = basename($template_file);
 		$filedesc = ( $description != $template_file ) ? "$description <span class='nonessential'>($template_show)</span>" : "$description";
 		$filedesc = ( $template_file == $file ) ? "<span class='highlight'>$description <span class='nonessential'>($template_show)</span></span>" : $filedesc;
-		?>
+
+		// If we have two files of the same name prefer the one in the Template Directory
+		// This means that we display the correct files for child themes which overload Templates as well as Styles
+		if( array_key_exists($description, $template_mapping ) ) {
+			if ( false !== strpos( $template_file, $template_dir ) )  {
+				$template_mapping[ $description ] = array( $template_file, $filedesc );
+			}
+		} else {
+			$template_mapping[ $description ] = array( $template_file, $filedesc );
+		}
+	}
+	ksort( $template_mapping );
+	while ( list( $template_sorted_key, list( $template_file, $filedesc ) ) = each( $template_mapping ) ) :
+	?>
 		<li><a href="theme-editor.php?file=<?php echo "$template_file"; ?>&amp;theme=<?php echo urlencode($theme) ?>"><?php echo $filedesc ?></a></li>
-<?php endforeach; ?>
+<?php endwhile; ?>
 	</ul>
 	<h4><?php echo _c('Styles|Theme stylesheets in theme editor'); ?></h4>
 	<ul>
-<?php foreach($themes[$theme]['Stylesheet Files'] as $style_file) :
-		$description = get_file_description($style_file);
+<?php
+	$template_mapping = array();
+	foreach($themes[$theme]['Stylesheet Files'] as $style_file) {
+		$description = trim( get_file_description($style_file) );
 		$style_show = basename($style_file);
 		$filedesc = ( $description != $style_file ) ? "$description <span class='nonessential'>($style_show)</span>" : "$description";
 		$filedesc = ( $style_file == $file ) ? "<span class='highlight'>$description <span class='nonessential'>($style_show)</span></span>" : $filedesc;
+		$template_mapping[ $description ] = array( $style_file, $filedesc );
+	}
+	ksort( $template_mapping );
+	while ( list( $template_sorted_key, list( $style_file, $filedesc ) ) = each( $template_mapping ) ) :
 		?>
 		<li><a href="theme-editor.php?file=<?php echo "$style_file"; ?>&amp;theme=<?php echo urlencode($theme) ?>"><?php echo $filedesc ?></a></li>
-<?php endforeach; ?>
+<?php endwhile; ?>
 	</ul>
 <?php endif; ?>
 </div>
@@ -161,7 +192,7 @@ if ($allowed_files) :
 <?php if ( is_writeable($real_file) ) : ?>
 			<p class="submit">
 <?php
-	echo "<input type='submit' name='submit' value='" . __('Update File') . "' tabindex='2' />";
+	echo "<input type='submit' name='submit' class='button-primary' value='" . __('Update File') . "' tabindex='2' />";
 ?>
 </p>
 <?php else : ?>

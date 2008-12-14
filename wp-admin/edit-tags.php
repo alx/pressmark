@@ -1,12 +1,19 @@
 <?php
+/**
+ * Edit Tags Administration Panel.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/** WordPress Administration Bootstrap */
 require_once('admin.php');
 
 $title = __('Tags');
-$parent_file = 'edit.php';
 
-wp_reset_vars(array('action', 'tag'));
+wp_reset_vars( array('action', 'tag') );
 
-if ( isset($_GET['deleteit']) && isset($_GET['delete_tags']) )
+if ( isset( $_GET['action'] ) && isset($_GET['delete_tags']) && ( 'delete' == $_GET['action'] || 'delete' == $_GET['action2'] ) )
 	$action = 'bulk-delete';
 
 switch($action) {
@@ -65,6 +72,7 @@ case 'bulk-delete':
 break;
 
 case 'edit':
+	$title = __('Edit Tag');
 
 	require_once ('admin-header.php');
 	$tag_ID = (int) $_GET['tag_ID'];
@@ -100,13 +108,16 @@ break;
 
 default:
 
-if ( !empty($_GET['_wp_http_referer']) ) {
-	 wp_redirect(remove_query_arg(array('_wp_http_referer', '_wpnonce'), stripslashes($_SERVER['REQUEST_URI'])));
+if ( isset($_GET['_wp_http_referer']) && ! empty($_GET['_wp_http_referer']) ) {
+	 wp_redirect( remove_query_arg( array('_wp_http_referer', '_wpnonce'), stripslashes($_SERVER['REQUEST_URI']) ) );
 	 exit;
 }
 
-wp_enqueue_script( 'admin-tags' );
-wp_enqueue_script('admin-forms');
+$can_manage = current_user_can('manage_categories');
+
+wp_enqueue_script('admin-tags');
+if ( $can_manage )
+	wp_enqueue_script('inline-edit-tax');
 
 require_once ('admin-header.php');
 
@@ -115,43 +126,47 @@ $messages[2] = __('Tag deleted.');
 $messages[3] = __('Tag updated.');
 $messages[4] = __('Tag not added.');
 $messages[5] = __('Tag not updated.');
-$messages[6] = __('Tags deleted.');
-?>
+$messages[6] = __('Tags deleted.'); ?>
 
-<?php if (isset($_GET['message'])) : ?>
-<div id="message" class="updated fade"><p><?php echo $messages[$_GET['message']]; ?></p></div>
+<div class="wrap nosubsub">
+<?php screen_icon(); ?>
+<h2><?php echo wp_specialchars( $title );
+if ( isset($_GET['s']) && $_GET['s'] )
+	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', wp_specialchars( stripslashes($_GET['s']) ) ); ?>
+</h2>
+
+<?php if ( isset($_GET['message']) && ( $msg = (int) $_GET['message'] ) ) : ?>
+<div id="message" class="updated fade"><p><?php echo $messages[$msg]; ?></p></div>
 <?php $_SERVER['REQUEST_URI'] = remove_query_arg(array('message'), $_SERVER['REQUEST_URI']);
 endif; ?>
 
-<div class="wrap">
-
-<form id="posts-filter" action="" method="get">
-<?php if ( current_user_can('manage_categories') ) : ?>
-	<h2><?php printf(__('Manage Tags (<a href="%s">add new</a>)'), '#addtag') ?> </h2>
-<?php else : ?>
-	<h2><?php _e('Manage Tags') ?> </h2>
-<?php endif; ?>
-
-<p id="post-search">
-	<label class="hidden" for="post-search-input"><?php _e( 'Search Tags' ); ?>:</label>
-	<input type="text" id="post-search-input" name="s" value="<?php echo attribute_escape(stripslashes($_GET['s'])); ?>" />
+<form class="search-form" action="" method="get">
+<p class="search-box">
+	<label class="hidden" for="tag-search-input"><?php _e( 'Search Tags' ); ?>:</label>
+	<input type="text" class="search-input" id="tag-search-input" name="s" value="<?php _admin_search_query(); ?>" />
 	<input type="submit" value="<?php _e( 'Search Tags' ); ?>" class="button" />
 </p>
-
+</form>
 <br class="clear" />
 
-<div class="tablenav">
+<div id="col-container">
 
+<div id="col-right">
+<div class="col-wrap">
+<form id="posts-filter" action="" method="get">
+<div class="tablenav">
 <?php
-$pagenum = absint( $_GET['pagenum'] );
+$pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 0;
 if ( empty($pagenum) )
 	$pagenum = 1;
-if( !$tagsperpage || $tagsperpage < 0 )
-	$tagsperpage = 20;
+
+$tagsperpage = apply_filters("tagsperpage",20);
 
 $page_links = paginate_links( array(
 	'base' => add_query_arg( 'pagenum', '%#%' ),
 	'format' => '',
+	'prev_text' => __('&laquo;'),
+	'next_text' => __('&raquo;'),
 	'total' => ceil(wp_count_terms('post_tag') / $tagsperpage),
 	'current' => $pagenum
 ));
@@ -160,53 +175,127 @@ if ( $page_links )
 	echo "<div class='tablenav-pages'>$page_links</div>";
 ?>
 
-<div class="alignleft">
-<input type="submit" value="<?php _e('Delete'); ?>" name="deleteit" class="button-secondary delete" />
+<div class="alignleft actions">
+<select name="action">
+<option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
+<option value="delete"><?php _e('Delete'); ?></option>
+</select>
+<input type="submit" value="<?php _e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
 <?php wp_nonce_field('bulk-tags'); ?>
 </div>
 
 <br class="clear" />
 </div>
 
-<br class="clear" />
+<div class="clear"></div>
 
-<table class="widefat">
+<table class="widefat tag fixed" cellspacing="0">
 	<thead>
 	<tr>
-	<th scope="col" class="check-column"><input type="checkbox" /></th>
-        <th scope="col"><?php _e('Name') ?></th>
-        <th scope="col" class="num" style="width: 90px"><?php _e('Posts') ?></th>
+<?php print_column_headers('edit-tags'); ?>
 	</tr>
 	</thead>
+
+	<tfoot>
+	<tr>
+<?php print_column_headers('edit-tags', false); ?>
+	</tr>
+	</tfoot>
+
 	<tbody id="the-list" class="list:tag">
 <?php
 
-$searchterms = trim( $_GET['s'] );
+$searchterms = isset( $_GET['s'] ) ? trim( $_GET['s'] ) : '';
 
 $count = tag_rows( $pagenum, $tagsperpage, $searchterms );
 ?>
 	</tbody>
 </table>
-</form>
 
 <div class="tablenav">
-
 <?php
 if ( $page_links )
 	echo "<div class='tablenav-pages'>$page_links</div>";
 ?>
+
+<div class="alignleft actions">
+<select name="action2">
+<option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
+<option value="delete"><?php _e('Delete'); ?></option>
+</select>
+<input type="submit" value="<?php _e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
+</div>
+
 <br class="clear" />
 </div>
-<br class="clear" />
 
+<br class="clear" />
+</form>
+</div>
+</div><!-- /col-right -->
+
+<div id="col-left">
+<div class="col-wrap">
+
+<div class="tagcloud">
+<h3><?php _e('Popular Tags'); ?></h3>
+<?php
+if ( $can_manage )
+	wp_tag_cloud(array('link' => 'edit'));
+else
+	wp_tag_cloud();
+?>
 </div>
 
-<?php if ( current_user_can('manage_categories') ) : ?>
+<?php if ( $can_manage ) {
+	do_action('add_tag_form_pre'); ?>
 
-<br />
-<?php include('edit-tag-form.php'); ?>
+<div class="form-wrap">
+<h3><?php _e('Add a New Tag'); ?></h3>
+<div id="ajax-response"></div>
+<form name="addtag" id="addtag" method="post" action="edit-tags.php" class="add:the-list: validate">
+<input type="hidden" name="action" value="addtag" />
+<?php wp_original_referer_field(true, 'previous'); wp_nonce_field('add-tag'); ?>
 
-<?php endif; ?>
+<div class="form-field form-required">
+	<label for="name"><?php _e('Tag name') ?></label>
+	<input name="name" id="name" type="text" value="" size="40" aria-required="true" />
+    <p><?php _e('The name is how the tag appears on your site.'); ?></p>
+</div>
+
+<div class="form-field">
+	<label for="slug"><?php _e('Tag slug') ?></label>
+	<input name="slug" id="slug" type="text" value="" size="40" />
+    <p><?php _e('The &#8220;slug&#8221; is the URL-friendly version of the name. It is usually all lowercase and contains only letters, numbers, and hyphens.'); ?></p>
+</div>
+
+<p class="submit"><input type="submit" class="button" name="submit" value="<?php _e('Add Tag'); ?>" /></p>
+<?php do_action('add_tag_form'); ?>
+</form></div>
+<?php } ?>
+
+</div>
+</div><!-- /col-left -->
+
+</div><!-- /col-container -->
+</div><!-- /wrap -->
+
+<script type="text/javascript">
+/* <![CDATA[ */
+(function($){
+	$(document).ready(function(){
+		$('#doaction, #doaction2').click(function(){
+			if ( $('select[name^="action"]').val() == 'delete' ) {
+				var m = '<?php echo js_escape(__("You are about to delete the selected tags.\n  'Cancel' to stop, 'OK' to delete.")); ?>';
+				return showNotice.warn(m);
+			}
+		});
+	});
+})(jQuery);
+/* ]]> */
+</script>
+
+<?php inline_edit_term_row('edit-tags'); ?>
 
 <?php
 break;

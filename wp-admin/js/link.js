@@ -1,10 +1,10 @@
-jQuery(document).ready( function() {
+jQuery(document).ready( function($) {
 	// close postboxes that should be closed
 	jQuery('.if-js-closed').removeClass('if-js-closed').addClass('closed');
 
 	jQuery('#link_name').focus();
 	// postboxes
-	add_postbox_toggles('link');
+	postboxes.add_postbox_toggles('link');
 
 	// category tabs
 	var categoryTabs = jQuery('#category-tabs').tabs();
@@ -42,6 +42,12 @@ jQuery(document).ready( function() {
 		response: 'category-ajax-response',
 		addAfter: catAddAfter
 	} );
+
+	$('a[href="#categories-all"]').click(function(){deleteUserSetting('cats');});
+	$('a[href="#categories-pop"]').click(function(){setUserSetting('cats','pop');});
+	if ( 'pop' == getUserSetting('cats') )
+		$('a[href="#categories-pop"]').click();
+
 	jQuery('#category-add-toggle').click( function() {
 		jQuery(this).parents('div:first').toggleClass( 'wp-hidden-children' );
 		categoryTabs.tabsClick( 1 );

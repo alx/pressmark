@@ -1,13 +1,27 @@
 <?php
+/**
+ * Blogware XML Importer
+ *
+ * @package WordPress
+ * @subpackage Importer
+ * @author Shayne Sweeney
+ * @link http://www.theshayne.com/
+ */
 
-/* By Shayne Sweeney - http://www.theshayne.com/ */
-
+/**
+ * Blogware XML Importer class
+ *
+ * Extract posts from Blogware XML export file into your blog.
+ *
+ * @since unknown
+ */
 class BW_Import {
 
 	var $file;
 
 	function header() {
 		echo '<div class="wrap">';
+		screen_icon();
 		echo '<h2>'.__('Import Blogware').'</h2>';
 	}
 

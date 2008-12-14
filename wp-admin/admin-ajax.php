@@ -1,29 +1,67 @@
 <?php
+/**
+ * WordPress AJAX Process Execution.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/**
+ * Executing AJAX process.
+ *
+ * @since unknown
+ */
 define('DOING_AJAX', true);
+define('WP_ADMIN', true);
 
 require_once('../wp-load.php');
 require_once('includes/admin.php');
 
-if ( !is_user_logged_in() )
-	die('-1');
+if ( ! is_user_logged_in() ) {
 
-if ( isset($_GET['action']) && 'ajax-tag-search' == $_GET['action'] ) {
+	if ( $_POST['action'] == 'autosave' ) {
+		$id = isset($_POST['post_ID'])? (int) $_POST['post_ID'] : 0;
+
+		if ( ! $id )
+			die('-1');
+
+		$message = sprintf( __('<strong>ALERT: You are logged out!</strong> Could not save draft. <a href="%s" target="blank">Please log in again.</a>'), wp_login_url() );
+			$x = new WP_Ajax_Response( array(
+				'what' => 'autosave',
+				'id' => $id,
+				'data' => $message
+			) );
+			$x->send();
+	}
+
+	die('-1');
+}
+
+if ( isset( $_GET['action'] ) ) :
+switch ( $action = $_GET['action'] ) :
+case 'ajax-tag-search' :
 	if ( !current_user_can( 'manage_categories' ) )
 		die('-1');
 
 	$s = $_GET['q']; // is this slashed already?
 
-	if ( strstr( $s, ',' ) ) { 
-		$s = explode( ',', $s ); 
-		$s = $s[count( $s ) - 1]; 
+	if ( false !== strpos( $s, ',' ) ) {
+		$s = explode( ',', $s );
+		$s = $s[count( $s ) - 1];
 	}
 	$s = trim( $s );
 	if ( strlen( $s ) < 2 )
-	 die; // require 2 chars for matching
-	$results = $wpdb->get_col( "SELECT name FROM $wpdb->terms WHERE name LIKE ('%". $s . "%')" );
+		die; // require 2 chars for matching
+	$results = $wpdb->get_col( "SELECT t.name FROM $wpdb->term_taxonomy AS tt INNER JOIN $wpdb->terms AS t ON tt.term_id = t.term_id WHERE tt.taxonomy = 'post_tag' AND t.name LIKE ('%". $s . "%')" );
 	echo join( $results, "\n" );
 	die;
-}
+	break;
+default :
+	do_action( 'wp_ajax_' . $_GET['action'] );
+	die('0');
+	break;
+endswitch;
+endif;
 
 $id = isset($_POST['id'])? (int) $_POST['id'] : 0;
 switch ( $action = $_POST['action'] ) :
@@ -170,7 +208,7 @@ case 'dim-comment' :
 	if ( $_POST['new'] == $current )
 		die('1');
 
-	if ( 'unapproved' == $current ) {
+	if ( in_array( $current, array( 'unapproved', 'spam' ) ) ) {
 		check_ajax_referer( "approve-comment_$id" );
 		if ( wp_set_comment_status( $comment->comment_ID, 'approve' ) )
 			die('1');
@@ -278,7 +316,7 @@ case 'add-cat' : // From Manage->Categories
 		) );
 		$x->send();
 	}
-	
+
 	$cat = wp_insert_category( $_POST, true );
 
 	if ( is_wp_error($cat) ) {
@@ -305,6 +343,7 @@ case 'add-cat' : // From Manage->Categories
 	$x = new WP_Ajax_Response( array(
 		'what' => 'cat',
 		'id' => $cat->term_id,
+		'position' => -1,
 		'data' => _cat_row( $cat, $level, $cat_full_name ),
 		'supplemental' => array('name' => $cat_full_name, 'show-link' => sprintf(__( 'Category <a href="#%s">%s</a> added' ), "cat-$cat->term_id", $cat_full_name))
 	) );
@@ -340,6 +379,7 @@ case 'add-link-cat' : // From Blogroll -> Categories
 	$x = new WP_Ajax_Response( array(
 		'what' => 'link-cat',
 		'id' => $term_id,
+		'position' => -1,
 		'data' => $link_cat
 	) );
 	$x->send();
@@ -376,10 +416,34 @@ case 'add-tag' : // From Manage->Tags
 	$x = new WP_Ajax_Response( array(
 		'what' => 'tag',
 		'id' => $tag->term_id,
+		'position' => '-1',
 		'data' => _tag_row( $tag ),
 		'supplemental' => array('name' => $tag_full_name, 'show-link' => sprintf(__( 'Tag <a href="#%s">%s</a> added' ), "tag-$tag->term_id", $tag_full_name))
 	) );
 	$x->send();
+	break;
+case 'get-tagcloud' :
+	if ( !current_user_can( 'manage_categories' ) )
+		die('-1');
+
+	$tags = get_tags( array( 'number' => 45, 'orderby' => 'count', 'order' => 'DESC' ) );
+
+	if ( empty( $tags ) )
+		die( __('No tags found!') );
+
+	foreach ( $tags as $key => $tag ) {
+		$tags[ $key ]->link = '#';
+		$tags[ $key ]->id = $tag->term_id;
+	}
+
+	$return = wp_generate_tag_cloud( $tags );
+
+	if ( empty($return) )
+		die('0');
+
+	echo $return;
+
+	exit;
 	break;
 case 'add-comment' :
 	check_ajax_referer( $action );
@@ -389,8 +453,9 @@ case 'add-comment' :
 	$start = isset($_POST['page']) ? intval($_POST['page']) * 25 - 1: 24;
 	$status = isset($_POST['comment_status']) ? $_POST['comment_status'] : false;
 	$mode = isset($_POST['mode']) ? $_POST['mode'] : 'detail';
-
-	list($comments, $total) = _wp_get_comment_list( $status, $search, $start, 1 );
+	$p = isset($_POST['p']) ? $_POST['p'] : 0;
+	$comment_type = isset($_POST['comment_type']) ? $_POST['comment_type'] : '';
+	list($comments, $total) = _wp_get_comment_list( $status, $search, $start, 1, $p, $comment_type );
 
 	if ( get_option('show_avatars') )
 		add_filter( 'comment_author', 'floated_admin_avatar' );
@@ -401,7 +466,7 @@ case 'add-comment' :
 	foreach ( (array) $comments as $comment ) {
 		get_comment( $comment );
 		ob_start();
-			_wp_comment_row( $comment->comment_ID, $mode, $status );
+			_wp_comment_row( $comment->comment_ID, $mode, $status, true, true );
 			$comment_list_item = ob_get_contents();
 		ob_end_clean();
 		$x->add( array(
@@ -410,6 +475,142 @@ case 'add-comment' :
 			'data' => $comment_list_item
 		) );
 	}
+	$x->send();
+	break;
+case 'get-comments' :
+	check_ajax_referer( $action );
+
+	$post_ID = (int) $_POST['post_ID'];
+	if ( !current_user_can( 'edit_post', $post_ID ) )
+		die('-1');
+
+	$start = isset($_POST['start']) ? intval($_POST['start']) : 0;
+	$num = isset($_POST['num']) ? intval($_POST['num']) : 10;
+
+	list($comments, $total) = _wp_get_comment_list( false, false, $start, $num, $post_ID );
+
+	if ( !$comments )
+		die('1');
+
+	$comment_list_item = '';
+	$x = new WP_Ajax_Response();
+	foreach ( (array) $comments as $comment ) {
+		get_comment( $comment );
+		ob_start();
+			_wp_comment_row( $comment->comment_ID, 'single', false, false );
+			$comment_list_item .= ob_get_contents();
+		ob_end_clean();
+	}
+	$x->add( array(
+		'what' => 'comments',
+		'data' => $comment_list_item
+	) );
+	$x->send();
+	break;
+case 'replyto-comment' :
+	check_ajax_referer( $action );
+
+	$comment_post_ID = (int) $_POST['comment_post_ID'];
+	if ( !current_user_can( 'edit_post', $comment_post_ID ) )
+		die('-1');
+
+	$status = $wpdb->get_var( $wpdb->prepare("SELECT post_status FROM $wpdb->posts WHERE ID = %d", $comment_post_ID) );
+
+	if ( empty($status) )
+		die('1');
+	elseif ( in_array($status, array('draft', 'pending') ) )
+		die( __('Error: you are replying to a comment on a draft post.') );
+
+	$user = wp_get_current_user();
+	if ( $user->ID ) {
+		$comment_author       = $wpdb->escape($user->display_name);
+		$comment_author_email = $wpdb->escape($user->user_email);
+		$comment_author_url   = $wpdb->escape($user->user_url);
+		$comment_content      = trim($_POST['content']);
+		if ( current_user_can('unfiltered_html') ) {
+			if ( wp_create_nonce('unfiltered-html-comment_' . $comment_post_ID) != $_POST['_wp_unfiltered_html_comment'] ) {
+				kses_remove_filters(); // start with a clean slate
+				kses_init_filters(); // set up the filters
+			}
+		}
+	} else {
+		die( __('Sorry, you must be logged in to reply to a comment.') );
+	}
+
+	if ( '' == $comment_content )
+		die( __('Error: please type a comment.') );
+
+	$comment_parent = absint($_POST['comment_ID']);
+	$commentdata = compact('comment_post_ID', 'comment_author', 'comment_author_email', 'comment_author_url', 'comment_content', 'comment_type', 'comment_parent', 'user_ID');
+
+	$comment_id = wp_new_comment( $commentdata );
+	$comment = get_comment($comment_id);
+	if ( ! $comment ) die('1');
+
+	$modes = array( 'single', 'detail', 'dashboard' );
+	$mode = isset($_POST['mode']) && in_array( $_POST['mode'], $modes ) ? $_POST['mode'] : 'detail';
+	$position = ( isset($_POST['position']) && (int) $_POST['position']) ? (int) $_POST['position'] : '-1';
+	$checkbox = ( isset($_POST['checkbox']) && true == $_POST['checkbox'] ) ? 1 : 0;
+
+	if ( get_option('show_avatars') && 'single' != $mode )
+		add_filter( 'comment_author', 'floated_admin_avatar' );
+
+	$x = new WP_Ajax_Response();
+
+	ob_start();
+		if ( 'dashboard' == $mode ) {
+			require_once( ABSPATH . 'wp-admin/includes/dashboard.php' );
+			_wp_dashboard_recent_comments_row( $comment, false );
+		} else {
+			_wp_comment_row( $comment->comment_ID, $mode, false, $checkbox );
+		}
+		$comment_list_item = ob_get_contents();
+	ob_end_clean();
+
+	$x->add( array(
+		'what' => 'comment',
+		'id' => $comment->comment_ID,
+		'data' => $comment_list_item,
+		'position' => $position
+	));
+
+	$x->send();
+	break;
+case 'edit-comment' :
+	check_ajax_referer( 'replyto-comment' );
+
+	$comment_post_ID = (int) $_POST['comment_post_ID'];
+	if ( ! current_user_can( 'edit_post', $comment_post_ID ) )
+		die('-1');
+
+	if ( '' == $_POST['content'] )
+		die( __('Error: please type a comment.') );
+
+	$comment_id = (int) $_POST['comment_ID'];
+	$_POST['comment_status'] = $_POST['status'];
+	edit_comment();
+
+	$mode = ( isset($_POST['mode']) && 'single' == $_POST['mode'] ) ? 'single' : 'detail';
+	$position = ( isset($_POST['position']) && (int) $_POST['position']) ? (int) $_POST['position'] : '-1';
+	$checkbox = ( isset($_POST['checkbox']) && true == $_POST['checkbox'] ) ? 1 : 0;
+
+	if ( get_option('show_avatars') && 'single' != $mode )
+		add_filter( 'comment_author', 'floated_admin_avatar' );
+
+	$x = new WP_Ajax_Response();
+
+	ob_start();
+		_wp_comment_row( $comment_id, $mode, true, $checkbox );
+		$comment_list_item = ob_get_contents();
+	ob_end_clean();
+
+	$x->add( array(
+		'what' => 'edit_comment',
+		'id' => $comment->comment_ID,
+		'data' => $comment_list_item,
+		'position' => $position
+	));
+
 	$x->send();
 	break;
 case 'add-meta' :
@@ -616,13 +817,29 @@ case 'closed-postboxes' :
 	check_ajax_referer( 'closedpostboxes', 'closedpostboxesnonce' );
 	$closed = isset( $_POST['closed'] )? $_POST['closed'] : '';
 	$closed = explode( ',', $_POST['closed'] );
+	$hidden = isset( $_POST['hidden'] )? $_POST['hidden'] : '';
+	$hidden = explode( ',', $_POST['hidden'] );
 	$page = isset( $_POST['page'] )? $_POST['page'] : '';
-	if ( !preg_match( '/^[a-z-]+$/', $page ) ) {
+	if ( !preg_match( '/^[a-z-_]+$/', $page ) ) {
 		die(-1);
 	}
-	if (!is_array($closed)) break;
 	$current_user = wp_get_current_user();
-	update_usermeta($current_user->ID, 'closedpostboxes_'.$page, $closed);
+	if ( is_array($closed) )
+		update_usermeta($current_user->ID, 'closedpostboxes_'.$page, $closed);
+	if ( is_array($hidden) )
+		update_usermeta($current_user->ID, 'meta-box-hidden_'.$page, $hidden);
+break;
+case 'hidden-columns' :
+	check_ajax_referer( 'hiddencolumns', 'hiddencolumnsnonce' );
+	$hidden = isset( $_POST['hidden'] )? $_POST['hidden'] : '';
+	$hidden = explode( ',', $_POST['hidden'] );
+	$page = isset( $_POST['page'] )? $_POST['page'] : '';
+	if ( !preg_match( '/^[a-z-_]+$/', $page ) ) {
+		die(-1);
+	}
+	$current_user = wp_get_current_user();
+	if ( is_array($hidden) )
+		update_usermeta($current_user->ID, "manage-$page-columns-hidden", $hidden);
 break;
 case 'get-permalink':
 	check_ajax_referer( 'getpermalink', 'getpermalinknonce' );
@@ -636,6 +853,189 @@ case 'sample-permalink':
 	$slug = isset($_POST['new_slug'])? $_POST['new_slug'] : '';
 	die(get_sample_permalink_html($post_id, $title, $slug));
 break;
+case 'inline-save':
+	check_ajax_referer( 'inlineeditnonce', '_inline_edit' );
+
+	if ( ! isset($_POST['post_ID']) || ! ( $post_ID = (int) $_POST['post_ID'] ) )
+		exit;
+
+	if ( 'page' == $_POST['post_type'] ) {
+		if ( ! current_user_can( 'edit_page', $post_ID ) )
+			die( __('You are not allowed to edit this page.') );
+	} else {
+		if ( ! current_user_can( 'edit_post', $post_ID ) )
+			die( __('You are not allowed to edit this post.') );
+	}
+
+	if ( $last = wp_check_post_lock( $post_ID ) ) {
+		$last_user = get_userdata( $last );
+		$last_user_name = $last_user ? $last_user->display_name : __( 'Someone' );
+		printf( $_POST['post_type'] == 'page' ? __( 'Saving is disabled: %s is currently editing this page.' ) : __( 'Saving is disabled: %s is currently editing this post.' ),	wp_specialchars( $last_user_name ) );
+		exit;
+	}
+
+	$data = &$_POST;
+	$post = get_post( $post_ID, ARRAY_A );
+	$data['content'] = $post['post_content'];
+	$data['excerpt'] = $post['post_excerpt'];
+
+	// rename
+	$data['user_ID'] = $GLOBALS['user_ID'];
+
+	if ( isset($data['post_parent']) )
+		$data['parent_id'] = $data['post_parent'];
+
+	// status
+	if ( isset($data['keep_private']) && 'private' == $data['keep_private'] )
+		$data['post_status'] = 'private';
+	else
+		$data['post_status'] = $data['_status'];
+
+	if ( empty($data['comment_status']) )
+		$data['comment_status'] = 'closed';
+	if ( empty($data['ping_status']) )
+		$data['ping_status'] = 'closed';
+
+	// update the post
+	$_POST = $data;
+	edit_post();
+
+	$post = array();
+	if ( 'page' == $_POST['post_type'] ) {
+		$post[] = get_post($_POST['post_ID']);
+		page_rows($post);
+	} elseif ( 'post' == $_POST['post_type'] ) {
+		$mode = $_POST['post_view'];
+		$post[] = get_post($_POST['post_ID']);
+		post_rows($post);
+	}
+
+	exit;
+	break;
+case 'inline-save-tax':
+	check_ajax_referer( 'taxinlineeditnonce', '_inline_edit' );
+
+	if ( ! current_user_can('manage_categories') )
+		die( __('Cheatin&#8217; uh?') );
+
+	if ( ! isset($_POST['tax_ID']) || ! ( $id = (int) $_POST['tax_ID'] ) )
+		die(-1);
+
+	switch ($_POST['tax_type']) {
+		case 'cat' :
+			$data = array();
+			$data['cat_ID'] = $id;
+			$data['cat_name'] = $_POST['name'];
+			$data['category_nicename'] = $_POST['slug'];
+			if ( isset($_POST['parent']) && (int) $_POST['parent'] > 0 )
+				$data['category_parent'] = $_POST['parent'];
+
+			$cat = get_category($id, ARRAY_A);
+			$data['category_description'] = $cat['category_description'];
+
+			$updated = wp_update_category($data);
+
+			if ( $updated && !is_wp_error($updated) )
+				echo _cat_row( $updated, 0 );
+			else
+				die( __('Category not updated.') );
+
+			break;
+		case 'link-cat' :
+			$updated = wp_update_term($id, 'link_category', $_POST);
+
+			if ( $updated && !is_wp_error($updated) )
+				echo link_cat_row($updated['term_id']);
+			else
+				die( __('Category not updated.') );
+
+			break;
+		case 'tag' :
+			$updated = wp_update_term($id, 'post_tag', $_POST);
+			if ( $updated && !is_wp_error($updated) ) {
+				$tag = get_term( $updated['term_id'], 'post_tag' );
+				if ( !$tag || is_wp_error( $tag ) )
+					die( __('Tag not updated.') );
+
+				echo _tag_row($tag);
+			} else {
+				die( __('Tag not updated.') );
+			}
+
+			break;
+	}
+
+	exit;
+	break;
+case 'meta-box-order':
+	check_ajax_referer( 'meta-box-order' );
+	update_user_option( $GLOBALS['current_user']->ID, "meta-box-order_$_POST[page]", $_POST['order'] );
+	die('1');
+	break;
+case 'find_posts':
+	check_ajax_referer( 'find-posts' );
+
+	if ( empty($_POST['ps']) )
+		exit;
+
+	$what = isset($_POST['pages']) ? 'page' : 'post';
+	$s = stripslashes($_POST['ps']);
+	preg_match_all('/".*?("|$)|((?<=[\\s",+])|^)[^\\s",+]+/', $s, $matches);
+	$search_terms = array_map(create_function('$a', 'return trim($a, "\\"\'\\n\\r ");'), $matches[0]);
+
+	$searchand = $search = '';
+	foreach( (array) $search_terms as $term) {
+		$term = addslashes_gpc($term);
+		$search .= "{$searchand}(($wpdb->posts.post_title LIKE '%{$term}%') OR ($wpdb->posts.post_content LIKE '%{$term}%'))";
+		$searchand = ' AND ';
+	}
+	$term = $wpdb->escape($s);
+	if ( count($search_terms) > 1 && $search_terms[0] != $s )
+		$search .= " OR ($wpdb->posts.post_title LIKE '%{$term}%') OR ($wpdb->posts.post_content LIKE '%{$term}%')";
+
+	$posts = $wpdb->get_results( "SELECT ID, post_title, post_status, post_date FROM $wpdb->posts WHERE post_type = '$what' AND $search ORDER BY post_date_gmt DESC LIMIT 50" );
+
+	if ( ! $posts )
+		exit( __('No posts found.') );
+
+	$html = '<table class="widefat"><thead><tr><th class="found-radio"><br /></th><th>'.__('Title').'</th><th>'.__('Time').'</th><th>'.__('Status').'</th></tr></thead><tbody>';
+	foreach ( $posts as $post ) {
+
+		switch ( $post->post_status ) {
+			case 'publish' :
+			case 'private' :
+				$stat = __('Published');
+				break;
+			case 'future' :
+				$stat = __('Scheduled');
+				break;
+			case 'pending' :
+				$stat = __('Pending Review');
+				break;
+			case 'draft' :
+				$stat = __('Unpublished');
+				break;
+		}
+
+		if ( '0000-00-00 00:00:00' == $post->post_date ) {
+			$time = '';
+		} else {
+			$time = mysql2date(__('Y/m/d'), $post->post_date);
+		}
+
+		$html .= '<tr class="found-posts"><td class="found-radio"><input type="radio" id="found-'.$post->ID.'" name="found_post_id" value="'.$post->ID.'"></td>';
+		$html .= '<td><label for="found-'.$post->ID.'">'.wp_specialchars($post->post_title, true).'</label></td><td>'.wp_specialchars($time, true).'</td><td>'.wp_specialchars($stat, true).'</td></tr>'."\n\n";
+	}
+	$html .= '</tbody></table>';
+
+	$x = new WP_Ajax_Response();
+	$x->add( array(
+		'what' => $what,
+		'data' => $html
+	));
+	$x->send();
+
+	break;
 default :
 	do_action( 'wp_ajax_' . $_POST['action'] );
 	die('0');

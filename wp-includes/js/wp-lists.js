@@ -26,7 +26,7 @@ var wpList = {
 		var c = [], cl;
 		try {
 			cl = $(e).attr('class') || '';
-			cl = cl.match(new RegExp(t+':[A-Za-z0-9:_=-]+'));
+			cl = cl.match(new RegExp(t+':[\\S]+'));
 			if ( cl ) { c = cl[0].split(':'); }
 		} catch(r) {}
 		return c;
@@ -175,6 +175,8 @@ var wpList = {
 	},
 
 	ajaxDim: function( e, s ) {
+		if ( $(e).parent().css('display') == 'none' ) // Prevent hidden links from being clicked by hotkeys
+			return false;
 		var list = this; e = $(e); s = s || {};
 		var cls = wpList.parseClass(e,'dim');
 		s = wpList.pre.call( list, e, s, 'dim' );

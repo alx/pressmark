@@ -7,9 +7,7 @@
  */
 
 /**
- * {@internal Missing Short Description}}
- *
- * {@internal Missing Long Description}}
+ * Class that loads the calendar locale.
  *
  * @since 2.1.0
  */
@@ -190,7 +188,7 @@ class WP_Locale {
 		$this->number_format['thousands_sep'] = ('number_format_thousands_sep' == $trans) ? ',' : $trans;
 
 		// Import global locale vars set during inclusion of $locale.php.
-		foreach ( $this->locale_vars as $var ) {
+		foreach ( (array) $this->locale_vars as $var ) {
 			if ( isset($GLOBALS[$var]) )
 				$this->$var = $GLOBALS[$var];
 		}

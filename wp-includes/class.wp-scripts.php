@@ -1,5 +1,21 @@
 <?php
+/**
+ * BackPress Scripts enqueue.
+ *
+ * These classes were refactored from the WordPress WP_Scripts and WordPress
+ * script enqueue API.
+ *
+ * @package BackPress
+ * @since r16
+ */
 
+/**
+ * BackPress Scripts enqueue class.
+ *
+ * @package BackPress
+ * @uses WP_Dependencies
+ * @since r16
+ */
 class WP_Scripts extends WP_Dependencies {
 	var $base_url; // Full URL with trailing slash
 	var $default_version;
@@ -31,10 +47,15 @@ class WP_Scripts extends WP_Dependencies {
 		echo "\t$object_name = {\n";
 		$eol = '';
 		foreach ( $this->registered[$handle]->extra['l10n'][1] as $var => $val ) {
+			if ( 'l10n_print_after' == $var ) {
+				$after = $val;
+				continue;
+			}
 			echo "$eol\t\t$var: \"" . js_escape( $val ) . '"';
 			$eol = ",\n";
 		}
 		echo "\n\t}\n";
+		echo isset($after) ? "\t$after\n" : '';
 		echo "/* ]]> */\n";
 		echo "</script>\n";
 

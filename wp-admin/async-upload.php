@@ -1,8 +1,10 @@
 <?php
-
-/* This accepts file uploads from swfupload or other asynchronous upload methods.
-
-*/
+/**
+ * Accepts file uploads from swfupload or other asynchronous upload methods.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
 
 if ( defined('ABSPATH') )
 	require_once(ABSPATH . 'wp-load.php');
@@ -22,9 +24,14 @@ header('Content-Type: text/plain; charset=' . get_option('blog_charset'));
 if ( !current_user_can('upload_files') )
 	wp_die(__('You do not have permission to upload files.'));
 
-// just fetch the detail form for that attachment	
-if ( ($id = intval($_REQUEST['attachment_id'])) && $_REQUEST['fetch'] ) {
-	echo get_media_item($id);
+// just fetch the detail form for that attachment
+if ( isset($_REQUEST['attachment_id']) && ($id = intval($_REQUEST['attachment_id'])) && $_REQUEST['fetch'] ) {
+	if ( 2 == $_REQUEST['fetch'] ) {
+		add_filter('attachment_fields_to_edit', 'media_single_attachment_fields_to_edit', 10, 2);
+		echo get_media_item($id, array( 'send' => false, 'delete' => false ));
+	} else {
+		echo get_media_item($id);
+	}
 	exit;
 }
 

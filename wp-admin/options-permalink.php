@@ -1,9 +1,23 @@
 <?php
+/**
+ * Permalink settings administration panel.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/** WordPress Administration Bootstrap */
 require_once('admin.php');
 
 $title = __('Permalink Settings');
 $parent_file = 'options-general.php';
 
+/**
+ * Display JavaScript on the page.
+ *
+ * @package WordPress
+ * @subpackage Permalink_Settings_Panel
+ */
 function add_js() {
 ?>
 <script type="text/javascript">
@@ -109,9 +123,12 @@ else
 <?php endif; ?>
 
 <div class="wrap">
-  <h2><?php _e('Customize Permalink Structure') ?></h2>
+<?php screen_icon(); ?>
+<h2><?php echo wp_specialchars( $title ); ?></h2>
+
 <form name="form" action="options-permalink.php" method="post">
 <?php wp_nonce_field('update-permalink') ?>
+
   <p><?php _e('By default WordPress uses web <abbr title="Universal Resource Locator">URL</abbr>s which have question marks and lots of numbers in them, however WordPress offers you the ability to create a custom URL structure for your permalinks and archives. This can improve the aesthetics, usability, and forward-compatibility of your links. A <a href="http://codex.wordpress.org/Using_Permalinks">number of tags are available</a>, and here are some examples to get you started.'); ?></p>
 
 <?php
@@ -156,14 +173,14 @@ $structures = array(
 			</label>
 		</th>
 		<td>
-			<input name="permalink_structure" id="permalink_structure" type="text" class="code" style="width: 60%;" value="<?php echo attribute_escape($permalink_structure); ?>" size="50" />
+			<input name="permalink_structure" id="permalink_structure" type="text" value="<?php echo attribute_escape($permalink_structure); ?>" class="regular-text code" />
 		</td>
 	</tr>
 </table>
 
 <h3><?php _e('Optional'); ?></h3>
 <?php if ($is_apache) : ?>
-	<p><?php _e('If you like, you may enter custom structures for your category and tag <abbr title="Universal Resource Locator">URL</abbr>s here. For example, using <code>topics</code> as your category base would make your category links like <code>http://example.org/topics/uncategorized/</code>. If you leave these blank the defaults will be used.') ?></p>
+	<p><?php _e('If you like, you may enter custom structures for your category and tag <abbr title="Universal Resource Locator">URL</abbr>s here. For example, using <kbd>topics</kbd> as your category base would make your category links like <code>http://example.org/topics/uncategorized/</code>. If you leave these blank the defaults will be used.') ?></p>
 <?php else : ?>
 	<p><?php _e('If you like, you may enter custom structures for your category and tag <abbr title="Universal Resource Locator">URL</abbr>s here. For example, using <code>topics</code> as your category base would make your category links like <code>http://example.org/index.php/topics/uncategorized/</code>. If you leave these blank the defaults will be used.') ?></p>
 <?php endif; ?>
@@ -171,20 +188,26 @@ $structures = array(
 <table class="form-table">
 	<tr>
 		<th><label for="category_base"><?php _e('Category base'); ?></label></th>
-		<td><input name="category_base" id="category_base" type="text" class="code"  value="<?php echo attribute_escape($category_base); ?>" size="30" /></td>
+		<td><input name="category_base" id="category_base" type="text" value="<?php echo attribute_escape($category_base); ?>" class="regular-text code" /></td>
 	</tr>
 	<tr>
 		<th><label for="tag_base"><?php _e('Tag base'); ?></label></th>
-		<td><input name="tag_base" id="tag_base" type="text" class="code"  value="<?php echo attribute_escape($tag_base); ?>" size="30" /></td>
+		<td><input name="tag_base" id="tag_base" type="text" value="<?php echo attribute_escape($tag_base); ?>" class="regular-text code" /></td>
 	</tr>
+	<?php do_settings_fields('permalink', 'optional'); ?>
 </table>
-<p class="submit"><input type="submit" name="submit" class="button" value="<?php _e('Save Changes') ?>" /></p>
+
+<?php do_settings_sections('permalink'); ?>
+
+<p class="submit">
+	<input type="submit" name="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
+</p>
   </form>
 <?php if ( $permalink_structure && !$usingpi && !$writable ) : ?>
   <p><?php _e('If your <code>.htaccess</code> file were <a href="http://codex.wordpress.org/Changing_File_Permissions">writable</a>, we could do this automatically, but it isn&#8217;t so these are the mod_rewrite rules you should have in your <code>.htaccess</code> file. Click in the field and press <kbd>CTRL + a</kbd> to select all.') ?></p>
 <form action="options-permalink.php" method="post">
 <?php wp_nonce_field('update-permalink') ?>
-	<p><textarea rows="5" style="width: 98%;" name="rules" id="rules"><?php echo wp_specialchars($wp_rewrite->mod_rewrite_rules()); ?></textarea></p>
+	<p><textarea rows="6" class="large-text readonly" name="rules" id="rules" readonly="readonly"><?php echo wp_specialchars($wp_rewrite->mod_rewrite_rules()); ?></textarea></p>
 </form>
 <?php endif; ?>
 

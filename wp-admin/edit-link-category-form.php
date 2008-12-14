@@ -1,23 +1,60 @@
 <?php
+/**
+ * Edit link category form for inclusion in administration panels.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/**
+ * @var object
+ */
+if ( ! isset( $category ) )
+	$category = (object) array();
+
 if ( ! empty($cat_ID) ) {
-	$heading = __('Edit Category');
-	$submit_text = __('Edit Category');
+	/**
+	 * @var string
+	 */
+	$heading = '<h2>' . __('Edit Link Category') . '</h2>';
+	$submit_text = __('Update Category');
 	$form = '<form name="editcat" id="editcat" method="post" action="link-category.php" class="validate">';
 	$action = 'editedcat';
 	$nonce_action = 'update-link-category_' . $cat_ID;
 	do_action('edit_link_category_form_pre', $category);
 } else {
-	$heading = __('Add Category');
+	$heading = '<h2>' . __('Add Link Category') . '</h2>';
 	$submit_text = __('Add Category');
 	$form = '<form name="addcat" id="addcat" class="add:the-list: validate" method="post" action="link-category.php">';
 	$action = 'addcat';
 	$nonce_action = 'add-link-category';
 	do_action('add_link_category_form_pre', $category);
 }
+
+/**
+ * @ignore
+ * @since 2.7
+ * @internal Used to prevent errors in page when no category is being edited.
+ *
+ * @param object $category
+ */
+function _fill_empty_link_category(&$category) {
+	if ( ! isset( $category->name ) )
+		$category->name = '';
+
+	if ( ! isset( $category->slug ) )
+		$category->slug = '';
+
+	if ( ! isset( $category->description ) )
+		$category->description = '';
+}
+
+_fill_empty_link_category($category);
 ?>
 
 <div class="wrap">
-<h2><?php echo $heading ?></h2>
+<?php screen_icon(); ?>
+<?php echo $heading ?>
 <div id="ajax-response"></div>
 <?php echo $form ?>
 <input type="hidden" name="action" value="<?php echo $action ?>" />
@@ -30,7 +67,7 @@ if ( ! empty($cat_ID) ) {
 		</tr>
 		<tr class="form-field">
 			<th scope="row" valign="top"><label for="slug"><?php _e('Category slug') ?></label></th>
-			<td><input name="slug" id="slug" type="text" value="<?php echo attribute_escape(apply_filters('editable_slug', $category->slug)); ?>" size="40" />
+			<td><input name="slug" id="slug" type="text" value="<?php echo attribute_escape(apply_filters('editable_slug', $category->slug)); ?>" size="40" /><br />
             <?php _e('The &#8220;slug&#8221; is the URL-friendly version of the name. It is usually all lowercase and contains only letters, numbers, and hyphens.'); ?></td>
 		</tr>
 		<tr class="form-field">
@@ -38,7 +75,7 @@ if ( ! empty($cat_ID) ) {
 			<td><textarea name="description" id="description" rows="5" cols="50" style="width: 97%;"><?php echo $category->description; ?></textarea></td>
 		</tr>
 	</table>
-<p class="submit"><input type="submit" class="button" name="submit" value="<?php echo $submit_text ?>" /></p>
+<p class="submit"><input type="submit" class="button-primary" name="submit" value="<?php echo $submit_text ?>" /></p>
 <?php do_action('edit_link_category_form', $category); ?>
 </form>
 </div>

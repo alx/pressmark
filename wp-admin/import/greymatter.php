@@ -1,11 +1,26 @@
 <?php
+/**
+ * GreyMatter Importer
+ *
+ * @package WordPress
+ * @subpackage Importer
+ */
 
+/**
+ * GreyMatter Importer class
+ *
+ * Basic GreyMatter to WordPress importer, will import posts, comments, and
+ * posts karma.
+ *
+ * @since unknown
+ */
 class GM_Import {
 
 	var $gmnames = array ();
 
 	function header() {
 		echo '<div class="wrap">';
+		screen_icon();
 		echo '<h2>'.__('Import GreyMatter').'</h2>';
 	}
 
@@ -31,7 +46,7 @@ class GM_Import {
 </ul>
 <p>&nbsp;</p>
 
-<form name="stepOne" method="get">
+<form name="stepOne" method="get" action="">
 <input type="hidden" name="import" value="greymatter" />
 <input type="hidden" name="step" value="1" />
 <?php wp_nonce_field('import-greymatter'); ?>
@@ -51,8 +66,7 @@ class GM_Import {
 	<?php _e("This importer will search for files 00000001.cgi to 000-whatever.cgi,<br />so you need to enter the number of the last GM post here.<br />(if you don't know that number, just log into your FTP and look it out<br />in the entries' folder)") ?></td>
 </tr>
 </table>
-</p>
-<p><input type="submit" name="submit" value="<?php _e('Start Importing') ?>" class="button" /></p>
+<p class="submit"><input type="submit" name="submit" class="button" value="<?php _e('Start Importing') ?>" /></p>
 </form>
 <?php
 		$this->footer();

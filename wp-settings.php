@@ -17,7 +17,7 @@ if ( function_exists('memory_get_usage') && ( (int) @ini_get('memory_limit') < a
 
 
 /**
- * wp_unregister_GLOBALS() - Turn register globals off
+ * Turn register globals off.
  *
  * @access private
  * @since 2.1.0
@@ -107,16 +107,47 @@ if ( version_compare( '4.3', phpversion(), '>' ) ) {
 if ( !defined('WP_CONTENT_DIR') )
 	define( 'WP_CONTENT_DIR', ABSPATH . 'wp-content' ); // no trailing slash, full paths only - WP_CONTENT_URL is defined further down
 
+if ( file_exists(ABSPATH . '.maintenance') && !defined('WP_INSTALLING') ) {
+	include(ABSPATH . '.maintenance');
+	// If the $upgrading timestamp is older than 10 minutes, don't die.
+	if ( ( time() - $upgrading ) < 600 ) {
+		if ( file_exists( WP_CONTENT_DIR . '/maintenance.php' ) ) {
+			require_once( WP_CONTENT_DIR . '/maintenance.php' );
+			die();
+		}
+
+		$protocol = $_SERVER["SERVER_PROTOCOL"];
+		if ( 'HTTP/1.1' != $protocol && 'HTTP/1.0' != $protocol )
+			$protocol = 'HTTP/1.0';
+		header( "$protocol 503 Service Unavailable", true, 503 );
+		header( 'Content-Type: text/html; charset=utf-8' );
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Maintenance</title>
+
+</head>
+<body>
+	<h1>Briefly unavailable for scheduled maintenance. Check back in a minute.</h1>
+</body>
+</html>
+<?php
+		die();
+	}
+}
+
 if ( !extension_loaded('mysql') && !file_exists(WP_CONTENT_DIR . '/db.php') )
 	die( /*WP_I18N_OLD_MYSQL*/'Your PHP installation appears to be missing the MySQL extension which is required by WordPress.'/*/WP_I18N_OLD_MYSQL*/ );
 
 /**
- * timer_start() - PHP 4 standard microtime start capture
+ * PHP 4 standard microtime start capture.
  *
  * @access private
  * @since 0.71
- * @global int $timestart Seconds and Microseconds added together from when function is called
- * @return bool Always returns true
+ * @global int $timestart Seconds and Microseconds added together from when function is called.
+ * @return bool Always returns true.
  */
 function timer_start() {
 	global $timestart;
@@ -127,7 +158,7 @@ function timer_start() {
 }
 
 /**
- * timer_stop() - Return and/or display the time from the page start to when function is called.
+ * Return and/or display the time from the page start to when function is called.
  *
  * You can get the results and print them by doing:
  * <code>
@@ -276,6 +307,7 @@ require (ABSPATH . WPINC . '/update.php');
 require (ABSPATH . WPINC . '/canonical.php');
 require (ABSPATH . WPINC . '/shortcodes.php');
 require (ABSPATH . WPINC . '/media.php');
+require (ABSPATH . WPINC . '/http.php');
 
 if ( !defined('WP_CONTENT_URL') )
 	define( 'WP_CONTENT_URL', get_option('siteurl') . '/wp-content'); // full url - WP_CONTENT_DIR is defined further up
@@ -283,28 +315,36 @@ if ( !defined('WP_CONTENT_URL') )
 /**
  * Allows for the plugins directory to be moved from the default location.
  *
- * @since 2.6
+ * @since 2.6.0
  */
 if ( !defined('WP_PLUGIN_DIR') )
 	define( 'WP_PLUGIN_DIR', WP_CONTENT_DIR . '/plugins' ); // full path, no trailing slash
+
+/**
+ * Allows for the plugins directory to be moved from the default location.
+ *
+ * @since 2.6.0
+ */
 if ( !defined('WP_PLUGIN_URL') )
 	define( 'WP_PLUGIN_URL', WP_CONTENT_URL . '/plugins' ); // full url, no trailing slash
+
+/**
+ * Allows for the plugins directory to be moved from the default location.
+ *
+ * @since 2.1.0
+ */
 if ( !defined('PLUGINDIR') )
 	define( 'PLUGINDIR', 'wp-content/plugins' ); // Relative to ABSPATH.  For back compat.
 
-if ( ! defined('WP_INSTALLING') ) {
-	// Used to guarantee unique hash cookies
-	$cookiehash = md5(get_option('siteurl'));
-	/**
-	 * Used to guarantee unique hash cookies
-	 * @since 1.5
-	 */
-	define('COOKIEHASH', $cookiehash);
-}
+/**
+ * Used to guarantee unique hash cookies
+ * @since 1.5
+ */
+define('COOKIEHASH', md5(get_option('siteurl')));
 
 /**
  * Should be exactly the same as the default value of SECRET_KEY in wp-config-sample.php
- * @since 2.5
+ * @since 2.5.0
  */
 $wp_default_secret_key = 'put your unique phrase here';
 
@@ -324,21 +364,21 @@ if ( !defined('PASS_COOKIE') )
 
 /**
  * It is possible to define this in wp-config.php
- * @since 2.5
+ * @since 2.5.0
  */
 if ( !defined('AUTH_COOKIE') )
 	define('AUTH_COOKIE', 'wordpress_' . COOKIEHASH);
 
 /**
  * It is possible to define this in wp-config.php
- * @since 2.6
+ * @since 2.6.0
  */
 if ( !defined('SECURE_AUTH_COOKIE') )
 	define('SECURE_AUTH_COOKIE', 'wordpress_sec_' . COOKIEHASH);
 
 /**
  * It is possible to define this in wp-config.php
- * @since 2.6
+ * @since 2.6.0
  */
 if ( !defined('LOGGED_IN_COOKIE') )
 	define('LOGGED_IN_COOKIE', 'wordpress_logged_in_' . COOKIEHASH);
@@ -366,14 +406,14 @@ if ( !defined('SITECOOKIEPATH') )
 
 /**
  * It is possible to define this in wp-config.php
- * @since 2.6
+ * @since 2.6.0
  */
 if ( !defined('ADMIN_COOKIE_PATH') )
 	define( 'ADMIN_COOKIE_PATH', SITECOOKIEPATH . 'wp-admin' );
 
 /**
  * It is possible to define this in wp-config.php
- * @since 2.6
+ * @since 2.6.0
  */
 if ( !defined('PLUGINS_COOKIE_PATH') )
 	define( 'PLUGINS_COOKIE_PATH', preg_replace('|https?://[^/]+|i', '', WP_PLUGIN_URL)  );
@@ -387,7 +427,7 @@ if ( !defined('COOKIE_DOMAIN') )
 
 /**
  * It is possible to define this in wp-config.php
- * @since 2.6
+ * @since 2.6.0
  */
 if ( !defined('FORCE_SSL_ADMIN') )
 	define('FORCE_SSL_ADMIN', false);
@@ -395,7 +435,7 @@ force_ssl_admin(FORCE_SSL_ADMIN);
 
 /**
  * It is possible to define this in wp-config.php
- * @since 2.6
+ * @since 2.6.0
  */
 if ( !defined('FORCE_SSL_LOGIN') )
 	define('FORCE_SSL_LOGIN', false);
@@ -407,7 +447,7 @@ force_ssl_login(FORCE_SSL_LOGIN);
  */
 if ( !defined( 'AUTOSAVE_INTERVAL' ) )
 	define( 'AUTOSAVE_INTERVAL', 60 );
-	
+
 
 require (ABSPATH . WPINC . '/vars.php');
 
@@ -417,7 +457,7 @@ if (get_option('hack_file')) {
 		require(ABSPATH . 'my-hacks.php');
 }
 
-if ( get_option('active_plugins') ) {
+if ( get_option('active_plugins') && !defined('WP_INSTALLING') ) {
 	$current_plugins = get_option('active_plugins');
 	if ( is_array($current_plugins) ) {
 		foreach ($current_plugins as $plugin) {
@@ -497,13 +537,13 @@ do_action('setup_theme');
 
 /**
  * Web Path to the current active template directory
- * @since 1.5
+ * @since 1.5.0
  */
 define('TEMPLATEPATH', get_template_directory());
 
 /**
  * Web Path to the current active template stylesheet directory
- * @since 2.1
+ * @since 2.1.0
  */
 define('STYLESHEETPATH', get_stylesheet_directory());
 
@@ -536,10 +576,10 @@ if ( file_exists(TEMPLATEPATH . '/functions.php') )
 	include(TEMPLATEPATH . '/functions.php');
 
 /**
- * shutdown_action_hook() - Runs just before PHP shuts down execution.
+ * Runs just before PHP shuts down execution.
  *
  * @access private
- * @since 1.2
+ * @since 1.2.0
  */
 function shutdown_action_hook() {
 	do_action('shutdown');

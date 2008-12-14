@@ -1,12 +1,29 @@
 <?php
+/**
+ * Edit page administration panel.
+ *
+ * Manage edit page: post, edit, delete, etc.
+ *
+ * @package WordPress
+ * @subpackage Administration
+ */
+
+/** WordPress Administration Bootstrap */
 require_once('admin.php');
 
-$parent_file = 'edit.php';
+$parent_file = 'edit-pages.php';
 $submenu_file = 'edit-pages.php';
 
 wp_reset_vars(array('action'));
 
+/**
+ * Redirect to previous page.
+ *
+ * @param int $page_ID Page ID.
+ */
 function redirect_page($page_ID) {
+	global $action;
+
 	$referredby = '';
 	if ( !empty($_POST['referredby']) ) {
 		$referredby = preg_replace('|https?://[^/]+|i', '', $_POST['referredby']);
@@ -18,16 +35,27 @@ function redirect_page($page_ID) {
 		$location = $_POST['referredby'];
 	} elseif ( 'post' == $_POST['originalaction'] && !empty($_POST['mode']) && 'sidebar' == $_POST['mode'] ) {
 		$location = 'sidebar.php?a=b';
-	} elseif ( isset($_POST['save']) && ( empty($referredby) || $referredby == $referer || 'redo' != $referredby ) ) {
-		if ( $_POST['_wp_original_http_referer'] && strpos( $_POST['_wp_original_http_referer'], '/wp-admin/page.php') === false && strpos( $_POST['_wp_original_http_referer'], '/wp-admin/page-new.php') === false )
-			$location = add_query_arg( '_wp_original_http_referer', urlencode( stripslashes( $_POST['_wp_original_http_referer'] ) ), "page.php?action=edit&post=$page_ID&message=1" );
-		else
-			$location = "page.php?action=edit&post=$page_ID&message=4";
-	} elseif ($_POST['addmeta']) {
+	} elseif ( ( isset($_POST['save']) || isset($_POST['publish']) ) && ( empty($referredby) || $referredby == $referer || 'redo' != $referredby ) ) {
+		if ( isset($_POST['_wp_original_http_referer']) && strpos( $_POST['_wp_original_http_referer'], '/wp-admin/page.php') === false && strpos( $_POST['_wp_original_http_referer'], '/wp-admin/page-new.php') === false )
+			$location = add_query_arg( array(
+				'_wp_original_http_referer' => urlencode( stripslashes( $_POST['_wp_original_http_referer'] ) ),
+				'message' => 1
+			), get_edit_post_link( $page_ID, 'url' ) );
+		else {
+			if ( isset( $_POST['publish'] ) ) {
+				if ( 'pending' == get_post_status( $page_ID ) )
+					$location = add_query_arg( 'message', 6, get_edit_post_link( $page_ID, 'url' ) );
+				else
+					$location = add_query_arg( 'message', 5, get_edit_post_link( $page_ID, 'url' ) );
+			} else {
+				$location = add_query_arg( 'message', 4, get_edit_post_link( $page_ID, 'url' ) );
+			}
+		}
+	} elseif ( isset($_POST['addmeta']) ) {
 		$location = add_query_arg( 'message', 2, wp_get_referer() );
 		$location = explode('#', $location);
 		$location = $location[0] . '#postcustom';
-	} elseif ($_POST['deletemeta']) {
+	} elseif ( isset($_POST['deletemeta']) ) {
 		$location = add_query_arg( 'message', 3, wp_get_referer() );
 		$location = explode('#', $location);
 		$location = $location[0] . '#postcustom';
@@ -43,15 +71,16 @@ function redirect_page($page_ID) {
 	} elseif ($action == 'editattachment') {
 		$location = 'attachments.php';
 	} else {
-		$location = "page.php?action=edit&post=$page_ID&message=4";
+		$location = add_query_arg( 'message', 4, get_edit_post_link( $page_ID, 'url' ) );
 	}
 
 	wp_redirect($location);
 }
 
-if (isset($_POST['deletepost'])) {
-$action = "delete";
-}
+if (isset($_POST['deletepost']))
+	$action = "delete";
+elseif ( isset($_POST['wp-preview']) && 'dopreview' == $_POST['wp-preview'] )
+	$action = 'preview';
 
 switch($action) {
 case 'post':
@@ -64,7 +93,7 @@ case 'post':
 	break;
 
 case 'edit':
-	$title = __('Edit');
+	$title = __('Edit Page');
 	$editing = true;
 	$page_ID = $post_ID = $p = (int) $_GET['post'];
 	$post = get_post_to_edit($page_ID);
@@ -95,8 +124,6 @@ case 'edit':
 			wp_enqueue_script('autosave');
 		}
 	}
-
-	require_once('admin-header.php');
 
 	if ( !current_user_can('edit_page', $page_ID) )
 		die ( __('You are not allowed to edit this page.') );
@@ -147,10 +174,19 @@ case 'delete':
 	}
 
 	$sendback = wp_get_referer();
-	if (strpos($sendback, 'page.php') !== false) $sendback = admin_url('page.php');
+	if (strpos($sendback, 'page.php') !== false) $sendback = admin_url('edit-pages.php?deleted=1');
 	elseif (strpos($sendback, 'attachments.php') !== false) $sendback = admin_url('attachments.php');
-	$sendback = preg_replace('|[^a-z0-9-~+_.?#=&;,/:]|i', '', $sendback);
+	else $sendback = add_query_arg('deleted', 1, $sendback);
 	wp_redirect($sendback);
+	exit();
+	break;
+
+case 'preview':
+	check_admin_referer( 'autosave', 'autosavenonce' );
+
+	$url = post_preview();
+
+	wp_redirect($url);
 	exit();
 	break;
 

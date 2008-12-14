@@ -14,7 +14,7 @@
 			var moreHTML = '<img src="' + url + '/img/trans.gif" class="mceWPmore mceItemNoResize" title="'+ed.getLang('wordpress.wp_more_alt')+'" />';
 			var nextpageHTML = '<img src="' + url + '/img/trans.gif" class="mceWPnextpage mceItemNoResize" title="'+ed.getLang('wordpress.wp_page_alt')+'" />';
 
-			if ( tinymce.util.Cookie.get('kitchenSink') == '1' )
+			if ( getUserSetting('hidetb', '0') == '1' )
 				ed.settings.wordpress_adv_hidden = 0;
 
 			// Hides the specified toolbar and resizes the iframe
@@ -44,23 +44,20 @@
 				});
 
 			ed.addCommand('WP_Adv', function() {
-				var id = ed.controlManager.get(tbId).id, cm = ed.controlManager, cook = tinymce.util.Cookie, date;
-
-				date = new Date();
-				date.setTime(date.getTime()+(10*365*24*60*60*1000));
+				var id = ed.controlManager.get(tbId).id, cm = ed.controlManager;
 
 				if (DOM.isHidden(id)) {
 					cm.setActive('wp_adv', 1);
 					DOM.show(id);
 					t._resizeIframe(ed, tbId, -28);
 					ed.settings.wordpress_adv_hidden = 0;
-					cook.set('kitchenSink', '1', date);
+					setUserSetting('hidetb', '1');
 				} else {
 					cm.setActive('wp_adv', 0);
 					DOM.hide(id);
 					t._resizeIframe(ed, tbId, 28);
 					ed.settings.wordpress_adv_hidden = 1;
-					cook.set('kitchenSink', '0', date);
+					setUserSetting('hidetb', '0');
 				}
 			});
 
@@ -209,6 +206,9 @@
 		// Internal functions
 		do_align : function(n, a) {
 			var P, DL, DIV, cls, c, ed = tinyMCE.activeEditor;
+
+			if ( /^(mceItemFlash|mceItemShockWave|mceItemWindowsMedia|mceItemQuickTime|mceItemRealMedia)$/.test(n.className) )
+				return;
 
 			P = ed.dom.getParent(n, 'p');
 			DL = ed.dom.getParent(n, 'dl');

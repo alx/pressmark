@@ -1,26 +1,26 @@
 <?php
-class WP_Filesystem_FTPext extends WP_Filesystem_Base{
+/**
+ * WordPress FTP Filesystem.
+ *
+ * @package WordPress
+ * @subpackage Filesystem
+ */
+
+/**
+ * WordPress Filesystem Class for implementing FTP.
+ *
+ * @since 2.5
+ * @package WordPress
+ * @subpackage Filesystem
+ * @uses WP_Filesystem_Base Extends class
+ */
+class WP_Filesystem_FTPext extends WP_Filesystem_Base {
 	var $link;
 	var $timeout = 5;
 	var $errors = array();
 	var $options = array();
 
 	var $permission = null;
-
-	var $filetypes = array(
-							'php'=>FTP_ASCII,
-							'css'=>FTP_ASCII,
-							'txt'=>FTP_ASCII,
-							'js'=>FTP_ASCII,
-							'html'=>FTP_ASCII,
-							'htm'=>FTP_ASCII,
-							'xml'=>FTP_ASCII,
-
-							'jpg'=>FTP_BINARY,
-							'png'=>FTP_BINARY,
-							'gif'=>FTP_BINARY,
-							'bmp'=>FTP_BINARY
-							);
 
 	function WP_Filesystem_FTPext($opt='') {
 		$this->method = 'ftpext';
@@ -57,7 +57,11 @@ class WP_Filesystem_FTPext extends WP_Filesystem_Base{
 		else
 			$this->options['password'] = $opt['password'];
 
-		$this->options['ssl'] = ( !empty($opt['ssl']) );
+		$this->options['ssl'] = false;
+		if ( isset($opt['ssl']) )
+			$this->options['ssl'] = ( !empty($opt['ssl']) );
+		elseif ( isset( $opt['connection_type']) )
+			$this->options['ssl'] = ( 'ftps' == $opt['connection_type'] );
 	}
 
 	function connect() {
@@ -76,28 +80,33 @@ class WP_Filesystem_FTPext extends WP_Filesystem_Base{
 			return false;
 		}
 
+		//Set the Connection to use Passive FTP
+		@ftp_pasv( $this->link, true );
+
 		return true;
 	}
 
 	function setDefaultPermissions($perm) {
 		$this->permission = $perm;
 	}
-	
+
 	function get_contents($file, $type = '', $resumepos = 0 ){
-		if( empty($type) ){
-			$extension = substr(strrchr($file, "."), 1);
-			$type = isset($this->filetypes[ $extension ]) ? $this->filetypes[ $extension ] : FTP_ASCII;
-		}
+		if( empty($type) )
+			$type = FTP_BINARY;
+
 		$temp = tmpfile();
 		if ( ! $temp )
 			return false;
+
 		if( ! @ftp_fget($this->link, $temp, $file, $type, $resumepos) )
 			return false;
+
 		fseek($temp, 0); //Skip back to the start of the file being written to
 		$contents = '';
-		while (!feof($temp)) {
+
+		while ( ! feof($temp) )
 			$contents .= fread($temp, 8192);
-		}
+
 		fclose($temp);
 		return $contents;
 	}
@@ -105,21 +114,23 @@ class WP_Filesystem_FTPext extends WP_Filesystem_Base{
 		return explode("\n", $this->get_contents($file));
 	}
 	function put_contents($file, $contents, $type = '' ) {
-		if( empty($type) ) {
-			$extension = substr(strrchr($file, "."), 1);
-			$type = isset($this->filetypes[ $extension ]) ? $this->filetypes[ $extension ] : FTP_ASCII;
-		}
+		if( empty($type) )
+			$type = $this->is_binary($contents) ? FTP_BINARY : FTP_ASCII;
+
 		$temp = tmpfile();
 		if ( ! $temp )
 			return false;
+
 		fwrite($temp, $contents);
 		fseek($temp, 0); //Skip back to the start of the file being written to
+
 		$ret = @ftp_fput($this->link, $file, $temp, $type);
+
 		fclose($temp);
 		return $ret;
 	}
 	function cwd() {
-		$cwd = ftp_pwd($this->link);
+		$cwd = @ftp_pwd($this->link);
 		if( $cwd )
 			$cwd = trailingslashit($cwd);
 		return $cwd;

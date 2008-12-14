@@ -38,7 +38,7 @@ define('ARRAY_N', 'ARRAY_N', false);
  * WordPress Database Access Abstraction Object
  *
  * It is possible to replace this class with your own
- * by setting the $wpdb global variable in wp-content/wpdb.php
+ * by setting the $wpdb global variable in wp-content/db.php
  * file with your class. You can name it wpdb also, since
  * this file will not be included, if the other file is
  * available.
@@ -332,19 +332,19 @@ class wpdb {
 
 		$this->ready = true;
 
-		if ( $this->supports_collation() ) {
+		if ( $this->has_cap( 'collation' ) ) {
 			$collation_query = '';
 			if ( !empty($this->charset) ) {
 				$collation_query = "SET NAMES '{$this->charset}'";
 				if (!empty($this->collate) )
 					$collation_query .= " COLLATE '{$this->collate}'";
 			}
-			
+
 			if ( !empty($collation_query) )
 				$this->query($collation_query);
-			
+
 		}
-		
+
 		$this->select($dbname);
 	}
 
@@ -378,7 +378,7 @@ class wpdb {
 		$old_prefix = $this->prefix;
 		$this->prefix = $prefix;
 
-		foreach ( $this->tables as $table )
+		foreach ( (array) $this->tables as $table )
 			$this->$table = $this->prefix . $table;
 
 		if ( defined('CUSTOM_USER_TABLE') )
@@ -410,7 +410,7 @@ class wpdb {
 <ul>
 <li>Are you sure it exists?</li>
 <li>Does the user <code>%2$s</code> have permission to use the <code>%1$s</code> database?</li>
-<li>On some systems the name of your database is prefixed with your username, so it would be like username_wordpress. Could that be the problem?</li>
+<li>On some systems the name of your database is prefixed with your username, so it would be like <code>username_%1$s</code>. Could that be the problem?</li>
 </ul>
 <p>If you don\'t know how to setup a database you should <strong>contact your host</strong>. If all else fails you may find help at the <a href="http://wordpress.org/support/">WordPress Support Forums</a>.</p>'/*/WP_I18N_DB_SELECT_DB*/, $db, DB_USER));
 			return;
@@ -497,7 +497,7 @@ class wpdb {
 			$log_error = false;
 
 		$log_file = @ini_get('error_log');
-		if ( !empty($log_file) && ('syslog' != $log_file) && !is_writable($log_file) )
+		if ( !empty($log_file) && ('syslog' != $log_file) && !@is_writable($log_file) )
 			$log_error = false;
 
 		if ( $log_error )
@@ -617,7 +617,7 @@ class wpdb {
 			return false;
 		}
 
-		if ( preg_match("/^\\s*(insert|delete|update|replace) /i",$query) ) {
+		if ( preg_match("/^\\s*(insert|delete|update|replace|alter) /i",$query) ) {
 			$this->rows_affected = mysql_affected_rows($this->dbh);
 			// Take note of the insert_id
 			if ( preg_match("/^\\s*(insert|replace) /i",$query) ) {
@@ -677,7 +677,7 @@ class wpdb {
 	function update($table, $data, $where){
 		$data = add_magic_quotes($data);
 		$bits = $wheres = array();
-		foreach ( array_keys($data) as $k )
+		foreach ( (array) array_keys($data) as $k )
 			$bits[] = "`$k` = '$data[$k]'";
 
 		if ( is_array( $where ) )
@@ -685,7 +685,7 @@ class wpdb {
 				$wheres[] = "$c = '" . $this->escape( $v ) . "'";
 		else
 			return false;
-			
+
 		return $this->query( "UPDATE $table SET " . implode( ', ', $bits ) . ' WHERE ' . implode( ' AND ', $wheres ) );
 	}
 
@@ -805,7 +805,7 @@ class wpdb {
 			// Return an integer-keyed array of...
 			if ( $this->last_result ) {
 				$i = 0;
-				foreach( $this->last_result as $row ) {
+				foreach( (array) $this->last_result as $row ) {
 					if ( $output == ARRAY_N ) {
 						// ...integer-keyed row arrays
 						$new_array[$i] = array_values( get_object_vars( $row ) );
@@ -833,7 +833,7 @@ class wpdb {
 		if ( $this->col_info ) {
 			if ( $col_offset == -1 ) {
 				$i = 0;
-				foreach($this->col_info as $col ) {
+				foreach( (array) $this->col_info as $col ) {
 					$new_array[$i] = $col->{$info_type};
 					$i++;
 				}
@@ -904,8 +904,7 @@ class wpdb {
 	{
 		global $wp_version;
 		// Make sure the server has MySQL 4.0
-		$mysql_version = preg_replace('|[^0-9\.]|', '', @mysql_get_server_info($this->dbh));
-		if ( version_compare($mysql_version, '4.0.0', '<') )
+		if ( version_compare($this->db_version(), '4.0.0', '<') )
 			return new WP_Error('database_version',sprintf(__('<strong>ERROR</strong>: WordPress %s requires MySQL 4.0.0 or higher'), $wp_version));
 	}
 
@@ -920,7 +919,27 @@ class wpdb {
 	 */
 	function supports_collation()
 	{
-		return ( version_compare(mysql_get_server_info($this->dbh), '4.1.0', '>=') );
+		return $this->has_cap( 'collation' );
+	}
+
+	/**
+	 * Generic function to determine if a database supports a particular feature
+	 * @param string $db_cap the feature
+	 * @param false|string|resource $dbh_or_table the databaese (the current database, the database housing the specified table, or the database of the mysql resource)
+	 * @return bool
+	 */
+	function has_cap( $db_cap ) {
+		$version = $this->db_version();
+
+		switch ( strtolower( $db_cap ) ) :
+		case 'collation' :    // @since 2.5.0
+		case 'group_concat' : // @since 2.7
+		case 'subqueries' :   // @since 2.7
+			return version_compare($version, '4.1', '>=');
+			break;
+		endswitch;
+
+		return false;
 	}
 
 	/**
@@ -939,29 +958,34 @@ class wpdb {
 			return '';
 
 		$bt = debug_backtrace();
-		$caller = '';
+		$caller = array();
 
-		foreach ( $bt as $trace ) {
-			if ( @$trace['class'] == __CLASS__ )
+		$bt = array_reverse( $bt );
+		foreach ( (array) $bt as $call ) {
+			if ( @$call['class'] == __CLASS__ )
 				continue;
-			elseif ( strtolower(@$trace['function']) == 'call_user_func_array' )
-				continue;
-			elseif ( strtolower(@$trace['function']) == 'apply_filters' )
-				continue;
-			elseif ( strtolower(@$trace['function']) == 'do_action' )
-				continue;
-
-			$caller = $trace['function'];
-			break;
+			$function = $call['function'];
+			if ( isset( $call['class'] ) )
+				$function = $call['class'] . "->$function";
+			$caller[] = $function;
 		}
+		$caller = join( ', ', $caller );
+
 		return $caller;
 	}
 
+	/**
+	 * The database version number
+	 * @return false|string false on failure, version number on success
+	 */
+	function db_version() {
+		return preg_replace('/[^0-9.].*/', '', mysql_get_server_info( $this->dbh ));
+	}
 }
 
 if ( ! isset($wpdb) ) {
 	/**
-	 * WordPress Database Object, if it isn't set already in wp-content/wpdb.php
+	 * WordPress Database Object, if it isn't set already in wp-content/db.php
 	 * @global object $wpdb Creates a new wpdb object based on wp-config.php Constants for the database
 	 * @since 0.71
 	 */

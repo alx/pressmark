@@ -1,14 +1,51 @@
 <?php
+/**
+ * Blogger Importer
+ *
+ * @package WordPress
+ * @subpackage Importer
+ */
 
-define( 'MAX_RESULTS',        50 ); // How many records per GData query
-define( 'MAX_EXECUTION_TIME', 20 ); // How many seconds to let the script run
-define( 'STATUS_INTERVAL',     3 ); // How many seconds between status bar updates
+/**
+ * How many records per GData query
+ *
+ * @package WordPress
+ * @subpackage Blogger_Import
+ * @var int
+ * @since unknown
+ */
+define( 'MAX_RESULTS',        50 );
 
+/**
+ * How many seconds to let the script run
+ *
+ * @package WordPress
+ * @subpackage Blogger_Import
+ * @var int
+ * @since unknown
+ */
+define( 'MAX_EXECUTION_TIME', 20 );
+
+/**
+ * How many seconds between status bar updates
+ *
+ * @package WordPress
+ * @subpackage Blogger_Import
+ * @var int
+ * @since unknown
+ */
+define( 'STATUS_INTERVAL',     3 );
+
+/**
+ * Blogger Importer class
+ *
+ * @since unknown
+ */
 class Blogger_Import {
 
 	// Shows the welcome screen and the magic auth link.
 	function greet() {
-		$next_url = get_option('siteurl') . '/wp-admin/index.php?import=blogger&noheader=true';
+		$next_url = get_option('siteurl') . '/wp-admin/index.php?import=blogger&amp;noheader=true';
 		$auth_url = "https://www.google.com/accounts/AuthSubRequest";
 		$title = __('Import Blogger');
 		$welcome = __('Howdy! This importer allows you to import posts and comments from your Blogger account into your WordPress blog.');
@@ -17,7 +54,10 @@ class Blogger_Import {
 		$auth = __('Authorize');
 
 		echo "
-		<div class='wrap'><h2>$title</h2><p>$welcome</p><p>$prereqs</p><p>$stepone</p>
+		<div class='wrap'>
+		".screen_icon()."
+		<h2>$title</h2>
+		<p>$welcome</p><p>$prereqs</p><p>$stepone</p>
 			<form action='$auth_url' method='get'>
 				<p class='submit' style='text-align:left;'>
 					<input type='submit' class='button' value='$auth' />
@@ -31,7 +71,9 @@ class Blogger_Import {
 	}
 
 	function uh_oh($title, $message, $info) {
-		echo "<div class='wrap'><h2>$title</h2><p>$message</p><pre>$info</pre></div>";
+		echo "<div class='wrap'>";
+		screen_icon();
+		echo "<h2>$title</h2><p>$message</p><pre>$info</pre></div>";
 	}
 
 	function auth() {
@@ -181,9 +223,10 @@ class Blogger_Import {
 			$rows .= "<tr id='blog$i'><td class='blogtitle'>$blogtitle</td><td class='bloghost'>{$blog['host']}</td><td class='bar'>$pstat</td><td class='bar'>$cstat</td><td class='submit'><input type='submit' class='button' id='submit$i' value='$value' /><input type='hidden' name='blog' value='$i' /></td></tr>\n";
 		}
 
-		echo "<div class='wrap'><h2>$title</h2><noscript>$noscript</noscript><table cellpadding='5px'><thead><td>$name</td><td>$url</td><td>$posts</td><td>$comments</td><td>$action</td></thead>\n$rows</table></form></div>";
+		echo "<div class='wrap'><h2>$title</h2><noscript>$noscript</noscript><table cellpadding='5px'><thead><tr><td>$name</td><td>$url</td><td>$posts</td><td>$comments</td><td>$action</td></tr></thead>\n$rows</table></div>";
 		echo "
 		<script type='text/javascript'>
+		/* <![CDATA[ */
 			var strings = {cont:'$continue',stop:'$stop',stopping:'$stopping',authors:'$authors',nothing:'$nothing'};
 			var blogs = {};
 			function blog(i, title, mode, status){
@@ -296,6 +339,7 @@ class Blogger_Import {
 			};
 			$init
 			jQuery.each(blogs, function(i, me){me.init();});
+		/* ]]> */
 		</script>\n";
 	}
 
@@ -485,7 +529,7 @@ class Blogger_Import {
 	}
 
 	function import_post( $entry ) {
-		global $wpdb, $importing_blog;
+		global $importing_blog;
 
 		// The old permalink is all Blogger gives us to link comments to their posts.
 		if ( isset( $entry->draft ) )
@@ -618,11 +662,11 @@ class Blogger_Import {
 		foreach ( $blog['authors'] as $i => $author )
 			$rows .= "<tr><td><label for='authors[$i]'>{$author[0]}</label></td><td><select name='authors[$i]' id='authors[$i]'>" . $this->get_user_options($author[1]) . "</select></td></tr>";
 
-		return "<div class='wrap'><h2>$heading</h2><h3>$blogtitle</h3><p>$directions</p><form action='index.php?import=blogger&noheader=true&saveauthors=1' method='post'><input type='hidden' name='blog' value='$importing_blog' /><table cellpadding='5'><thead><td>$mapthis</td><td>$tothis</td></thead>$rows<tr><td></td><td class='submit'><input type='submit' class='button authorsubmit' value='$submit' /></td></tr></table></form></div>";
+		return "<div class='wrap'><h2>$heading</h2><h3>$blogtitle</h3><p>$directions</p><form action='index.php?import=blogger&amp;noheader=true&saveauthors=1' method='post'><input type='hidden' name='blog' value='$importing_blog' /><table cellpadding='5'><thead><td>$mapthis</td><td>$tothis</td></thead>$rows<tr><td></td><td class='submit'><input type='submit' class='button authorsubmit' value='$submit' /></td></tr></table></form></div>";
 	}
 
 	function get_user_options($current) {
-		global $wpdb, $importer_users;
+		global $importer_users;
 		if ( ! isset( $importer_users ) )
 			$importer_users = (array) get_users_of_blog();
 
@@ -777,7 +821,7 @@ class Blogger_Import {
 				echo $result->get_error_message();
 		} elseif ( isset($_GET['token']) )
 			$this->auth();
-		elseif ( $this->token && $this->token_is_valid() )
+		elseif ( isset($this->token) && $this->token_is_valid() )
 			$this->show_blogs();
 		else
 			$this->greet();
@@ -788,7 +832,7 @@ class Blogger_Import {
 			$restart = __('Restart');
 			$message = __('We have saved some information about your Blogger account in your WordPress database. Clearing this information will allow you to start over. Restarting will not affect any posts you have already imported. If you attempt to re-import a blog, duplicate posts and comments will be skipped.');
 			$submit = __('Clear account information');
-			echo "<div class='wrap'><h2>$restart</h2><p>$message</p><form method='post' action='?import=blogger&noheader=true'><p class='submit' style='text-align:left;'><input type='submit' class='button' value='$submit' name='restart' /></p></form></div>";
+			echo "<div class='wrap'><h2>$restart</h2><p>$message</p><form method='post' action='?import=blogger&amp;noheader=true'><p class='submit' style='text-align:left;'><input type='submit' class='button' value='$submit' name='restart' /></p></form></div>";
 		}
 	}
 

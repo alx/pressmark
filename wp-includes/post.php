@@ -2,13 +2,9 @@
 /**
  * Post functions and post utility function.
  *
- * Warning: The inline documentation for the functions contained
- * in this file might be inaccurate, so the documentation is not
- * authoritative at the moment.
- *
  * @package WordPress
  * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  */
 
 /**
@@ -22,17 +18,18 @@
  * prevent looking up the meta name and provide a mechanism for sending the
  * attached filename through a filter.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
- * @uses apply_filters() Calls 'get_attached_file' on file path and attachment ID
+ * @since 2.0.0
+ * @uses apply_filters() Calls 'get_attached_file' on file path and attachment ID.
  *
- * @param int $attachment_id Attachment ID
- * @param bool $unfiltered Whether to apply filters or not
+ * @param int $attachment_id Attachment ID.
+ * @param bool $unfiltered Whether to apply filters or not.
  * @return string The file path to the attached file.
  */
 function get_attached_file( $attachment_id, $unfiltered = false ) {
 	$file = get_post_meta( $attachment_id, '_wp_attached_file', true );
+	// If the file is relative, prepend upload dir
+	if ( 0 !== strpos($file, '/') && !preg_match('|^.:\\\|', $file) && ( ($uploads = wp_upload_dir()) && false === $uploads['error'] ) )
+		$file = $uploads['basedir'] . "/$file";
 	if ( $unfiltered )
 		return $file;
 	return apply_filters( 'get_attached_file', $file, $attachment_id );
@@ -44,10 +41,8 @@ function get_attached_file( $attachment_id, $unfiltered = false ) {
  * Used to update the file path of the attachment, which uses post meta name
  * '_wp_attached_file' to store the path of the attachment.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
- * @uses apply_filters() Calls 'update_attached_file' on file path and attachment ID
+ * @since 2.1.0
+ * @uses apply_filters() Calls 'update_attached_file' on file path and attachment ID.
  *
  * @param int $attachment_id Attachment ID
  * @param string $file File path for the attachment
@@ -58,6 +53,14 @@ function update_attached_file( $attachment_id, $file ) {
 		return false;
 
 	$file = apply_filters( 'update_attached_file', $file, $attachment_id );
+
+	// Make the file path relative to the upload dir
+	if ( ($uploads = wp_upload_dir()) && false === $uploads['error'] ) { // Get upload directory
+		if ( 0 === strpos($file, $uploads['basedir']) ) {// Check that the upload base exists in the file path
+				$file = str_replace($uploads['basedir'], '', $file); // Remove upload dir from the file path
+				$file = ltrim($file, '/');
+		}
+	}
 
 	return update_post_meta( $attachment_id, '_wp_attached_file', $file );
 }
@@ -79,10 +82,11 @@ function update_attached_file( $attachment_id, $file ) {
  * example of what is possible.
  *
  * The arguments listed as defaults are for this function and also of the
- * get_posts() function. The arguments are combined with the get_children
- * defaults and are then passed to the get_posts() function, which accepts
- * additional arguments. You can replace the defaults in this function, listed
- * below and the additional arguments listed in the get_posts() function.
+ * {@link get_posts()} function. The arguments are combined with the
+ * get_children defaults and are then passed to the {@link get_posts()}
+ * function, which accepts additional arguments. You can replace the defaults in
+ * this function, listed below and the additional arguments listed in the
+ * {@link get_posts()} function.
  *
  * The 'post_parent' is the most important argument and important attention
  * needs to be paid to the $args parameter. If you pass either an object or an
@@ -103,9 +107,7 @@ function update_attached_file( $attachment_id, $file ) {
  * @see get_posts() Has additional arguments that can be replaced.
  * @internal Claims made in the long description might be inaccurate.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
+ * @since 2.0.0
  *
  * @param mixed $args Optional. User defined arguments for replacing the defaults.
  * @param string $output Optional. Constant for return type, either OBJECT (default), ARRAY_A, ARRAY_N.
@@ -125,15 +127,17 @@ function &get_children($args = '', $output = OBJECT) {
 	}
 
 	$defaults = array(
-		'numberposts' => -1, 'post_type' => '',
-		'post_status' => '', 'post_parent' => 0
+		'numberposts' => -1, 'post_type' => 'any',
+		'post_status' => 'any', 'post_parent' => 0,
 	);
 
 	$r = wp_parse_args( $args, $defaults );
 
 	$children = get_posts( $r );
-	if ( !$children )
-		return false;
+	if ( !$children ) {
+		$kids = false;
+		return $kids;
+	}
 
 	update_post_cache($children);
 
@@ -143,11 +147,11 @@ function &get_children($args = '', $output = OBJECT) {
 	if ( $output == OBJECT ) {
 		return $kids;
 	} elseif ( $output == ARRAY_A ) {
-		foreach ( $kids as $kid )
+		foreach ( (array) $kids as $kid )
 			$weeuns[$kid->ID] = get_object_vars($kids[$kid->ID]);
 		return $weeuns;
 	} elseif ( $output == ARRAY_N ) {
-		foreach ( $kids as $kid )
+		foreach ( (array) $kids as $kid )
 			$babes[$kid->ID] = array_values(get_object_vars($kids[$kid->ID]));
 		return $babes;
 	} else {
@@ -156,16 +160,20 @@ function &get_children($args = '', $output = OBJECT) {
 }
 
 /**
- * get_extended() - Get extended entry info (<!--more-->)
+ * Get extended entry info (<!--more-->).
  *
- * {@internal Missing Long Description}}
+ * There should not be any space after the second dash and before the word
+ * 'more'. There can be text or space(s) after the word 'more', but won't be
+ * referenced.
  *
- * @package WordPress
- * @subpackage Post
+ * The returned array has 'main' and 'extended' keys. Main has the text before
+ * the <code><!--more--></code>. The 'extended' key has the content after the
+ * <code><!--more--></code> comment.
+ *
  * @since 1.0.0
  *
- * @param string $post {@internal Missing Description}}
- * @return array {@internal Missing Description}}
+ * @param string $post Post content.
+ * @return array Post before ('main') and after ('extended').
  */
 function get_extended($post) {
 	//Match the new style more links
@@ -184,20 +192,19 @@ function get_extended($post) {
 }
 
 /**
- * get_post() - Retrieves post data given a post ID or post object.
+ * Retrieves post data given a post ID or post object.
  *
- * {@internal Missing Long Description}}
+ * See {@link sanitize_post()} for optional $filter values. Also, the parameter
+ * $post, must be given as a variable, since it is passed by reference.
  *
- * @package WordPress
- * @subpackage Post
  * @since 1.5.1
  * @uses $wpdb
  * @link http://codex.wordpress.org/Function_Reference/get_post
  *
- * @param int|object &$post post ID or post object
- * @param string $output {@internal Missing Description}}
- * @param string $filter {@internal Missing Description}}
- * @return mixed {@internal Missing Description}}
+ * @param int|object $post Post ID or post object.
+ * @param string $output Optional, default is Object. Either OBJECT, ARRAY_A, or ARRAY_N.
+ * @param string $filter Optional, default is raw.
+ * @return mixed Post data
  */
 function &get_post(&$post, $output = OBJECT, $filter = 'raw') {
 	global $wpdb;
@@ -215,7 +222,7 @@ function &get_post(&$post, $output = OBJECT, $filter = 'raw') {
 	} else {
 		$post = (int) $post;
 		if ( ! $_post = wp_cache_get($post, 'posts') ) {
-			$_post = & $wpdb->get_row($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE ID = %d LIMIT 1", $post));
+			$_post = $wpdb->get_row($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE ID = %d LIMIT 1", $post));
 			if ( ! $_post )
 				return $null;
 			_get_post_ancestors($_post);
@@ -241,9 +248,7 @@ function &get_post(&$post, $output = OBJECT, $filter = 'raw') {
 /**
  * Retrieve ancestors of a post.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.5
+ * @since 2.5.0
  *
  * @param int|object $post Post ID or post object
  * @return array Ancestor IDs or empty array if none are found.
@@ -266,9 +271,7 @@ function get_post_ancestors($post) {
  * The context values are based off of the taxonomy filter functions and
  * supported values are found within those functions.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
+ * @since 2.3.0
  * @uses sanitize_post_field() See for possible $context values.
  *
  * @param string $field Post field name
@@ -298,9 +301,7 @@ function get_post_field( $field, $post, $context = 'display' ) {
  * This function can be used with any post type, but it makes more sense with
  * attachments.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
+ * @since 2.0.0
  *
  * @param int $ID Optional. Post ID.
  * @return bool|string False on failure or returns the mime type
@@ -320,9 +321,7 @@ function get_post_mime_type($ID = '') {
  * If the post ID is of an attachment, then the parent post status will be given
  * instead.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
+ * @since 2.0.0
  *
  * @param int $ID Post ID
  * @return string|bool Post status or false on failure.
@@ -346,9 +345,7 @@ function get_post_status($ID = '') {
  * Posts have a limited set of valid status values, this provides the
  * post_status values and descriptions.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.5
+ * @since 2.5.0
  *
  * @return array List of post statuses.
  */
@@ -369,9 +366,7 @@ function get_post_statuses( ) {
  * Pages have a limited set of valid status values, this provides the
  * post_status values and descriptions.
  *
- * @package WordPress
- * @subpackage Page
- * @since 2.5
+ * @since 2.5.0
  *
  * @return array List of page statuses.
  */
@@ -386,19 +381,15 @@ function get_page_statuses( ) {
 }
 
 /**
- * get_post_type() - Returns post type
+ * Retrieve the post type of the current post or of a given post.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
+ * @since 2.1.0
  *
  * @uses $wpdb
- * @uses $posts {@internal Missing Description}}
+ * @uses $posts The Loop post global
  *
- * @param mixed $post post object or post ID
- * @return mixed post type or false
+ * @param mixed $post Optional. Post object or post ID.
+ * @return bool|string post type or false on failure.
  */
 function get_post_type($post = false) {
 	global $posts;
@@ -415,20 +406,17 @@ function get_post_type($post = false) {
 }
 
 /**
- * set_post_type() - Set post type
+ * Updates the post type for the post ID.
  *
- * {@internal Missing Long Description}}
+ * The page or post cache will be cleaned for the post ID.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.5
+ * @since 2.5.0
  *
  * @uses $wpdb
- * @uses $posts {@internal Missing Description}}
  *
- * @param mixed $post_id post ID
- * @param mixed post type
- * @return bool {@internal Missing Description}}
+ * @param int $post_id Post ID to change post type. Not actually optional.
+ * @param string $post_type Optional, default is post. Supported values are 'post' or 'page' to name a few.
+ * @return int Amount of rows changed. Should be 1 for success and 0 for failure.
  */
 function set_post_type( $post_id = 0, $post_type = 'post' ) {
 	global $wpdb;
@@ -445,18 +433,29 @@ function set_post_type( $post_id = 0, $post_type = 'post' ) {
 }
 
 /**
- * get_posts() - Returns a number of posts
+ * Retrieve list of latest posts or posts matching criteria.
  *
- * {@internal Missing Long Description}}
+ * The defaults are as follows:
+ *     'numberposts' - Default is 5. Total number of posts to retrieve.
+ *     'offset' - Default is 0. See {@link WP_Query::query()} for more.
+ *     'category' - What category to pull the posts from.
+ *     'orderby' - Default is 'post_date'. How to order the posts.
+ *     'order' - Default is 'DESC'. The order to retrieve the posts.
+ *     'include' - See {@link WP_Query::query()} for more.
+ *     'exclude' - See {@link WP_Query::query()} for more.
+ *     'meta_key' - See {@link WP_Query::query()} for more.
+ *     'meta_value' - See {@link WP_Query::query()} for more.
+ *     'post_type' - Default is 'post'. Can be 'page', or 'attachment' to name a few.
+ *     'post_parent' - The parent of the post or post type.
+ *     'post_status' - Default is 'published'. Post status to retrieve.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.2
+ * @since 1.2.0
  * @uses $wpdb
+ * @uses WP_Query::query() See for more default arguments and information.
  * @link http://codex.wordpress.org/Template_Tags/get_posts
  *
- * @param array $args {@internal Missing Description}}
- * @return array {@internal Missing Description}}
+ * @param array $args Optional. Override defaults.
+ * @return array List of posts.
  */
 function get_posts($args = null) {
 	$defaults = array(
@@ -465,7 +464,7 @@ function get_posts($args = null) {
 		'order' => 'DESC', 'include' => '',
 		'exclude' => '', 'meta_key' => '',
 		'meta_value' =>'', 'post_type' => 'post',
-		'post_parent' => 0, 'suppress_filters' => true
+		'suppress_filters' => true
 	);
 
 	$r = wp_parse_args( $args, $defaults );
@@ -482,6 +481,8 @@ function get_posts($args = null) {
 	} elseif ( ! empty($r['exclude']) )
 		$r['post__not_in'] = preg_split('/[\s,]+/',$r['exclude']);
 
+	$r['caller_get_posts'] = true;
+
 	$get_posts = new WP_Query;
 	return $get_posts->query($r);
 
@@ -492,21 +493,19 @@ function get_posts($args = null) {
 //
 
 /**
- * add_post_meta() - adds metadata for post
+ * Add meta data field to a post.
  *
- * {@internal Missing Long Description}}
+ * Post meta data is called "Custom Fields" on the Administration Panels.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  * @uses $wpdb
  * @link http://codex.wordpress.org/Function_Reference/add_post_meta
  *
- * @param int $post_id post ID
- * @param string $key {@internal Missing Description}}
- * @param mixed $value {@internal Missing Description}}
- * @param bool $unique whether to check for a value with the same key
- * @return bool {@internal Missing Description}}
+ * @param int $post_id Post ID.
+ * @param string $key Metadata name.
+ * @param mixed $value Metadata value.
+ * @param bool $unique Optional, default is false. Whether the same key should not be added.
+ * @return bool False for failure. True for success.
  */
 function add_post_meta($post_id, $meta_key, $meta_value, $unique = false) {
 	global $wpdb;
@@ -521,7 +520,7 @@ function add_post_meta($post_id, $meta_key, $meta_value, $unique = false) {
 	if ( $unique && $wpdb->get_var( $wpdb->prepare( "SELECT meta_key FROM $wpdb->postmeta WHERE meta_key = %s AND post_id = %d", $meta_key, $post_id ) ) )
 		return false;
 
-	$meta_value = maybe_serialize($meta_value);
+	$meta_value = maybe_serialize( stripslashes_deep($meta_value) );
 
 	$wpdb->insert( $wpdb->postmeta, compact( 'post_id', 'meta_key', 'meta_value' ) );
 
@@ -531,44 +530,44 @@ function add_post_meta($post_id, $meta_key, $meta_value, $unique = false) {
 }
 
 /**
- * delete_post_meta() - delete post metadata
+ * Remove metadata matching criteria from a post.
  *
- * {@internal Missing Long Description}}
+ * You can match based on the key, or key and value. Removing based on key and
+ * value, will keep from removing duplicate metadata with the same key. It also
+ * allows removing all metadata matching key, if needed.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  * @uses $wpdb
  * @link http://codex.wordpress.org/Function_Reference/delete_post_meta
  *
  * @param int $post_id post ID
- * @param string $key {@internal Missing Description}}
- * @param mixed $value {@internal Missing Description}}
- * @return bool {@internal Missing Description}}
+ * @param string $meta_key Metadata name.
+ * @param mixed $meta_value Optional. Metadata value.
+ * @return bool False for failure. True for success.
  */
-function delete_post_meta($post_id, $key, $value = '') {
+function delete_post_meta($post_id, $meta_key, $meta_value = '') {
 	global $wpdb;
 
 	// make sure meta is added to the post, not a revision
 	if ( $the_post = wp_is_post_revision($post_id) )
 		$post_id = $the_post;
 
-	// expected_slashed ($key, $value)
-	$key = stripslashes( $key );
-	$value = stripslashes( $value );
+	// expected_slashed ($meta_key, $meta_value)
+	$meta_key = stripslashes( $meta_key );
+	$meta_value = maybe_serialize( stripslashes_deep($meta_value) );
 
-	if ( empty( $value ) )
-		$meta_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s", $post_id, $key ) );
+	if ( empty( $meta_value ) )
+		$meta_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s", $post_id, $meta_key ) );
 	else
-		$meta_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s AND meta_value = %s", $post_id, $key, $value ) );
+		$meta_id = $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s AND meta_value = %s", $post_id, $meta_key, $meta_value ) );
 
 	if ( !$meta_id )
 		return false;
 
-	if ( empty( $value ) )
-		$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s", $post_id, $key ) );
+	if ( empty( $meta_value ) )
+		$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s", $post_id, $meta_key ) );
 	else
-		$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s AND meta_value = %s", $post_id, $key, $value ) );
+		$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = %s AND meta_value = %s", $post_id, $meta_key, $meta_value ) );
 
 	wp_cache_delete($post_id, 'post_meta');
 
@@ -576,20 +575,16 @@ function delete_post_meta($post_id, $key, $value = '') {
 }
 
 /**
- * get_post_meta() - Get a post meta field
+ * Retrieve post meta field for a post.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  * @uses $wpdb
  * @link http://codex.wordpress.org/Function_Reference/get_post_meta
  *
- * @param int $post_id post ID
- * @param string $key The meta key to retrieve
- * @param bool $single Whether to return a single value
- * @return mixed {@internal Missing Description}}
+ * @param int $post_id Post ID.
+ * @param string $key The meta key to retrieve.
+ * @param bool $single Whether to return a single value.
+ * @return mixed Will be an array if $single is false. Will be value of meta data field if $single is true.
  */
 function get_post_meta($post_id, $key, $single = false) {
 	$post_id = (int) $post_id;
@@ -613,21 +608,22 @@ function get_post_meta($post_id, $key, $single = false) {
 }
 
 /**
- * update_post_meta() - Update a post meta field
+ * Update post meta field based on post ID.
  *
- * {@internal Missing Long Description}}
+ * Use the $prev_value parameter to differentiate between meta fields with the
+ * same key and post ID.
  *
- * @package WordPress
- * @subpackage Post
+ * If the meta field for the post does not exist, it will be added.
+ *
  * @since 1.5
  * @uses $wpdb
  * @link http://codex.wordpress.org/Function_Reference/update_post_meta
  *
- * @param int $post_id post ID
- * @param string $key {@internal Missing Description}}
- * @param mixed $value {@internal Missing Description}}
- * @param mixed $prev_value previous value (for differentiating between meta fields with the same key and post ID)
- * @return bool {@internal Missing Description}}
+ * @param int $post_id Post ID.
+ * @param string $key Metadata key.
+ * @param mixed $value Metadata value.
+ * @param mixed $prev_value Optional. Previous value to check before removing.
+ * @return bool False on failure, true if success.
  */
 function update_post_meta($post_id, $meta_key, $meta_value, $prev_value = '') {
 	global $wpdb;
@@ -643,7 +639,7 @@ function update_post_meta($post_id, $meta_key, $meta_value, $prev_value = '') {
 		return add_post_meta($post_id, $meta_key, $meta_value);
 	}
 
-	$meta_value = maybe_serialize($meta_value);
+	$meta_value = maybe_serialize( stripslashes_deep($meta_value) );
 
 	$data  = compact( 'meta_value' );
 	$where = compact( 'meta_key', 'post_id' );
@@ -659,14 +655,12 @@ function update_post_meta($post_id, $meta_key, $meta_value, $prev_value = '') {
 }
 
 /**
- * delete_post_meta_by_key() - Delete everything from post meta matching $post_meta_key
+ * Delete everything from post meta matching meta key.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
+ * @since 2.3.0
  * @uses $wpdb
  *
- * @param string $post_meta_key What to search for when deleting
+ * @param string $post_meta_key Key to search for when deleting.
  * @return bool Whether the post meta key was deleted from the database
  */
 function delete_post_meta_by_key($post_meta_key) {
@@ -680,20 +674,19 @@ function delete_post_meta_by_key($post_meta_key) {
 }
 
 /**
- * get_post_custom() - Retrieve post custom fields
+ * Retrieve post meta fields, based on post ID.
  *
- * {@internal Missing Long Description}}
+ * The post meta fields are retrieved from the cache, so the function is
+ * optimized to be called more than once. It also applies to the functions, that
+ * use this function.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.2
+ * @since 1.2.0
  * @link http://codex.wordpress.org/Function_Reference/get_post_custom
  *
- * @uses $id
- * @uses $wpdb
+ * @uses $id Current Loop Post ID
  *
  * @param int $post_id post ID
- * @return array {@internal Missing Description}}
+ * @return array
  */
 function get_post_custom($post_id = 0) {
 	global $id;
@@ -710,15 +703,15 @@ function get_post_custom($post_id = 0) {
 }
 
 /**
- * get_post_custom_keys() - Retrieve post custom field names
+ * Retrieve meta field names for a post.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.2
+ * If there are no meta fields, then nothing (null) will be returned.
+ *
+ * @since 1.2.0
  * @link http://codex.wordpress.org/Function_Reference/get_post_custom_keys
  *
  * @param int $post_id post ID
- * @return array|null Either array of the keys, or null if keys would not be retrieved
+ * @return array|null Either array of the keys, or null if keys could not be retrieved.
  */
 function get_post_custom_keys( $post_id = 0 ) {
 	$custom = get_post_custom( $post_id );
@@ -731,16 +724,17 @@ function get_post_custom_keys( $post_id = 0 ) {
 }
 
 /**
- * get_post_custom_values() - Retrieve values for a custom post field
+ * Retrieve values for a custom post field.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.2
+ * The parameters must not be considered optional. All of the post meta fields
+ * will be retrieved and only the meta field key values returned.
+ *
+ * @since 1.2.0
  * @link http://codex.wordpress.org/Function_Reference/get_post_custom_values
  *
- * @param string $key field name
- * @param int $post_id post ID
- * @return mixed {@internal Missing Description}}
+ * @param string $key Meta field key.
+ * @param int $post_id Post ID
+ * @return array Meta field values.
  */
 function get_post_custom_values( $key = '', $post_id = 0 ) {
 	$custom = get_post_custom($post_id);
@@ -749,25 +743,58 @@ function get_post_custom_values( $key = '', $post_id = 0 ) {
 }
 
 /**
- * sanitize_post() - Sanitize every post field
+ * Check if post is sticky.
  *
- * {@internal Missing Long Description}}
+ * Sticky posts should remain at the top of The Loop. If the post ID is not
+ * given, then The Loop ID for the current post will be used.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
+ * @since 2.7.0
+ *
+ * @param int $post_id Optional. Post ID.
+ * @return bool Whether post is sticky (true) or not sticky (false).
+ */
+function is_sticky($post_id = null) {
+	global $id;
+
+	$post_id = absint($post_id);
+
+	if ( !$post_id )
+		$post_id = absint($id);
+
+	$stickies = get_option('sticky_posts');
+
+	if ( !is_array($stickies) )
+		return false;
+
+	if ( in_array($post_id, $stickies) )
+		return true;
+
+	return false;
+}
+
+/**
+ * Sanitize every post field.
+ *
+ * If the context is 'raw', then the post object or array will just be returned.
+ *
+ * @since 2.3.0
+ * @uses sanitize_post_field() Used to sanitize the fields.
  *
  * @param object|array $post The Post Object or Array
- * @param string $context How to sanitize post fields
+ * @param string $context Optional, default is 'display'. How to sanitize post fields.
  * @return object|array The now sanitized Post Object or Array (will be the same type as $post)
  */
 function sanitize_post($post, $context = 'display') {
 	if ( 'raw' == $context )
 		return $post;
 	if ( is_object($post) ) {
+		if ( !isset($post->ID) )
+			$post->ID = 0;
 		foreach ( array_keys(get_object_vars($post)) as $field )
 			$post->$field = sanitize_post_field($field, $post->$field, $post->ID, $context);
 	} else {
+		if ( !isset($post['ID']) )
+			$post['ID'] = 0;
 		foreach ( array_keys($post) as $field )
 			$post[$field] = sanitize_post_field($field, $post[$field], $post['ID'], $context);
 	}
@@ -775,19 +802,18 @@ function sanitize_post($post, $context = 'display') {
 }
 
 /**
- * sanitize_post_field() - Sanitize post field based on context
+ * Sanitize post field based on context.
  *
- * {@internal Missing Long Description}}
+ * Possible context values are: raw, edit, db, attribute, js, and display. The
+ * display context is used by default.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
+ * @since 2.3.0
  *
- * @param string $field The Post Object field name
- * @param string $value The Post Object value
- * @param int $postid Post ID
- * @param string $context How to sanitize post fields
- * @return string Sanitized value
+ * @param string $field The Post Object field name.
+ * @param mixed $value The Post Object value.
+ * @param int $post_id Post ID.
+ * @param string $context How to sanitize post fields.
+ * @return mixed Sanitized value.
  */
 function sanitize_post_field($field, $value, $post_id, $context) {
 	$int_fields = array('ID', 'post_parent', 'menu_order');
@@ -847,6 +873,54 @@ function sanitize_post_field($field, $value, $post_id, $context) {
 }
 
 /**
+ * Make a post sticky.
+ *
+ * Sticky posts should be displayed at the top of the front page.
+ *
+ * @since 2.7.0
+ *
+ * @param int $post_id Post ID.
+ */
+function stick_post($post_id) {
+	$stickies = get_option('sticky_posts');
+
+	if ( !is_array($stickies) )
+		$stickies = array($post_id);
+
+	if ( ! in_array($post_id, $stickies) )
+		$stickies[] = $post_id;
+
+	update_option('sticky_posts', $stickies);
+}
+
+/**
+ * Unstick a post.
+ *
+ * Sticky posts should be displayed at the top of the front page.
+ *
+ * @since 2.7.0
+ *
+ * @param int $post_id Post ID.
+ */
+function unstick_post($post_id) {
+	$stickies = get_option('sticky_posts');
+
+	if ( !is_array($stickies) )
+		return;
+
+	if ( ! in_array($post_id, $stickies) )
+		return;
+
+	$offset = array_search($post_id, $stickies);
+	if ( false === $offset )
+		return;
+
+	array_splice($stickies, $offset, 1);
+
+	update_option('sticky_posts', $stickies);
+}
+
+/**
  * Count number of posts of a post type and is user has permissions to view.
  *
  * This function provides an efficient method of finding the amount of post's
@@ -857,9 +931,7 @@ function sanitize_post_field($field, $value, $post_id, $context) {
  * The $perm parameter checks for 'readable' value and if the user can read
  * private posts, it will display that for the user that is signed in.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.5
+ * @since 2.5.0
  * @link http://codex.wordpress.org/Template_Tags/wp_count_posts
  *
  * @param string $type Optional. Post type to retrieve count
@@ -901,18 +973,18 @@ function wp_count_posts( $type = 'post', $perm = '' ) {
 
 
 /**
- * wp_count_attachments() - Count number of attachments
+ * Count number of attachments for the mime type(s).
  *
- * {@internal Missing Long Description}}
+ * If you set the optional mime_type parameter, then an array will still be
+ * returned, but will only have the item you are looking for. It does not give
+ * you the number of attachments that are children of a post. You can get that
+ * by counting the number of children that post has.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.5
+ * @since 2.5.0
  *
- * @param string|array $post_mime_type Array or comma-separated list of MIME patterns
- * @return array Number of posts for each post_mime_type
+ * @param string|array $mime_type Optional. Array or comma-separated list of MIME patterns.
+ * @return array Number of posts for each mime type.
  */
-
 function wp_count_attachments( $mime_type = '' ) {
 	global $wpdb;
 
@@ -928,13 +1000,13 @@ function wp_count_attachments( $mime_type = '' ) {
 }
 
 /**
- * wp_match_mime_type() - Check a MIME-Type against a list
+ * Check a MIME-Type against a list.
  *
- * {@internal Missing Long Description}}
+ * If the wildcard_mime_types parameter is a string, it must be comma separated
+ * list. If the real_mime_types is a string, it is also comma separated to
+ * create the list.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.5
+ * @since 2.5.0
  *
  * @param string|array $wildcard_mime_types e.g. audio/mpeg or image (same as image/*) or flash (same as *flash*)
  * @param string|array $real_mime_types post_mime_type values
@@ -965,14 +1037,12 @@ function wp_match_mime_types($wildcard_mime_types, $real_mime_types) {
 }
 
 /**
- * wp_get_post_mime_type_where() - Convert MIME types into SQL
+ * Convert MIME types into SQL.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.5
+ * @since 2.5.0
  *
- * @param string|array $mime_types MIME types
- * @return string SQL AND clause
+ * @param string|array $mime_types List of mime types or comma separated string of mime types.
+ * @return string The SQL AND clause for mime searching.
  */
 function wp_post_mime_type_where($post_mime_types) {
 	$where = '';
@@ -1012,16 +1082,16 @@ function wp_post_mime_type_where($post_mime_types) {
 }
 
 /**
- * wp_delete_post() - Deletes a Post
+ * Removes a post, attachment, or page.
  *
- * {@internal Missing Long Description}}
+ * When the post and page goes, everything that is tied to it is deleted also.
+ * This includes comments, post meta fields, and terms associated with the post.
  *
- * @package WordPress
- * @subpackage Post
  * @since 1.0.0
+ * @uses do_action() Calls 'deleted_post' hook on post ID.
  *
- * @param int $postid post ID
- * @return mixed {@internal Missing Description}}
+ * @param int $postid Post ID.
+ * @return mixed
  */
 function wp_delete_post($postid = 0) {
 	global $wpdb, $wp_rewrite;
@@ -1090,20 +1160,18 @@ function wp_delete_post($postid = 0) {
 }
 
 /**
- * wp_get_post_categories() - Retrieve the list of categories for a post
+ * Retrieve the list of categories for a post.
  *
  * Compatibility layer for themes and plugins. Also an easy layer of abstraction
  * away from the complexity of the taxonomy layer.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
+ * @since 2.1.0
  *
- * @uses wp_get_object_terms() Retrieves the categories. Args details can be found here
+ * @uses wp_get_object_terms() Retrieves the categories. Args details can be found here.
  *
- * @param int $post_id Optional. The Post ID
- * @param array $args Optional. Overwrite the defaults
- * @return array {@internal Missing Description}}
+ * @param int $post_id Optional. The Post ID.
+ * @param array $args Optional. Overwrite the defaults.
+ * @return array
  */
 function wp_get_post_categories( $post_id = 0, $args = array() ) {
 	$post_id = (int) $post_id;
@@ -1116,17 +1184,21 @@ function wp_get_post_categories( $post_id = 0, $args = array() ) {
 }
 
 /**
- * wp_get_post_tags() - Retrieve the post tags
+ * Retrieve the tags for a post.
+ *
+ * There is only one default for this function, called 'fields' and by default
+ * is set to 'all'. There are other defaults that can be override in
+ * {@link wp_get_object_terms()}.
  *
  * @package WordPress
  * @subpackage Post
- * @since 2.3
+ * @since 2.3.0
  *
  * @uses wp_get_object_terms() Gets the tags for returning. Args can be found here
  *
  * @param int $post_id Optional. The Post ID
  * @param array $args Optional. Overwrite the defaults
- * @return mixed The tags the post has currently
+ * @return array List of post tags.
  */
 function wp_get_post_tags( $post_id = 0, $args = array() ) {
 	$post_id = (int) $post_id;
@@ -1140,16 +1212,13 @@ function wp_get_post_tags( $post_id = 0, $args = array() ) {
 }
 
 /**
- * wp_get_recent_posts() - Get the $num most recent posts
+ * Retrieve number of recent posts.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
  * @since 1.0.0
+ * @uses $wpdb
  *
- * @param int $num number of posts to get
- * @return array {@internal Missing Description}}
+ * @param int $num Optional, default is 10. Number of posts to get.
+ * @return array List of posts.
  */
 function wp_get_recent_posts($num = 10) {
 	global $wpdb;
@@ -1163,21 +1232,19 @@ function wp_get_recent_posts($num = 10) {
 	$sql = "SELECT * FROM $wpdb->posts WHERE post_type = 'post' ORDER BY post_date DESC $limit";
 	$result = $wpdb->get_results($sql,ARRAY_A);
 
-	return $result?$result:array();
+	return $result ? $result : array();
 }
 
 /**
- * wp_get_single_post() - Get one post
+ * Retrieve a single post, based on post ID.
  *
- * {@internal Missing Long Description}}
+ * Has categories in 'post_category' property or key. Has tags in 'tags_input'
+ * property or key.
  *
- * @package WordPress
- * @subpackage Post
  * @since 1.0.0
- * @uses $wpdb
  *
- * @param int $postid post ID
- * @param string $mode How to return result, either OBJECT, ARRAY_N, or ARRAY_A
+ * @param int $postid Post ID.
+ * @param string $mode How to return result, either OBJECT, ARRAY_N, or ARRAY_A.
  * @return object|array Post object or array holding post contents and information
  */
 function wp_get_single_post($postid = 0, $mode = OBJECT) {
@@ -1199,21 +1266,40 @@ function wp_get_single_post($postid = 0, $mode = OBJECT) {
 }
 
 /**
- * wp_insert_post() - Insert a post
+ * Insert a post.
  *
- * {@internal Missing Long Description}}
+ * If the $postarr parameter has 'ID' set to a value, then post will be updated.
  *
- * @package WordPress
- * @subpackage Post
+ * You can set the post date manually, but setting the values for 'post_date'
+ * and 'post_date_gmt' keys. You can close the comments or open the comments by
+ * setting the value for 'comment_status' key.
+ *
+ * The defaults for the parameter $postarr are:
+ *     'post_status' - Default is 'draft'.
+ *     'post_type' - Default is 'post'.
+ *     'post_author' - Default is current user ID. The ID of the user, who added
+ *         the post.
+ *     'ping_status' - Default is the value in default ping status option.
+ *         Whether the attachment can accept pings.
+ *     'post_parent' - Default is 0. Set this for the post it belongs to, if
+ *         any.
+ *     'menu_order' - Default is 0. The order it is displayed.
+ *     'to_ping' - Whether to ping.
+ *     'pinged' - Default is empty string.
+ *     'post_password' - Default is empty string. The password to access the
+ *         attachment.
+ *     'guid' - Global Unique ID for referencing the attachment.
+ *     'post_content_filtered' - Post content filtered.
+ *     'post_excerpt' - Post excerpt.
+ *
  * @since 1.0.0
- *
  * @uses $wpdb
  * @uses $wp_rewrite
  * @uses $user_ID
- * @uses $allowedtags
  *
- * @param array $postarr post contents
- * @return int post ID or 0 on error
+ * @param array $postarr Optional. Override defaults.
+ * @param bool $wp_error Optional. Allow return of WP_Error on failure.
+ * @return int|WP_Error The value 0 or WP_Error on failure. The post ID on success.
  */
 function wp_insert_post($postarr = array(), $wp_error = false) {
 	global $wpdb, $wp_rewrite, $user_ID;
@@ -1221,7 +1307,7 @@ function wp_insert_post($postarr = array(), $wp_error = false) {
 	$defaults = array('post_status' => 'draft', 'post_type' => 'post', 'post_author' => $user_ID,
 		'ping_status' => get_option('default_ping_status'), 'post_parent' => 0,
 		'menu_order' => 0, 'to_ping' =>  '', 'pinged' => '', 'post_password' => '',
-		'guid' => '', 'post_content_filtered' => '', 'post_excerpt' => '');
+		'guid' => '', 'post_content_filtered' => '', 'post_excerpt' => '', 'import_id' => 0);
 
 	$postarr = wp_parse_args($postarr, $defaults);
 	$postarr = sanitize_post($postarr, 'db');
@@ -1246,9 +1332,13 @@ function wp_insert_post($postarr = array(), $wp_error = false) {
 	}
 
 	// Make sure we set a valid category
-	if (0 == count($post_category) || !is_array($post_category)) {
+	if ( empty($post_category) || 0 == count($post_category) || !is_array($post_category) ) {
 		$post_category = array(get_option('default_category'));
 	}
+
+	//Set the default tag list
+	if ( !isset($tags_input) )
+		$tags_input = array();
 
 	if ( empty($post_author) )
 		$post_author = $user_ID;
@@ -1259,31 +1349,33 @@ function wp_insert_post($postarr = array(), $wp_error = false) {
 	if ( empty($post_type) )
 		$post_type = 'post';
 
+	$post_ID = 0;
+
 	// Get the post ID and GUID
 	if ( $update ) {
 		$post_ID = (int) $ID;
 		$guid = get_post_field( 'guid', $post_ID );
 	}
 
-	// Create a valid post name.  Drafts are allowed to have an empty
+	// Don't allow contributors to set to set the post slug for pending review posts
+	if ( 'pending' == $post_status && !current_user_can( 'publish_posts' ) )
+		$post_name = '';
+
+	// Create a valid post name.  Drafts and pending posts are allowed to have an empty
 	// post name.
 	if ( empty($post_name) ) {
-		if ( 'draft' != $post_status )
+		if ( !in_array( $post_status, array( 'draft', 'pending' ) ) )
 			$post_name = sanitize_title($post_title);
 	} else {
 		$post_name = sanitize_title($post_name);
 	}
 
-	// If the post date is empty (due to having been new or a draft) and status is not 'draft', set date to now
-	if ( empty($post_date) || '0000-00-00 00:00:00' == $post_date ) {
-		if ( !in_array($post_status, array('draft', 'pending')) )
-			$post_date = current_time('mysql');
-		else
-			$post_date = '0000-00-00 00:00:00';
-	}
+	// If the post date is empty (due to having been new or a draft) and status is not 'draft' or 'pending', set date to now
+	if ( empty($post_date) || '0000-00-00 00:00:00' == $post_date )
+		$post_date = current_time('mysql');
 
 	if ( empty($post_date_gmt) || '0000-00-00 00:00:00' == $post_date_gmt ) {
-		if ( !in_array($post_status, array('draft', 'pending')) )
+		if ( !in_array( $post_status, array( 'draft', 'pending' ) ) )
 			$post_date_gmt = get_gmt_from_date($post_date);
 		else
 			$post_date_gmt = '0000-00-00 00:00:00';
@@ -1325,15 +1417,27 @@ function wp_insert_post($postarr = array(), $wp_error = false) {
 	else
 		$post_parent = 0;
 
+	if ( !empty($post_ID) ) {
+		if ( $post_parent == $post_ID ) {
+			// Post can't be its own parent
+			$post_parent = 0;
+		} elseif ( !empty($post_parent) ) {
+			$parent_post = get_post($post_parent);
+			// Check for circular dependency
+			if ( $parent_post->post_parent == $post_ID )
+				$post_parent = 0;
+		}
+	}
+
 	if ( isset($menu_order) )
 		$menu_order = (int) $menu_order;
 	else
 		$menu_order = 0;
 
-	if ( !isset($post_password) )
+	if ( !isset($post_password) || 'private' == $post_status )
 		$post_password = '';
 
-	if ( 'draft' != $post_status ) {
+	if ( !in_array( $post_status, array( 'draft', 'pending' ) ) ) {
 		$post_name_check = $wpdb->get_var($wpdb->prepare("SELECT post_name FROM $wpdb->posts WHERE post_name = %s AND post_type = %s AND ID != %d AND post_parent = %d LIMIT 1", $post_name, $post_type, $post_ID, $post_parent));
 
 		if ($post_name_check || in_array($post_name, $wp_rewrite->feeds) ) {
@@ -1349,6 +1453,7 @@ function wp_insert_post($postarr = array(), $wp_error = false) {
 
 	// expected_slashed (everything!)
 	$data = compact( array( 'post_author', 'post_date', 'post_date_gmt', 'post_content', 'post_content_filtered', 'post_title', 'post_excerpt', 'post_status', 'post_type', 'comment_status', 'ping_status', 'post_password', 'post_name', 'to_ping', 'pinged', 'post_modified', 'post_modified_gmt', 'post_parent', 'menu_order', 'guid' ) );
+	$data = apply_filters('wp_insert_post_data', $data, $postarr);
 	$data = stripslashes_deep( $data );
 	$where = array( 'ID' => $post_ID );
 
@@ -1361,12 +1466,20 @@ function wp_insert_post($postarr = array(), $wp_error = false) {
 				return 0;
 		}
 	} else {
-		$data['post_mime_type'] = stripslashes( $post_mime_type ); // This isn't in the update
+		if ( isset($post_mime_type) )
+			$data['post_mime_type'] = stripslashes( $post_mime_type ); // This isn't in the update
+		// If there is a suggested ID, use it if not already present
+		if ( !empty($import_id) ) {
+			$import_id = (int) $import_id;
+			if ( ! $wpdb->get_var( $wpdb->prepare("SELECT ID FROM $wpdb->posts WHERE ID = %d", $import_id) ) ) {
+				$data['ID'] = $import_id;
+			}
+		}
 		if ( false === $wpdb->insert( $wpdb->posts, $data ) ) {
 			if ( $wp_error )
 				return new WP_Error('db_insert_error', __('Could not insert post into the database'), $wpdb->last_error);
 			else
-				return 0;	
+				return 0;
 		}
 		$post_ID = (int) $wpdb->insert_id;
 
@@ -1374,7 +1487,7 @@ function wp_insert_post($postarr = array(), $wp_error = false) {
 		$where = array( 'ID' => $post_ID );
 	}
 
-	if ( empty($post_name) && 'draft' != $post_status ) {
+	if ( empty($post_name) && !in_array( $post_status, array( 'draft', 'pending' ) ) ) {
 		$post_name = sanitize_title($post_title, $post_ID);
 		$wpdb->update( $wpdb->posts, compact( 'post_name' ), $where );
 	}
@@ -1419,17 +1532,15 @@ function wp_insert_post($postarr = array(), $wp_error = false) {
 }
 
 /**
- * wp_update_post() - Update a post
+ * Update a post with new post data.
  *
- * {@internal Missing Long Description}}
+ * The date does not have to be set for drafts. You can set the date and it will
+ * not be overridden.
  *
- * @package WordPress
- * @subpackage Post
  * @since 1.0.0
- * @uses $wpdb
  *
- * @param array $postarr post data
- * @return int {@internal Missing Description}}
+ * @param array|object $postarr Post data.
+ * @return int 0 on failure, Post ID on success.
  */
 function wp_update_post($postarr = array()) {
 	if ( is_object($postarr) )
@@ -1449,8 +1560,8 @@ function wp_update_post($postarr = array()) {
 		$post_cats = $post['post_category'];
 
 	// Drafts shouldn't be assigned a date unless explicitly done so by the user
-	if ( in_array($post['post_status'], array('draft', 'pending')) && empty($postarr['edit_date']) && empty($postarr['post_date']) &&
-			 ('0000-00-00 00:00:00' == $post['post_date']) )
+	if ( in_array($post['post_status'], array('draft', 'pending')) && empty($postarr['edit_date']) &&
+			 ('0000-00-00 00:00:00' == $post['post_date_gmt']) )
 		$clear_date = true;
 	else
 		$clear_date = false;
@@ -1459,7 +1570,7 @@ function wp_update_post($postarr = array()) {
 	$postarr = array_merge($post, $postarr);
 	$postarr['post_category'] = $post_cats;
 	if ( $clear_date ) {
-		$postarr['post_date'] = '';
+		$postarr['post_date'] = current_time('mysql');
 		$postarr['post_date_gmt'] = '';
 	}
 
@@ -1470,17 +1581,14 @@ function wp_update_post($postarr = array()) {
 }
 
 /**
- * wp_publish_post() - Mark a post as "published"
+ * Publish a post by transitioning the post status.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
+ * @since 2.1.0
  * @uses $wpdb
+ * @uses do_action() Calls 'edit_post', 'save_post', and 'wp_insert_post' on post_id and post data.
  *
- * @param int $post_id Post ID
- * @return int|null {@internal Missing Description}}
+ * @param int $post_id Post ID.
+ * @return null
  */
 function wp_publish_post($post_id) {
 	global $wpdb;
@@ -1500,9 +1608,9 @@ function wp_publish_post($post_id) {
 	wp_transition_post_status('publish', $old_status, $post);
 
 	// Update counts for the post's terms.
-	foreach ( get_object_taxonomies('post') as $taxonomy ) {
-		$terms = wp_get_object_terms($post_id, $taxonomy, 'fields=tt_ids');
-		wp_update_term_count($terms, $taxonomy);
+	foreach ( (array) get_object_taxonomies('post') as $taxonomy ) {
+		$tt_ids = wp_get_object_terms($post_id, $taxonomy, 'fields=tt_ids');
+		wp_update_term_count($tt_ids, $taxonomy);
 	}
 
 	do_action('edit_post', $post_id, $post);
@@ -1511,19 +1619,15 @@ function wp_publish_post($post_id) {
 }
 
 /**
- * check_and_publish_future_post() - check to make sure post has correct status before
- * passing it on to be published. Invoked by cron 'publish_future_post' event
- * This safeguard prevents cron from publishing drafts, etc.
+ * Publish future post and make sure post ID has future post status.
  *
- * {@internal Missing Long Description}}
+ * Invoked by cron 'publish_future_post' event. This safeguard prevents cron
+ * from publishing drafts, etc.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.5
- * @uses $wpdb
+ * @since 2.5.0
  *
- * @param int $post_id Post ID
- * @return int|null {@internal Missing Description}}
+ * @param int $post_id Post ID.
+ * @return null Nothing is returned. Which can mean that no action is required or post was published.
  */
 function check_and_publish_future_post($post_id) {
 
@@ -1535,38 +1639,43 @@ function check_and_publish_future_post($post_id) {
 	if ( 'future' != $post->post_status )
 		return;
 
+	$time = strtotime( $post->post_date_gmt . ' GMT' );
+
+	if ( $time > time() ) { // Uh oh, someone jumped the gun!
+		wp_clear_scheduled_hook( 'publish_future_post', $post_id ); // clear anything else in the system
+		wp_schedule_single_event( $time, 'publish_future_post', array( $post_id ) );
+		return;
+	}
+
 	return wp_publish_post($post_id);
 }
 
 /**
- * wp_add_post_tags() - Adds the tags to a post
+ * Adds tags to a post.
  *
- * @uses wp_set_post_tags() Same first two paraeters, but the last parameter is always set to true.
+ * @uses wp_set_post_tags() Same first two parameters, but the last parameter is always set to true.
  *
  * @package WordPress
  * @subpackage Post
- * @since 2.3
+ * @since 2.3.0
  *
- * @param int $post_id Optional. Post ID
- * @param string $tags The tags to set for the post
+ * @param int $post_id Post ID
+ * @param string $tags The tags to set for the post, separated by commas.
  * @return bool|null Will return false if $post_id is not an integer or is 0. Will return null otherwise
  */
 function wp_add_post_tags($post_id = 0, $tags = '') {
 	return wp_set_post_tags($post_id, $tags, true);
 }
 
+
 /**
- * wp_set_post_tags() - Set the tags for a post
+ * Set the tags for a post.
  *
- * {@internal Missing Long Description}}
+ * @since 2.3.0
+ * @uses wp_set_object_terms() Sets the tags for the post.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
- * @uses $wpdb
- *
- * @param int $post_id post ID
- * @param string $tags The tags to set for the post
+ * @param int $post_id Post ID.
+ * @param string $tags The tags to set for the post, separated by commas.
  * @param bool $append If true, don't delete existing tags, just add on. If false, replace the tags with the new tags.
  * @return bool|null Will return false if $post_id is not an integer or is 0. Will return null otherwise
  */
@@ -1584,18 +1693,16 @@ function wp_set_post_tags( $post_id = 0, $tags = '', $append = false ) {
 }
 
 /**
- * wp_set_post_categories() - Set categories for a post
+ * Set categories for a post.
  *
- * {@internal Missing Long Description}}
+ * If the post categories parameter is not set, then the default category is
+ * going used.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
- * @uses $wpdb
+ * @since 2.1.0
  *
- * @param int $post_ID post ID
- * @param array $post_categories
- * @return bool|mixed {@internal Missing Description}}
+ * @param int $post_ID Post ID.
+ * @param array $post_categories Optional. List of categories.
+ * @return bool|mixed
  */
 function wp_set_post_categories($post_ID = 0, $post_categories = array()) {
 	$post_ID = (int) $post_ID;
@@ -1609,20 +1716,27 @@ function wp_set_post_categories($post_ID = 0, $post_categories = array()) {
 	$post_categories = array_unique($post_categories);
 
 	return wp_set_object_terms($post_ID, $post_categories, 'category');
-}	// wp_set_post_categories()
+}
 
 /**
- * wp_transition_post_status() - Change the post transition status
+ * Transition the post status of a post.
  *
- * {@internal Missing Long Description}}
+ * Calls hooks to transition post status. If the new post status is not the same
+ * as the previous post status, then two hooks will be ran, the first is
+ * 'transition_post_status' with new status, old status, and post data. The
+ * next action called is 'OLDSTATUS_to_NEWSTATUS' the NEWSTATUS is the
+ * $new_status parameter and the OLDSTATUS is $old_status parameter; it has the
+ * post data.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
+ * The final action will run whether or not the post statuses are the same. The
+ * action is named 'NEWSTATUS_POSTTYPE', NEWSTATUS is from the $new_status
+ * parameter and POSTTYPE is post_type post data.
  *
- * @param string $new_status {@internal Missing Description}}
- * @param string $old_status {@internal Missing Description}}
- * @param int $post {@internal Missing Description}}
+ * @since 2.3.0
+ *
+ * @param string $new_status Transition to this post status.
+ * @param string $old_status Previous post status.
+ * @param object $post Post data.
  */
 function wp_transition_post_status($new_status, $old_status, $post) {
 	if ( $new_status != $old_status ) {
@@ -1637,18 +1751,14 @@ function wp_transition_post_status($new_status, $old_status, $post) {
 //
 
 /**
- * add_ping() - Add a URL to those already pung
+ * Add a URL to those already pung.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  * @uses $wpdb
  *
- * @param int $post_id post ID
- * @param string $uri {@internal Missing Description}}
- * @return mixed {@internal Missing Description}}
+ * @param int $post_id Post ID.
+ * @param string $uri Ping URI.
+ * @return int How many rows were updated.
  */
 function add_ping($post_id, $uri) {
 	global $wpdb;
@@ -1664,17 +1774,13 @@ function add_ping($post_id, $uri) {
 }
 
 /**
- * get_enclosed() - Get enclosures already enclosed for a post
+ * Retrieve enclosures already enclosed for a post.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  * @uses $wpdb
  *
- * @param int $post_id post ID
- * @return array {@internal Missing Description}}
+ * @param int $post_id Post ID.
+ * @return array List of enclosures
  */
 function get_enclosed($post_id) {
 	$custom_fields = get_post_custom( $post_id );
@@ -1695,17 +1801,13 @@ function get_enclosed($post_id) {
 }
 
 /**
- * get_pung() - Get URLs already pinged for a post
+ * Retrieve URLs already pinged for a post.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  * @uses $wpdb
  *
- * @param int $post_id post ID
- * @return array {@internal Missing Description}}
+ * @param int $post_id Post ID.
+ * @return array
  */
 function get_pung($post_id) {
 	global $wpdb;
@@ -1717,17 +1819,13 @@ function get_pung($post_id) {
 }
 
 /**
- * get_to_ping() - Get any URLs in the todo list
+ * Retrieve URLs that need to be pinged.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  * @uses $wpdb
  *
- * @param int $post_id post ID
- * @return array {@internal Missing Description}}
+ * @param int $post_id Post ID
+ * @return array
  */
 function get_to_ping($post_id) {
 	global $wpdb;
@@ -1739,19 +1837,15 @@ function get_to_ping($post_id) {
 }
 
 /**
- * trackback_url_list() - Do trackbacks for a list of urls
+ * Do trackbacks for a list of URLs.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
  * @since 1.0.0
  *
- * @param string $tb_list comma separated list of URLs
- * @param int $post_id post ID
+ * @param string $tb_list Comma separated list of URLs
+ * @param int $post_id Post ID
  */
 function trackback_url_list($tb_list, $post_id) {
-	if (!empty($tb_list)) {
+	if ( ! empty( $tb_list ) ) {
 		// get post data
 		$postdata = wp_get_single_post($post_id, ARRAY_A);
 
@@ -1759,18 +1853,18 @@ function trackback_url_list($tb_list, $post_id) {
 		extract($postdata, EXTR_SKIP);
 
 		// form an excerpt
-		$excerpt = strip_tags($post_excerpt?$post_excerpt:$post_content);
+		$excerpt = strip_tags($post_excerpt ? $post_excerpt : $post_content);
 
 		if (strlen($excerpt) > 255) {
 			$excerpt = substr($excerpt,0,252) . '...';
 		}
 
 		$trackback_urls = explode(',', $tb_list);
-		foreach($trackback_urls as $tb_url) {
-				$tb_url = trim($tb_url);
-				trackback($tb_url, stripslashes($post_title), $excerpt, $post_id);
+		foreach( (array) $trackback_urls as $tb_url) {
+			$tb_url = trim($tb_url);
+			trackback($tb_url, stripslashes($post_title), $excerpt, $post_id);
 		}
-		}
+	}
 }
 
 //
@@ -1778,16 +1872,12 @@ function trackback_url_list($tb_list, $post_id) {
 //
 
 /**
- * get_all_page_ids() - Get a list of page IDs
+ * Get a list of page IDs.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
+ * @since 2.0.0
  * @uses $wpdb
  *
- * @return array {@internal Missing Description}}
+ * @return array List of page IDs.
  */
 function get_all_page_ids() {
 	global $wpdb;
@@ -1801,43 +1891,38 @@ function get_all_page_ids() {
 }
 
 /**
- * get_page() - Retrieves page data given a page ID or page object
+ * Retrieves page data given a page ID or page object.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
  * @since 1.5.1
  *
- * @param mixed &$page page object or page ID
- * @param string $output what to output
+ * @param mixed $page Page object or page ID. Passed by reference.
+ * @param string $output What to output. OBJECT, ARRAY_A, or ARRAY_N.
  * @param string $filter How the return value should be filtered.
- * @return mixed {@internal Missing Description}}
+ * @return mixed Page data.
  */
 function &get_page(&$page, $output = OBJECT, $filter = 'raw') {
 	if ( empty($page) ) {
-		if ( isset( $GLOBALS['page'] ) && isset( $GLOBALS['page']->ID ) )
+		if ( isset( $GLOBALS['page'] ) && isset( $GLOBALS['page']->ID ) ) {
 			return get_post($GLOBALS['page'], $output, $filter);
-		else
-			return null;
+		} else {
+			$page = null;
+			return $page;
+		}
 	}
 
-	return get_post($page, $output, $filter);
+	$the_page = get_post($page, $output, $filter);
+	return $the_page;
 }
 
 /**
- * get_page_by_path() - Retrieves a page given its path
+ * Retrieves a page given its path.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
+ * @since 2.1.0
  * @uses $wpdb
  *
- * @param string $page_path page path
- * @param string $output output type
- * @return mixed {@internal Missing Description}}
+ * @param string $page_path Page path
+ * @param string $output Optional. Output type. OBJECT, ARRAY_N, or ARRAY_A.
+ * @return mixed Null when complete.
  */
 function get_page_by_path($page_path, $output = OBJECT) {
 	global $wpdb;
@@ -1847,13 +1932,14 @@ function get_page_by_path($page_path, $output = OBJECT) {
 	$page_paths = '/' . trim($page_path, '/');
 	$leaf_path  = sanitize_title(basename($page_paths));
 	$page_paths = explode('/', $page_paths);
-	foreach($page_paths as $pathdir)
+	$full_path = '';
+	foreach( (array) $page_paths as $pathdir)
 		$full_path .= ($pathdir!=''?'/':'') . sanitize_title($pathdir);
 
 	$pages = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_name, post_parent FROM $wpdb->posts WHERE post_name = %s AND (post_type = 'page' OR post_type = 'attachment')", $leaf_path ));
 
 	if ( empty($pages) )
-		return NULL;
+		return null;
 
 	foreach ($pages as $page) {
 		$path = '/' . $leaf_path;
@@ -1867,22 +1953,18 @@ function get_page_by_path($page_path, $output = OBJECT) {
 			return get_page($page->ID, $output);
 	}
 
-	return NULL;
+	return null;
 }
 
 /**
- * get_page_by_title() - Retrieve a page given its title
+ * Retrieve a page given its title.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
+ * @since 2.1.0
  * @uses $wpdb
  *
- * @param string $page_title page title
- * @param string $output output type
- * @return mixed {@internal Missing Description}}
+ * @param string $page_title Page title
+ * @param string $output Optional. Output type. OBJECT, ARRAY_N, or ARRAY_A.
+ * @return mixed
  */
 function get_page_by_title($page_title, $output = OBJECT) {
 	global $wpdb;
@@ -1890,25 +1972,25 @@ function get_page_by_title($page_title, $output = OBJECT) {
 	if ( $page )
 		return get_page($page, $output);
 
-	return NULL;
+	return null;
 }
 
 /**
- * get_page_children() - Retrieve child pages
+ * Retrieve child pages from list of pages matching page ID.
  *
- * {@internal Missing Long Description}}
+ * Matches against the pages parameter against the page ID. Also matches all
+ * children for the same to retrieve all children of a page. Does not make any
+ * SQL queries to get the children.
  *
- * @package WordPress
- * @subpackage Post
  * @since 1.5.1
  *
- * @param int $page_id page ID
- * @param array $pages list of pages
- * @return array {@internal Missing Description}}
+ * @param int $page_id Page ID.
+ * @param array $pages List of pages' objects.
+ * @return array
  */
 function &get_page_children($page_id, $pages) {
 	$page_list = array();
-	foreach ( $pages as $page ) {
+	foreach ( (array) $pages as $page ) {
 		if ( $page->post_parent == $page_id ) {
 			$page_list[] = $page;
 			if ( $children = get_page_children($page->ID, $pages) )
@@ -1919,22 +2001,20 @@ function &get_page_children($page_id, $pages) {
 }
 
 /**
- * get_page_hierarchy() - {@internal Missing Short Description}}
+ * Order the pages with children under parents in a flat list.
  *
- * Fetches the pages returned as a FLAT list, but arranged in order of their hierarchy,
- * i.e., child parents immediately follow their parents.
+ * Fetches the pages returned as a FLAT list, but arranged in order of their
+ * hierarchy, i.e., child parents immediately follow their parents.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
+ * @since 2.0.0
  *
- * @param array $posts posts array
- * @param int $parent parent page ID
- * @return array {@internal Missing Description}}
+ * @param array $posts Posts array.
+ * @param int $parent Parent page ID.
+ * @return array
  */
 function get_page_hierarchy($posts, $parent = 0) {
 	$result = array ( );
-	if ($posts) { foreach ($posts as $post) {
+	if ($posts) { foreach ( (array) $posts as $post) {
 		if ($post->post_parent == $parent) {
 			$result[$post->ID] = $post->post_name;
 			$children = get_page_hierarchy($posts, $post->ID);
@@ -1945,16 +2025,14 @@ function get_page_hierarchy($posts, $parent = 0) {
 }
 
 /**
- * get_page_uri() - Builds a page URI
+ * Builds URI for a page.
  *
- * {@internal Missing Long Description}}
+ * Sub pages will be in the "directory" under the parent page post name.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  *
- * @param int $page_id page ID
- * @return string {@internal Missing Description}}
+ * @param int $page_id Page ID.
+ * @return string Page URI.
  */
 function get_page_uri($page_id) {
 	$page = get_page($page_id);
@@ -1973,16 +2051,16 @@ function get_page_uri($page_id) {
 }
 
 /**
- * get_pages() - Retrieve a list of pages
+ * Retrieve a list of pages.
  *
- * {@internal Missing Long Description}}
+ * The defaults that can be overridden are the following: 'child_of',
+ * 'sort_order', 'sort_column', 'post_title', 'hierarchical', 'exclude',
+ * 'include', 'meta_key', 'meta_value', and 'authors'.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.5
+ * @since 1.5.0
  * @uses $wpdb
  *
- * @param mixed $args Optional. Array or string of options
+ * @param mixed $args Optional. Array or string of options that overrides defaults.
  * @return array List of pages matching defaults or $args
  */
 function &get_pages($args = '') {
@@ -1993,20 +2071,24 @@ function &get_pages($args = '') {
 		'sort_column' => 'post_title', 'hierarchical' => 1,
 		'exclude' => '', 'include' => '',
 		'meta_key' => '', 'meta_value' => '',
-		'authors' => ''
+		'authors' => '', 'parent' => -1, 'exclude_tree' => ''
 	);
 
 	$r = wp_parse_args( $args, $defaults );
 	extract( $r, EXTR_SKIP );
 
-	$key = md5( serialize( $r ) );
-	if ( $cache = wp_cache_get( 'get_pages', 'posts' ) )
-		if ( isset( $cache[ $key ] ) )
-			return apply_filters('get_pages', $cache[ $key ], $r );
+	$key = md5( serialize( compact(array_keys($defaults)) ) );
+	if ( $cache = wp_cache_get( 'get_pages', 'posts' ) ) {
+		if ( isset( $cache[ $key ] ) ) {
+			$pages = apply_filters('get_pages', $cache[ $key ], $r );
+			return $pages;
+		}
+	}
 
 	$inclusions = '';
 	if ( !empty($include) ) {
-		$child_of = 0; //ignore child_of, exclude, meta_key, and meta_value params if using include
+		$child_of = 0; //ignore child_of, parent, exclude, meta_key, and meta_value params if using include
+		$parent = -1;
 		$exclude = '';
 		$meta_key = '';
 		$meta_value = '';
@@ -2069,8 +2151,8 @@ function &get_pages($args = '') {
 	$where = "$exclusions $inclusions ";
 	if ( ! empty( $meta_key ) || ! empty( $meta_value ) ) {
 		$join = " LEFT JOIN $wpdb->postmeta ON ( $wpdb->posts.ID = $wpdb->postmeta.post_id )";
-		
-		// meta_key and met_value might be slashed 
+
+		// meta_key and meta_value might be slashed
 		$meta_key = stripslashes($meta_key);
 		$meta_value = stripslashes($meta_value);
 		if ( ! empty( $meta_key ) )
@@ -2079,20 +2161,42 @@ function &get_pages($args = '') {
 			$where .= $wpdb->prepare(" AND $wpdb->postmeta.meta_value = %s", $meta_value);
 
 	}
+
+	if ( $parent >= 0 )
+		$where .= $wpdb->prepare(' AND post_parent = %d ', $parent);
+
 	$query = "SELECT * FROM $wpdb->posts $join WHERE (post_type = 'page' AND post_status = 'publish') $where ";
 	$query .= $author_query;
 	$query .= " ORDER BY " . $sort_column . " " . $sort_order ;
 
 	$pages = $wpdb->get_results($query);
 
-	if ( empty($pages) )
-		return apply_filters('get_pages', array(), $r);
+	if ( empty($pages) ) {
+		$pages = apply_filters('get_pages', array(), $r);
+		return $pages;
+	}
 
 	// Update cache.
 	update_page_cache($pages);
 
 	if ( $child_of || $hierarchical )
 		$pages = & get_page_children($child_of, $pages);
+
+	if ( !empty($exclude_tree) ) {
+		$exclude = array();
+
+		$exclude = (int) $exclude_tree;
+		$children = get_page_children($exclude, $pages);
+		$excludes = array();
+		foreach ( $children as $child )
+			$excludes[] = $child->ID;
+		$excludes[] = $exclude;
+		$total = count($pages);
+		for ( $i = 0; $i < $total; $i++ ) {
+			if ( in_array($pages[$i]->ID, $excludes) )
+				unset($pages[$i]);
+		}
+	}
 
 	$cache[ $key ] = $pages;
 	wp_cache_set( 'get_pages', $cache, 'posts' );
@@ -2107,16 +2211,12 @@ function &get_pages($args = '') {
 //
 
 /**
- * is_local_attachment() - Check if the attachment URI is local one and is really an attachment.
+ * Check if the attachment URI is local one and is really an attachment.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
+ * @since 2.0.0
  *
  * @param string $url URL to check
- * @return bool {@internal Missing Description}}
+ * @return bool True on success, false on failure.
  */
 function is_local_attachment($url) {
 	if (strpos($url, get_bloginfo('url')) === false)
@@ -2132,21 +2232,47 @@ function is_local_attachment($url) {
 }
 
 /**
- * wp_insert_attachment() - Insert an attachment
+ * Insert an attachment.
  *
- * {@internal Missing Long Description}}
+ * If you set the 'ID' in the $object parameter, it will mean that you are
+ * updating and attempt to update the attachment. You can also set the
+ * attachment name or title by setting the key 'post_name' or 'post_title'.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
+ * You can set the dates for the attachment manually by setting the 'post_date'
+ * and 'post_date_gmt' keys' values.
  *
+ * By default, the comments will use the default settings for whether the
+ * comments are allowed. You can close them manually or keep them open by
+ * setting the value for the 'comment_status' key.
+ *
+ * The $object parameter can have the following:
+ *     'post_status' - Default is 'draft'. Can not be override, set the same as
+ *         parent post.
+ *     'post_type' - Default is 'post', will be set to attachment. Can not
+ *         override.
+ *     'post_author' - Default is current user ID. The ID of the user, who added
+ *         the attachment.
+ *     'ping_status' - Default is the value in default ping status option.
+ *         Whether the attachment can accept pings.
+ *     'post_parent' - Default is 0. Can use $parent parameter or set this for
+ *         the post it belongs to, if any.
+ *     'menu_order' - Default is 0. The order it is displayed.
+ *     'to_ping' - Whether to ping.
+ *     'pinged' - Default is empty string.
+ *     'post_password' - Default is empty string. The password to access the
+ *         attachment.
+ *     'guid' - Global Unique ID for referencing the attachment.
+ *     'post_content_filtered' - Attachment post content filtered.
+ *     'post_excerpt' - Attachment excerpt.
+ *
+ * @since 2.0.0
  * @uses $wpdb
  * @uses $user_ID
  *
- * @param object $object attachment object
- * @param string $file filename
- * @param int $post_parent parent post ID
- * @return int {@internal Missing Description}}
+ * @param string|array $object Arguments to override defaults.
+ * @param string $file Optional filename.
+ * @param int $post_parent Parent post ID.
+ * @return int Attachment ID.
  */
 function wp_insert_attachment($object, $file = false, $parent = 0) {
 	global $wpdb, $user_ID;
@@ -2154,7 +2280,7 @@ function wp_insert_attachment($object, $file = false, $parent = 0) {
 	$defaults = array('post_status' => 'draft', 'post_type' => 'post', 'post_author' => $user_ID,
 		'ping_status' => get_option('default_ping_status'), 'post_parent' => 0,
 		'menu_order' => 0, 'to_ping' =>  '', 'pinged' => '', 'post_password' => '',
-		'guid' => '', 'post_content_filtered' => '', 'post_excerpt' => '');
+		'guid' => '', 'post_content_filtered' => '', 'post_excerpt' => '', 'import_id' => 0);
 
 	$object = wp_parse_args($object, $defaults);
 	if ( !empty($parent) )
@@ -2166,7 +2292,7 @@ function wp_insert_attachment($object, $file = false, $parent = 0) {
 	extract($object, EXTR_SKIP);
 
 	// Make sure we set a valid category
-	if (0 == count($post_category) || !is_array($post_category)) {
+	if ( !isset($post_category) || 0 == count($post_category) || !is_array($post_category)) {
 		$post_category = array(get_option('default_category'));
 	}
 
@@ -2177,10 +2303,12 @@ function wp_insert_attachment($object, $file = false, $parent = 0) {
 	$post_status = 'inherit';
 
 	// Are we updating or creating?
-	$update = false;
 	if ( !empty($ID) ) {
 		$update = true;
 		$post_ID = (int) $ID;
+	} else {
+		$update = false;
+		$post_ID = 0;
 	}
 
 	// Create a valid post name.
@@ -2190,14 +2318,14 @@ function wp_insert_attachment($object, $file = false, $parent = 0) {
 		$post_name = sanitize_title($post_name);
 
 	// expected_slashed ($post_name)
-	$post_name_check = $wpdb->get_var( $wpdb->prepare( "SELECT post_name FROM $wpdb->posts WHERE post_name = '$post_name' AND post_status = 'inherit' AND ID != %d LIMIT 1", $post_ID));
+	$post_name_check = $wpdb->get_var( $wpdb->prepare( "SELECT post_name FROM $wpdb->posts WHERE post_name = %s AND post_status = 'inherit' AND ID != %d LIMIT 1", $post_name, $post_ID));
 
 	if ($post_name_check) {
 		$suffix = 2;
 		while ($post_name_check) {
 			$alt_post_name = $post_name . "-$suffix";
 			// expected_slashed ($alt_post_name, $post_name)
-			$post_name_check = $wpdb->get_var( $wpdb->prepare( "SELECT post_name FROM $wpdb->posts WHERE post_name = '$alt_post_name' AND post_status = 'inherit' AND ID != %d AND post_parent = %d LIMIT 1", $post_ID, $post_parent));
+			$post_name_check = $wpdb->get_var( $wpdb->prepare( "SELECT post_name FROM $wpdb->posts WHERE post_name = %s AND post_status = 'inherit' AND ID != %d AND post_parent = %d LIMIT 1", $alt_post_name, $post_ID, $post_parent));
 			$suffix++;
 		}
 		$post_name = $alt_post_name;
@@ -2209,9 +2337,9 @@ function wp_insert_attachment($object, $file = false, $parent = 0) {
 		$post_date_gmt = current_time('mysql', 1);
 
 	if ( empty($post_modified) )
-                $post_modified = $post_date;
+		$post_modified = $post_date;
 	if ( empty($post_modified_gmt) )
-                $post_modified_gmt = $post_date_gmt;
+		$post_modified_gmt = $post_date_gmt;
 
 	if ( empty($comment_status) ) {
 		if ( $update )
@@ -2250,6 +2378,14 @@ function wp_insert_attachment($object, $file = false, $parent = 0) {
 	if ( $update ) {
 		$wpdb->update( $wpdb->posts, $data, array( 'ID' => $post_ID ) );
 	} else {
+		// If there is a suggested ID, use it if not already present
+		if ( !empty($import_id) ) {
+			$import_id = (int) $import_id;
+			if ( ! $wpdb->get_var( $wpdb->prepare("SELECT ID FROM $wpdb->posts WHERE ID = %d", $import_id) ) ) {
+				$data['ID'] = $import_id;
+			}
+		}
+
 		$wpdb->insert( $wpdb->posts, $data );
 		$post_ID = (int) $wpdb->insert_id;
 	}
@@ -2263,7 +2399,7 @@ function wp_insert_attachment($object, $file = false, $parent = 0) {
 
 	if ( $file )
 		update_attached_file( $post_ID, $file );
-		
+
 	clean_post_cache($post_ID);
 
 	if ( $update) {
@@ -2276,17 +2412,18 @@ function wp_insert_attachment($object, $file = false, $parent = 0) {
 }
 
 /**
- * wp_delete_attachment() - Delete an attachment
+ * Delete an attachment.
  *
- * {@internal Missing Long Description}}
+ * Will remove the file also, when the attachment is removed. Removes all post
+ * meta fields, taxonomy, comments, etc associated with the attachment (except
+ * the main post).
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.0
+ * @since 2.0.0
  * @uses $wpdb
+ * @uses do_action() Calls 'delete_attachment' hook on Attachment ID.
  *
- * @param int $postid attachment Id
- * @return mixed {@internal Missing Description}}
+ * @param int $postid Attachment ID.
+ * @return mixed False on failure. Post data on success.
  */
 function wp_delete_attachment($postid) {
 	global $wpdb;
@@ -2309,21 +2446,23 @@ function wp_delete_attachment($postid) {
 
 	$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->postmeta WHERE post_id = %d ", $postid ));
 
+	$uploadPath = wp_upload_dir();
+
 	if ( ! empty($meta['thumb']) ) {
 		// Don't delete the thumb if another attachment uses it
 		if (! $wpdb->get_row( $wpdb->prepare( "SELECT meta_id FROM $wpdb->postmeta WHERE meta_key = '_wp_attachment_metadata' AND meta_value LIKE %s AND post_id <> %d", '%'.$meta['thumb'].'%', $postid)) ) {
 			$thumbfile = str_replace(basename($file), $meta['thumb'], $file);
 			$thumbfile = apply_filters('wp_delete_file', $thumbfile);
-			@ unlink($thumbfile);
+			@ unlink( path_join($uploadPath['basedir'], $thumbfile) );
 		}
 	}
 
 	// remove intermediate images if there are any
-	$sizes = apply_filters('intermediate_image_sizes', array('thumbnail', 'medium'));
+	$sizes = apply_filters('intermediate_image_sizes', array('thumbnail', 'medium', 'large'));
 	foreach ( $sizes as $size ) {
 		if ( $intermediate = image_get_intermediate_size($postid, $size) ) {
 			$intermediate_file = apply_filters('wp_delete_file', $intermediate['path']);
-			@ unlink($intermediate_file);
+			@ unlink( path_join($uploadPath['basedir'], $intermediate_file) );
 		}
 	}
 
@@ -2340,17 +2479,13 @@ function wp_delete_attachment($postid) {
 }
 
 /**
- * wp_get_attachment_metadata() - Retrieve metadata for an attachment
+ * Retrieve attachment meta field for attachment ID.
  *
- * {@internal Missing Long Description}}
+ * @since 2.1.0
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
- *
- * @param int $post_id attachment ID
- * @param bool $unfiltered Optional, default is false. If true, filters are not run
- * @return array {@internal Missing Description}}
+ * @param int $post_id Attachment ID
+ * @param bool $unfiltered Optional, default is false. If true, filters are not run.
+ * @return string|bool Attachment meta field. False on failure.
  */
 function wp_get_attachment_metadata( $post_id, $unfiltered = false ) {
 	$post_id = (int) $post_id;
@@ -2364,17 +2499,13 @@ function wp_get_attachment_metadata( $post_id, $unfiltered = false ) {
 }
 
 /**
- * wp_update_attachment_metadata() - Update metadata for an attachment
+ * Update metadata for an attachment.
  *
- * {@internal Missing Long Description}}
+ * @since 2.1.0
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
- *
- * @param int $post_id attachment ID
- * @param array $data attachment data
- * @return int {@internal Missing Description}}
+ * @param int $post_id Attachment ID.
+ * @param array $data Attachment data.
+ * @return int
  */
 function wp_update_attachment_metadata( $post_id, $data ) {
 	$post_id = (int) $post_id;
@@ -2387,41 +2518,42 @@ function wp_update_attachment_metadata( $post_id, $data ) {
 }
 
 /**
- * wp_get_attachment_url() - Retrieve the URL for an attachment
+ * Retrieve the URL for an attachment.
  *
- * {@internal Missing Long Description}}
+ * @since 2.1.0
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
- *
- * @param int $post_id attachment ID
- * @return string {@internal Missing Description}}
+ * @param int $post_id Attachment ID.
+ * @return string
  */
 function wp_get_attachment_url( $post_id = 0 ) {
 	$post_id = (int) $post_id;
 	if ( !$post =& get_post( $post_id ) )
 		return false;
 
-	$url = get_the_guid( $post->ID );
+	$url = '';
+	if ( $file = get_post_meta( $post->ID, '_wp_attached_file', true) ) { //Get attached file
+		if ( ($uploads = wp_upload_dir()) && false === $uploads['error'] ) { //Get upload directory
+			if ( 0 === strpos($file, $uploads['basedir']) ) //Check that the upload base exists in the file location
+				$url = str_replace($uploads['basedir'], $uploads['baseurl'], $file); //replace file location with url location
+		}
+	}
 
-	if ( 'attachment' != $post->post_type || !$url )
+	if ( empty($url) ) //If any of the above options failed, Fallback on the GUID as used pre-2.7, not recomended to rely upon this.
+		$url = get_the_guid( $post->ID );
+
+	if ( 'attachment' != $post->post_type || empty($url) )
 		return false;
 
 	return apply_filters( 'wp_get_attachment_url', $url, $post->ID );
 }
 
 /**
- * wp_get_attachment_thumb_file() - Retrieve thumbnail for an attachment
+ * Retrieve thumbnail for an attachment.
  *
- * {@internal Missing Long Description}}
+ * @since 2.1.0
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
- *
- * @param int $post_id attachment ID
- * @return mixed {@internal Missing Description}}
+ * @param int $post_id Attachment ID.
+ * @return mixed False on failure. Thumbnail file path on success.
  */
 function wp_get_attachment_thumb_file( $post_id = 0 ) {
 	$post_id = (int) $post_id;
@@ -2438,16 +2570,12 @@ function wp_get_attachment_thumb_file( $post_id = 0 ) {
 }
 
 /**
- * wp_get_attachment_thumb_url() - Retrieve URL for an attachment thumbnail
+ * Retrieve URL for an attachment thumbnail.
  *
- * {@internal Missing Long Description}}
+ * @since 2.1.0
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
- *
- * @param int $post_id attachment ID
- * @return string {@internal Missing Description}}
+ * @param int $post_id Attachment ID
+ * @return string|bool False on failure. Thumbnail URL on success.
  */
 function wp_get_attachment_thumb_url( $post_id = 0 ) {
 	$post_id = (int) $post_id;
@@ -2455,7 +2583,7 @@ function wp_get_attachment_thumb_url( $post_id = 0 ) {
 		return false;
 	if ( !$url = wp_get_attachment_url( $post->ID ) )
 		return false;
-		
+
 	$sized = image_downsize( $post_id, 'thumbnail' );
 	if ( $sized )
 		return $sized[0];
@@ -2469,16 +2597,12 @@ function wp_get_attachment_thumb_url( $post_id = 0 ) {
 }
 
 /**
- * wp_attachment_is_image() - Check if the attachment is an image
+ * Check if the attachment is an image.
  *
- * {@internal Missing Long Description}}
+ * @since 2.1.0
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
- *
- * @param int $post_id attachment ID
- * @return bool {@internal Missing Description}}
+ * @param int $post_id Attachment ID
+ * @return bool
  */
 function wp_attachment_is_image( $post_id = 0 ) {
 	$post_id = (int) $post_id;
@@ -2498,16 +2622,12 @@ function wp_attachment_is_image( $post_id = 0 ) {
 }
 
 /**
- * wp_mime_type_icon() - Retrieve the icon for a MIME type
+ * Retrieve the icon for a MIME type.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
+ * @since 2.1.0
  *
  * @param string $mime MIME type
- * @return string|bool {@internal Missing Description}}
+ * @return string|bool
  */
 function wp_mime_type_icon( $mime = 0 ) {
 	if ( !is_numeric($mime) )
@@ -2588,15 +2708,22 @@ function wp_mime_type_icon( $mime = 0 ) {
 }
 
 /**
- * wp_check_for_changed_slugs() - {@internal Missing Short Description}}
+ * Checked for changed slugs for published posts and save old slug.
  *
- * {@internal Missing Long Description}}
+ * The function is used along with form POST data. It checks for the wp-old-slug
+ * POST field. Will only be concerned with published posts and the slug actually
+ * changing.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.1
+ * If the slug was changed and not already part of the old slugs then it will be
+ * added to the post meta field ('_wp_old_slug') for storing old slugs for that
+ * post.
  *
- * @param int $post_id The Post ID
+ * The most logically usage of this function is redirecting changed posts, so
+ * that those that linked to an changed post will be redirected to the new post.
+ *
+ * @since 2.1.0
+ *
+ * @param int $post_id Post ID.
  * @return int Same as $post_id
  */
 function wp_check_for_changed_slugs($post_id) {
@@ -2627,20 +2754,21 @@ function wp_check_for_changed_slugs($post_id) {
 }
 
 /**
- * get_private_posts_cap_sql() - {@internal Missing Short Description}}
+ * Retrieve the private post SQL based on capability.
  *
- * This function provides a standardized way to appropriately select on
- * the post_status of posts/pages. The function will return a piece of
- * SQL code that can be added to a WHERE clause; this SQL is constructed
- * to allow all published posts, and all private posts to which the user
- * has access.
+ * This function provides a standardized way to appropriately select on the
+ * post_status of posts/pages. The function will return a piece of SQL code that
+ * can be added to a WHERE clause; this SQL is constructed to allow all
+ * published posts, and all private posts to which the user has access.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.2
+ * It also allows plugins that define their own post type to control the cap by
+ * using the hook 'pub_priv_sql_capability'. The plugin is expected to return
+ * the capability the user must have to read the private post type.
+ *
+ * @since 2.2.0
  *
  * @uses $user_ID
- * @uses apply_filters() Call 'pub_priv_sql_capability' filter for plugins with different post types
+ * @uses apply_filters() Call 'pub_priv_sql_capability' filter for plugins with different post types.
  *
  * @param string $post_type currently only supports 'post' or 'page'.
  * @return string SQL code that can be added to a where clause.
@@ -2682,12 +2810,12 @@ function get_private_posts_cap_sql($post_type) {
 }
 
 /**
- * get_lastpostdate() - {@internal Missing Short Description}}
+ * Retrieve the date the the last post was published.
  *
- * {@internal Missing Long Description}}
+ * The server timezone is the default and is the difference between GMT and
+ * server time. The 'blog' value is the date when the last post was posted. The
+ * 'gmt' is when the last post was posted in GMT formatted date.
  *
- * @package WordPress
- * @subpackage Post
  * @since 0.71
  *
  * @uses $wpdb
@@ -2723,20 +2851,18 @@ function get_lastpostdate($timezone = 'server') {
 }
 
 /**
- * get_lastpostmodified() - {@internal Missing Short Description}}
+ * Retrieve last post modified date depending on timezone.
  *
- * {@internal Missing Long Description}}
+ * The server timezone is the default and is the difference between GMT and
+ * server time. The 'blog' value is just when the last post was modified. The
+ * 'gmt' is when the last post was modified in GMT time.
  *
- * @package WordPress
- * @subpackage Post
- * @since 1.2
- *
+ * @since 1.2.0
  * @uses $wpdb
  * @uses $blog_id
  * @uses apply_filters() Calls 'get_lastpostmodified' filter
  *
  * @global mixed $cache_lastpostmodified Stores the date the last post was modified
- * @global mixed $pagenow The current page being viewed
  *
  * @param string $timezone The location to get the time. Can be 'gmt', 'blog', or 'server'.
  * @return string The date the post was last modified.
@@ -2768,9 +2894,9 @@ function get_lastpostmodified($timezone = 'server') {
 }
 
 /**
- * update_post_cache() - Updates posts in cache
+ * Updates posts in cache.
  *
- * @usedby update_page_cache() update_page_cache() aliased by this function.
+ * @usedby update_page_cache() Aliased by this function.
  *
  * @package WordPress
  * @subpackage Cache
@@ -2787,21 +2913,25 @@ function update_post_cache(&$posts) {
 }
 
 /**
- * clean_post_cache() - Will clean the post in the cache
+ * Will clean the post in the cache.
  *
- * Cleaning means delete from the cache of the post. Will call to clean
- * the term object cache associated with the post ID.
+ * Cleaning means delete from the cache of the post. Will call to clean the term
+ * object cache associated with the post ID.
  *
  * @package WordPress
  * @subpackage Cache
- * @since 2.0
+ * @since 2.0.0
  *
  * @uses do_action() Will call the 'clean_post_cache' hook action.
  *
  * @param int $id The Post ID in the cache to clean
  */
 function clean_post_cache($id) {
-	global $wpdb;
+	global $_wp_suspend_cache_invalidation, $wpdb;
+
+	if ( !empty($_wp_suspend_cache_invalidation) )
+		return;
+
 	$id = (int) $id;
 
 	wp_cache_delete($id, 'posts');
@@ -2820,7 +2950,7 @@ function clean_post_cache($id) {
 }
 
 /**
- * update_page_cache() - Alias of update_post_cache()
+ * Alias of update_post_cache().
  *
  * @see update_post_cache() Posts and pages are the same, alias is intentional
  *
@@ -2835,14 +2965,14 @@ function update_page_cache(&$pages) {
 }
 
 /**
- * clean_page_cache() - Will clean the page in the cache
+ * Will clean the page in the cache.
  *
- * Clean (read: delete) page from cache that matches $id. Will also clean
- * cache associated with 'all_page_ids' and 'get_pages'.
+ * Clean (read: delete) page from cache that matches $id. Will also clean cache
+ * associated with 'all_page_ids' and 'get_pages'.
  *
  * @package WordPress
  * @subpackage Cache
- * @since 2.0
+ * @since 2.0.0
  *
  * @uses do_action() Will call the 'clean_page_cache' hook action.
  *
@@ -2858,11 +2988,11 @@ function clean_page_cache($id) {
 }
 
 /**
- * update_post_caches() - Call major cache updating functions for list of Post objects.
+ * Call major cache updating functions for list of Post objects.
  *
  * @package WordPress
  * @subpackage Cache
- * @since 1.5
+ * @since 1.5.0
  *
  * @uses $wpdb
  * @uses update_post_cache()
@@ -2889,18 +3019,20 @@ function update_post_caches(&$posts) {
 }
 
 /**
- * update_postmeta_cache() - {@internal Missing Short Description}}
+ * Updates metadata cache for list of post IDs.
  *
- * {@internal Missing Long Description}}
+ * Performs SQL query to retrieve the metadata for the post IDs and updates the
+ * metadata cache for the posts. Therefore, the functions, which call this
+ * function, do not need to perform SQL queries on their own.
  *
  * @package WordPress
  * @subpackage Cache
- * @since 2.1
+ * @since 2.1.0
  *
  * @uses $wpdb
  *
- * @param array $post_ids {@internal Missing Description}}
- * @return bool|array Returns false if there is nothing to update or an array of metadata
+ * @param array $post_ids List of post IDs.
+ * @return bool|array Returns false if there is nothing to update or an array of metadata.
  */
 function update_postmeta_cache($post_ids) {
 	global $wpdb;
@@ -2927,7 +3059,7 @@ function update_postmeta_cache($post_ids) {
 	// Get post-meta info
 	$id_list = join(',', $ids);
 	$cache = array();
-	if ( $meta_list = $wpdb->get_results("SELECT post_id, meta_key, meta_value FROM $wpdb->postmeta WHERE post_id IN ($id_list) ORDER BY post_id, meta_key", ARRAY_A) ) {
+	if ( $meta_list = $wpdb->get_results("SELECT post_id, meta_key, meta_value FROM $wpdb->postmeta WHERE post_id IN ($id_list)", ARRAY_A) ) {
 		foreach ( (array) $meta_list as $metarow) {
 			$mpid = (int) $metarow['post_id'];
 			$mkey = $metarow['meta_key'];
@@ -2949,7 +3081,7 @@ function update_postmeta_cache($post_ids) {
 			$cache[$id] = array();
 	}
 
-	foreach ( array_keys($cache) as $post)
+	foreach ( (array) array_keys($cache) as $post)
 		wp_cache_set($post, $cache[$post], 'post_meta');
 
 	return $cache;
@@ -2960,18 +3092,14 @@ function update_postmeta_cache($post_ids) {
 //
 
 /**
- * _transition_post_status() - Hook {@internal Missing Short Description}}
+ * Hook for managing future post transitions to published.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
- *
+ * @since 2.3.0
+ * @access private
  * @uses $wpdb
  *
- * @param string $new_status {@internal Missing Description}}
- * @param string $old_status {@internal Missing Description}}
+ * @param string $new_status New post status
+ * @param string $old_status Previous post status
  * @param object $post Object type containing the post information
  */
 function _transition_post_status($new_status, $old_status, $post) {
@@ -2989,15 +3117,13 @@ function _transition_post_status($new_status, $old_status, $post) {
 }
 
 /**
- * _future_post_hook() - Hook used to schedule publication for a post marked for the future.
+ * Hook used to schedule publication for a post marked for the future.
  *
  * The $post properties used and must exist are 'ID' and 'post_date_gmt'.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
+ * @since 2.3.0
  *
- * @param int $post_id Not Used. Can be set to null.
+ * @param int $deprecated Not Used. Can be set to null.
  * @param object $post Object type containing the post information
  */
 function _future_post_hook($deprecated = '', $post) {
@@ -3006,14 +3132,9 @@ function _future_post_hook($deprecated = '', $post) {
 }
 
 /**
- * _publish_post_hook() - Hook {@internal Missing Short Description}}
+ * Hook to schedule pings and enclosures when a post is published.
  *
- * {@internal Missing Long Description}}
- *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
- *
+ * @since 2.3.0
  * @uses $wpdb
  * @uses XMLRPC_REQUEST
  * @uses APP_REQUEST
@@ -3041,19 +3162,18 @@ function _publish_post_hook($post_id) {
 }
 
 /**
- * _save_post_hook() - Hook used to prevent page/post cache and rewrite rules from staying dirty
+ * Hook used to prevent page/post cache and rewrite rules from staying dirty.
  *
- * Does two things. If the post is a page and has a template then it will update/add that
- * template to the meta. For both pages and posts, it will clean the post cache to make sure
- * that the cache updates to the changes done recently. For pages, the rewrite rules of
- * WordPress are flushed to allow for any changes.
+ * Does two things. If the post is a page and has a template then it will
+ * update/add that template to the meta. For both pages and posts, it will clean
+ * the post cache to make sure that the cache updates to the changes done
+ * recently. For pages, the rewrite rules of WordPress are flushed to allow for
+ * any changes.
  *
- * The $post parameter, only uses 'post_type' property and 'page_template' property.
+ * The $post parameter, only uses 'post_type' property and 'page_template'
+ * property.
  *
- * @package WordPress
- * @subpackage Post
- * @since 2.3
- *
+ * @since 2.3.0
  * @uses $wp_rewrite Flushes Rewrite Rules.
  *
  * @param int $post_id The ID in the database table for the $post
@@ -3062,17 +3182,35 @@ function _publish_post_hook($post_id) {
 function _save_post_hook($post_id, $post) {
 	if ( $post->post_type == 'page' ) {
 		clean_page_cache($post_id);
-		global $wp_rewrite;
-		$wp_rewrite->flush_rules();
+		// Avoid flushing rules for every post during import.
+		if ( !defined('WP_IMPORTING') ) {
+			global $wp_rewrite;
+			$wp_rewrite->flush_rules();
+		}
 	} else {
 		clean_post_cache($post_id);
 	}
 }
 
-//
-// Private
-//
-
+/**
+ * Retrieve post ancestors and append to post ancestors property.
+ *
+ * Will only retrieve ancestors once, if property is already set, then nothing
+ * will be done. If there is not a parent post, or post ID and post parent ID
+ * are the same then nothing will be done.
+ *
+ * The parameter is passed by reference, so nothing needs to be returned. The
+ * property will be updated and can be referenced after the function is
+ * complete. The post parent will be an ancestor and the parent of the post
+ * parent will be an ancestor. There will only be two ancestors at the most.
+ *
+ * @access private
+ * @since unknown
+ * @uses $wpdb
+ *
+ * @param object $_post Post data.
+ * @return null When nothing needs to be done.
+ */
 function _get_post_ancestors(&$_post) {
 	global $wpdb;
 
@@ -3092,22 +3230,21 @@ function _get_post_ancestors(&$_post) {
 	}
 }
 
-/* Post Revisions */
-
 /**
- * _wp_post_revision_fields() - determines which fields of posts are to be saved in revisions
+ * Determines which fields of posts are to be saved in revisions.
  *
- * Does two things. If passed a post *array*, it will return a post array ready to be
- * insterted into the posts table as a post revision.
- * Otherwise, returns an array whose keys are the post fields to be saved for post revisions.
+ * Does two things. If passed a post *array*, it will return a post array ready
+ * to be insterted into the posts table as a post revision. Otherwise, returns
+ * an array whose keys are the post fields to be saved for post revisions.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
+ * @access private
  *
- * @param array $post optional a post array to be processed for insertion as a post revision
+ * @param array $post Optional a post array to be processed for insertion as a post revision.
  * @param bool $autosave optional Is the revision an autosave?
- * @return array post array ready to be inserted as a post revision or array of fields that can be versioned
+ * @return array Post array ready to be inserted as a post revision or array of fields that can be versioned.
  */
 function _wp_post_revision_fields( $post = null, $autosave = false ) {
 	static $fields = false;
@@ -3139,23 +3276,25 @@ function _wp_post_revision_fields( $post = null, $autosave = false ) {
 	$return['post_status']   = 'inherit';
 	$return['post_type']     = 'revision';
 	$return['post_name']     = $autosave ? "$post[ID]-autosave" : "$post[ID]-revision";
-	$return['post_date']     = $post['post_modified'];
-	$return['post_date_gmt'] = $post['post_modified_gmt'];
+	$return['post_date']     = isset($post['post_modified']) ? $post['post_modified'] : '';
+	$return['post_date_gmt'] = isset($post['post_modified_gmt']) ? $post['post_modified_gmt'] : '';
 
 	return $return;
 }
 
 /**
- * wp_save_post_revision() - Saves an already existing post as a post revision.  Typically used immediately prior to post updates.
+ * Saves an already existing post as a post revision.
+ *
+ * Typically used immediately prior to post updates.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
  * @uses _wp_put_post_revision()
  *
- * @param int $post_id The ID of the post to save as a revision
- * @return mixed null or 0 if error, new revision ID if success
+ * @param int $post_id The ID of the post to save as a revision.
+ * @return mixed Null or 0 if error, new revision ID, if success.
  */
 function wp_save_post_revision( $post_id ) {
 	// We do autosaves manually with wp_create_post_autosave()
@@ -3199,19 +3338,20 @@ function wp_save_post_revision( $post_id ) {
 }
 
 /**
- * wp_get_post_autosave() - returns the autosaved data of the specified post.
+ * Retrieve the autosaved data of the specified post.
  *
- * Returns a post object containing the information that was autosaved for the specified post.
+ * Returns a post object containing the information that was autosaved for the
+ * specified post.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
- * @param int $post_id The post ID
- * @return object|bool the autosaved data or false on failure or when no autosave exists
+ * @param int $post_id The post ID.
+ * @return object|bool The autosaved data or false on failure or when no autosave exists.
  */
 function wp_get_post_autosave( $post_id ) {
-	global $wpdb;
+
 	if ( !$post = get_post( $post_id ) )
 		return false;
 
@@ -3235,21 +3375,28 @@ function wp_get_post_autosave( $post_id ) {
 	return false;
 }
 
-// Internally used to hack WP_Query into submission
+/**
+ * Internally used to hack WP_Query into submission.
+ *
+ * @package WordPress
+ * @subpackage Post_Revisions
+ * @since 2.6.0
+ *
+ * @param object $query WP_Query object
+ */
 function _wp_get_post_autosave_hack( $query ) {
 	$query->is_single = false;
 }
 
-
 /**
- * wp_is_post_revision() - Determines if the specified post is a revision.
+ * Determines if the specified post is a revision.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
- * @param int|object $post post ID or post object
- * @return bool|int false if not a revision, ID of revision's parent otherwise
+ * @param int|object $post Post ID or post object.
+ * @return bool|int False if not a revision, ID of revision's parent otherwise.
  */
 function wp_is_post_revision( $post ) {
 	if ( !$post = wp_get_post_revision( $post ) )
@@ -3258,14 +3405,14 @@ function wp_is_post_revision( $post ) {
 }
 
 /**
- * wp_is_post_autosave() - Determines if the specified post is an autosave.
+ * Determines if the specified post is an autosave.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
- * @param int|object $post post ID or post object
- * @return bool|int false if not a revision, ID of autosave's parent otherwise
+ * @param int|object $post Post ID or post object.
+ * @return bool|int False if not a revision, ID of autosave's parent otherwise
  */
 function wp_is_post_autosave( $post ) {
 	if ( !$post = wp_get_post_revision( $post ) )
@@ -3276,17 +3423,17 @@ function wp_is_post_autosave( $post ) {
 }
 
 /**
- * _wp_put_post_revision() - Inserts post data into the posts table as a post revision
+ * Inserts post data into the posts table as a post revision.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
  * @uses wp_insert_post()
  *
- * @param int|object|array $post post ID, post object OR post array
- * @param bool $autosave optional Is the revision an autosave?
- * @return mixed null or 0 if error, new revision ID if success
+ * @param int|object|array $post Post ID, post object OR post array.
+ * @param bool $autosave Optional. Is the revision an autosave?
+ * @return mixed Null or 0 if error, new revision ID if success.
  */
 function _wp_put_post_revision( $post = null, $autosave = false ) {
 	if ( is_object($post) )
@@ -3311,18 +3458,18 @@ function _wp_put_post_revision( $post = null, $autosave = false ) {
 }
 
 /**
- * wp_get_post_revision() - Gets a post revision
+ * Gets a post revision.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
  * @uses get_post()
  *
- * @param int|object $post post ID or post object
- * @param $output optional OBJECT, ARRAY_A, or ARRAY_N
- * @param string $filter optional sanitation filter.  @see sanitize_post()
- * @return mixed null if error or post object if success
+ * @param int|object $post Post ID or post object
+ * @param string $output Optional. OBJECT, ARRAY_A, or ARRAY_N.
+ * @param string $filter Optional sanitation filter.  @see sanitize_post()
+ * @return mixed Null if error or post object if success
  */
 function &wp_get_post_revision(&$post, $output = OBJECT, $filter = 'raw') {
 	$null = null;
@@ -3345,20 +3492,21 @@ function &wp_get_post_revision(&$post, $output = OBJECT, $filter = 'raw') {
 }
 
 /**
- * wp_restore_post_revision() - Restores a post to the specified revision
+ * Restores a post to the specified revision.
  *
- * Can restore a past using all fields of the post revision, or only selected fields.
+ * Can restore a past using all fields of the post revision, or only selected
+ * fields.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
  * @uses wp_get_post_revision()
  * @uses wp_update_post()
  *
- * @param int|object $revision_id revision ID or revision object
- * @param array $fields optional What fields to restore from.  Defaults to all.
- * @return mixed null if error, false if no fields to restore, (int) post ID if success
+ * @param int|object $revision_id Revision ID or revision object.
+ * @param array $fields Optional. What fields to restore from.  Defaults to all.
+ * @return mixed Null if error, false if no fields to restore, (int) post ID if success.
  */
 function wp_restore_post_revision( $revision_id, $fields = null ) {
 	if ( !$revision = wp_get_post_revision( $revision_id, ARRAY_A ) )
@@ -3387,20 +3535,20 @@ function wp_restore_post_revision( $revision_id, $fields = null ) {
 }
 
 /**
- * wp_delete_post_revision() - Deletes a revision.
+ * Deletes a revision.
  *
- * Deletes the row from the posts table corresponding to the specified revision
+ * Deletes the row from the posts table corresponding to the specified revision.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
  * @uses wp_get_post_revision()
  * @uses wp_delete_post()
  *
- * @param int|object $revision_id revision ID or revision object
- * @param array $fields optional What fields to restore from.  Defaults to all.
- * @return mixed null if error, false if no fields to restore, (int) post ID if success
+ * @param int|object $revision_id Revision ID or revision object.
+ * @param array $fields Optional. What fields to restore from.  Defaults to all.
+ * @return mixed Null if error, false if no fields to restore, (int) post ID if success.
  */
 function wp_delete_post_revision( $revision_id ) {
 	if ( !$revision = wp_get_post_revision( $revision_id ) )
@@ -3417,15 +3565,15 @@ function wp_delete_post_revision( $revision_id ) {
 }
 
 /**
- * wp_get_post_revisions() - Returns all revisions of specified post
+ * Returns all revisions of specified post.
  *
  * @package WordPress
- * @subpackage Post Revisions
- * @since 2.6
+ * @subpackage Post_Revisions
+ * @since 2.6.0
  *
  * @uses get_children()
  *
- * @param int|object $post_id post ID or post object
+ * @param int|object $post_id Post ID or post object
  * @return array empty if no revisions
  */
 function wp_get_post_revisions( $post_id = 0, $args = null ) {
@@ -3441,4 +3589,35 @@ function wp_get_post_revisions( $post_id = 0, $args = null ) {
 	if ( !$revisions = get_children( $args ) )
 		return array();
 	return $revisions;
+}
+
+function _set_preview($post) {
+
+	if ( ! is_object($post) )
+		return $post;
+
+	$preview = wp_get_post_autosave($post->ID);
+
+	if ( ! is_object($preview) )
+		return $post;
+
+	$preview = sanitize_post($preview);
+
+	$post->post_content = $preview->post_content;
+	$post->post_title = $preview->post_title;
+	$post->post_excerpt = $preview->post_excerpt;
+
+	return $post;
+}
+
+function _show_post_preview() {
+
+	if ( isset($_GET['preview_id']) && isset($_GET['preview_nonce']) ) {
+		$id = (int) $_GET['preview_id'];
+
+		if ( false == wp_verify_nonce( $_GET['preview_nonce'], 'post_preview_' . $id ) )
+			wp_die( __('You do not have permission to preview drafts.') );
+
+		add_filter('the_preview', '_set_preview');
+	}
 }

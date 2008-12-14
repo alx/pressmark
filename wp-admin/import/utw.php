@@ -1,9 +1,23 @@
 <?php
+/**
+ * The Ultimate Tag Warrior Importer.
+ *
+ * @package WordPress
+ * @subpackage Importer
+ */
 
+/**
+ * Ultimate Tag Warrior Converter to 2.3 taxonomy.
+ *
+ * This converts the Ultimate Tag Warrior tags to the 2.3 WordPress taxonomy.
+ *
+ * @since 2.3.0
+ */
 class UTW_Import {
 
 	function header()  {
 		echo '<div class="wrap">';
+		screen_icon();
 		echo '<h2>'.__('Import Ultimate Tag Warrior').'</h2>';
 		echo '<p>'.__('Steps may take a few minutes depending on the size of your database. Please be patient.').'<br /><br /></p>';
 	}
@@ -19,7 +33,7 @@ class UTW_Import {
 		echo '<p>'.__('To accommodate larger databases for those tag-crazy authors out there, we have made this into an easy 5-step program to help you kick that nasty UTW habit. Just keep clicking along and we will let you know when you are in the clear!').'</p>';
 		echo '<p><strong>'.__('Don&#8217;t be stupid - backup your database before proceeding!').'</strong></p>';
 		echo '<form action="admin.php?import=utw&amp;step=1" method="post">';
-		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Step 1').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.__('Step 1').'" /></p>';
 		echo '</form>';
 		echo '</div>';
 	}
@@ -106,7 +120,7 @@ class UTW_Import {
 
 		echo '<form action="admin.php?import=utw&amp;step=2" method="post">';
 		wp_nonce_field('import-utw');
-		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Step 2').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.__('Step 2').'" /></p>';
 		echo '</form>';
 		echo '</div>';
 	}
@@ -142,7 +156,7 @@ class UTW_Import {
 
 		echo '<form action="admin.php?import=utw&amp;step=3" method="post">';
 		wp_nonce_field('import-utw');
-		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Step 3').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.__('Step 3').'" /></p>';
 		echo '</form>';
 		echo '</div>';
 
@@ -161,7 +175,7 @@ class UTW_Import {
 
 		echo '<form action="admin.php?import=utw&amp;step=4" method="post">';
 		wp_nonce_field('import-utw');
-		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Step 4').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.__('Step 4').'" /></p>';
 		echo '</form>';
 		echo '</div>';
 
