@@ -1,6 +1,7 @@
 <?php
 
 get_header();
+pressmark();
 ?>
 
 	<p id="blurb">
