@@ -43,5 +43,4 @@
 		<div id="content">
             
 <?php
-
-if( current_user_can( 'publish_posts' ) ) require_once dirname( __FILE__ ) . '/post-form.php';
+pressmark();
