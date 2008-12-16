@@ -106,6 +106,9 @@ function add_new_bookmark() {
 				VALUES ('$post_id','pressmark-url','$post_url' )
 			" );
 	}
+	
+	wp_redirect( get_bloginfo( 'url' ) . '/' );
+	exit;
 }
 
 ?>
