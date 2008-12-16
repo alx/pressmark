@@ -32,11 +32,7 @@ function display_bookmark_form() {
 
 			<p>
 			<label for="posttext">Description:</label><br>
-			<textarea name="posttext" id="posttext" rows="3" cols="50">
-				<?php if(isset($_GET['posttext'])):?>
-					&#8220;<i><?php echo $_GET['posttext']; ?></i>&#8221;
-				<?php endif; ?>
-			</textarea>
+			<textarea name="posttext" id="posttext" rows="3" cols="50"><?php if(isset($_GET['posttext'])) echo $_GET['posttext']; ?></textarea>
 			</p>
 
 			<p>
@@ -106,9 +102,6 @@ function add_new_bookmark() {
 				VALUES ('$post_id','pressmark-url','$post_url' )
 			" );
 	}
-	
-	wp_redirect( get_bloginfo( 'url' ) . '/' );
-	exit;
 }
 
 ?>
