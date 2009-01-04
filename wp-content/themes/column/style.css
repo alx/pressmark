@@ -36,6 +36,7 @@ h2 { text-align: center; }
 
 a { color: #00c; }    
 a:visited { color: #00c; }
+img {border:0px;}
 
 .clear { clear: both; line-height: 1px; font-size: 1px; margin: 1px; }
 
