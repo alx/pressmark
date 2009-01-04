@@ -2,7 +2,7 @@
 $user			= get_userdata( $current_user->ID );
 $first_name		= attribute_escape( $user->first_name );
 
-// 1. News URL (default and will disappear if.... see below)
+// 1. News URL (default and will disappear if News type)
 // 2. Title
 // 3. Description (Full WYSIWYG editor)
 // 4. Category Choices (can select multiple categories)
@@ -16,12 +16,13 @@ $first_name		= attribute_escape( $user->first_name );
 		<input type="hidden" name="action" value="post" />
 		<?php wp_nonce_field( 'new-post' ); ?>
 
-		<?php echo get_avatar( $user->ID, 48 ); ?>
+		<input type="radio" name="entry_type" value="type_news" onClick="$('posturl_label').show();$('posturl').show();" checked="checked"> News		
+		<input type="radio" name="entry_type" value="type_blog" onClick="$('posturl_label').hide();$('posturl').hide();"> Blog Entry
 
 		<label for="posttitle">Title:</label>
 		<input type="text" name="posttitle" value="<?php echo $_GET['posttitle']; ?>" id="posttitle" class="text"/>
 		
-		<label for="posturl">News URL:</label>
+		<label id="posturl_label" for="posturl">News URL:</label>
 		<input type="text" id="posturl" name="posturl" class="text" value="<?php echo $_GET['posturl']; ?>"/>
 		
 		<label for="posttext">Description:</label>
@@ -37,8 +38,6 @@ $first_name		= attribute_escape( $user->first_name );
 		<label for="tags">Tags:</label>
 		<input type="text" name="tags" id="tags" autocomplete="off" />
 		
-		<input type="radio" name="status" value="publish" checked="checked"> Public
-		<input type="radio" name="status" value="private"> Private
 		
 		<input id="submit" type="submit" value="Post it" />
 	</form>
