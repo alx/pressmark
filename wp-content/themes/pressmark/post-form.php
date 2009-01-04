@@ -1,6 +1,14 @@
 <?php
 $user			= get_userdata( $current_user->ID );
 $first_name		= attribute_escape( $user->first_name );
+
+// 1. News URL (default and will disappear if.... see below)
+// 2. Title
+// 3. Description (Full WYSIWYG editor)
+// 4. Category Choices (can select multiple categories)
+// 5. Meta Description
+// 6. Meta Keywords (comma separated)
+// 7. Tags
 ?>
 
 <div id="postbox">
@@ -13,7 +21,7 @@ $first_name		= attribute_escape( $user->first_name );
 		<label for="posttitle">Title:</label>
 		<input type="text" name="posttitle" value="<?php echo $_GET['posttitle']; ?>" id="posttitle" class="text"/>
 		
-		<label for="posturl">Link:</label>
+		<label for="posturl">News URL:</label>
 		<input type="text" id="posturl" name="posturl" class="text" value="<?php echo $_GET['posturl']; ?>"/>
 		
 		<label for="posttext">Description:</label>
@@ -23,7 +31,10 @@ $first_name		= attribute_escape( $user->first_name );
 			<?php endif; ?>
 		</textarea>
 	
-		<label for="tags">Tags</label>
+		<label for="tags">Categories:</label>
+		<input type="text" name="tags" id="tags" autocomplete="off" />
+		
+		<label for="tags">Tags:</label>
 		<input type="text" name="tags" id="tags" autocomplete="off" />
 		
 		<input type="radio" name="status" value="publish" checked="checked"> Public
