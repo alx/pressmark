@@ -62,7 +62,7 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 
 get_header( ); 
 
-if( current_user_can( 'publish_posts' ) ) {
+if( current_user_can( 'publish_posts' )) {
 	require_once dirname( __FILE__ ) . '/post-form.php';
 }
 ?>
@@ -119,6 +119,11 @@ if( have_posts( ) ) {
 		// Vimeo embed
 		if(preg_match("/http:\/\/([a-zA-Z0-9\-\_]+\.|)vimeo\.com\/(\d+)([^<\s]*)/", $url, $match)){
 			echo '<p><span class="vimeo" style="height:285px;"><object width="380" height="283"><param name="allowfullscreen" value="true" /><param name="allowscriptaccess" value="always" /><param name="movie" value="http://vimeo.com/moogaloop.swf?clip_id='.$match[2].'&amp;server=vimeo.com&amp;show_title=1&amp;show_byline=1&amp;show_portrait=0&amp;color=&amp;fullscreen=1" /><embed src="http://vimeo.com/moogaloop.swf?clip_id='.$match[2].'&amp;server=vimeo.com&amp;show_title=1&amp;show_byline=1&amp;show_portrait=0&amp;color=&amp;fullscreen=1" type="application/x-shockwave-flash" allowfullscreen="true" allowscriptaccess="always" width="380" height="283"></embed></object></span></p>';
+		}
+		
+		// Flickr embed
+		if(function_exists('flickr_embed') && preg_match("/http:\/\/([a-zA-Z0-9\-\_]+\.|)flickr\.com\/photos\/(.+)\/(\d+)([^<\s]*)/", $url, $match)){
+			flickr_embed($match[3]);
 		}
 		
 		// mp3 embed
