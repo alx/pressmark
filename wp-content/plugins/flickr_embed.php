@@ -93,7 +93,7 @@ function flickr_embed($photo_id, $size = "Medium"){
 		}
 		
 		$source = $photo['source'];
-		$url = $photo['source'];
+		$url = $photo['url'];
 		$width = $photo['width'];
 		$height = $photo['height'];
 		
