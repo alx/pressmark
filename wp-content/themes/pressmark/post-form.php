@@ -10,14 +10,28 @@ $first_name		= attribute_escape( $user->first_name );
 // 6. Meta Keywords (comma separated)
 // 7. Tags
 ?>
+<script type="text/javascript" charset="utf-8">
+	
+	function show_posturl() {
+		$j=jQuery.noConflict();
+		$j('#posturl_label').show();
+		$j('#posturl').show();
+	}
+	
+	function hide_posturl() {
+		$j=jQuery.noConflict();
+		$j('#posturl_label').hide();
+		$j('#posturl').hide();
+	}
+</script>
 
 <div id="postbox">
-	<form id="new_post" name="new_post" method="post" action="<?php bloginfo( 'url' ); ?>/" onSubmit="return checkform()">
+	<form id="new_post" name="new_post" method="post" action="<?php bloginfo( 'url' ); ?>/" onSubmit="return checkForm()">
 		<input type="hidden" name="action" value="post" />
 		<?php wp_nonce_field( 'new-post' ); ?>
 
-		<input type="radio" name="entry_type" value="type_news" onClick="$('posturl_label').show();$('posturl').show();" checked="checked"> News		
-		<input type="radio" name="entry_type" value="type_blog" onClick="$('posturl_label').hide();$('posturl').hide();"> Blog Entry
+		<input type="radio" name="entry_type" id="type_news" value="type_news" onClick="show_posturl();" checked="checked"> News		
+		<input type="radio" name="entry_type" id="type_blog" value="type_blog" onClick="hide_posturl();"> Blog Entry
 
 		<label for="posttitle">Title:</label>
 		<input type="text" name="posttitle" value="<?php echo $_GET['posttitle']; ?>" id="posttitle" class="text"/>

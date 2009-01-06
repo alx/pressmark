@@ -7,24 +7,9 @@
 		<meta name="generator" content="WordPress.com" /> 
 		
 		<?php 
-			wp_enqueue_script('prototype');
+			wp_enqueue_script('jquery');
 			wp_enqueue_script('tiny_mce', get_bloginfo('template_directory') . "/tiny_mce/tiny_mce.js");
 		?>
-		
-		<script type="text/javascript" charset="utf-8">
-			function isUrl(s) {
-				var regexp = /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
-				return regexp.test(s);
-			}
-
-			function checkForm() {
-				if ($("type_news").is(":checked") && isUrl($("posturl").value)) {
-					alert("is correct");
-					return false;
-				}
-				return true;
-			}
-		</script>
 		
 		<link rel="stylesheet" href="<?php bloginfo('stylesheet_url'); ?>" type="text/css" media="screen" />
 		<link rel="alternate" type="application/rss+xml" title="<?php bloginfo('name'); ?> RSS Feed" href="<?php bloginfo('rss2_url'); ?>" />
@@ -36,6 +21,20 @@
 		tinyMCE.init({
 		    mode : "textareas"
 		});
+		
+		function isUrl(s) {
+			var regexp = /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
+			return regexp.test(s);
+		}
+
+		function checkForm() {
+			$j=jQuery.noConflict();
+			if ($j("#type_news").is(":checked") && isUrl($j("#posturl").value)) {
+				alert("is correct");
+				return false;
+			}
+			return true;
+		}
 		</script>
 	</head>
 <body>
