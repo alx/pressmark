@@ -12,7 +12,7 @@ $first_name		= attribute_escape( $user->first_name );
 ?>
 
 <div id="postbox">
-	<form id="new_post" name="new_post" method="post" action="<?php bloginfo( 'url' ); ?>/">
+	<form id="new_post" name="new_post" method="post" action="<?php bloginfo( 'url' ); ?>/" onSubmit="return checkform()">
 		<input type="hidden" name="action" value="post" />
 		<?php wp_nonce_field( 'new-post' ); ?>
 

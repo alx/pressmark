@@ -14,6 +14,21 @@
 <body>
 
 <div id="wrapper">
+	
+<script type="text/javascript" charset="utf-8">
+	function isUrl(s) {
+		var regexp = /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
+		return regexp.test(s);
+	}
+	
+	function checkForm() {
+		if ($("type_news").is(":checked") && isUrl($("posturl").value)) {
+			alert("is correct");
+			return false;
+		}
+		return true;
+	}
+</script>
 
 <h1><a href="<?php bloginfo( 'url' ); ?>/"><?php bloginfo( 'name' ); ?></a></h1>
 
