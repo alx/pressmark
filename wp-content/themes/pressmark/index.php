@@ -63,10 +63,15 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 get_header( ); 
 
 if( current_user_can( 'publish_posts' )) {
-	if(function_exists('is_author_limited') && !is_author_limited($current_user->user_id)) {
-		require_once dirname( __FILE__ ) . '/post-form.php';
+	$form_display = true;
+	
+	if(function_exists('is_author_limited') && is_author_limited($current_user->user_id)) {
+		$form_display = false;
 	}
-	else {
+	
+	if($form_display) {
+		require_once dirname( __FILE__ ) . '/post-form.php';
+	} else {
 		echo "<p>Limit reached for today, you'll be able to post more links tomorrow</p>";
 	}
 }
