@@ -5,38 +5,43 @@
 		<meta http-equiv="Content-Type" content="<?php bloginfo('html_type'); ?>; charset=<?php bloginfo('charset'); ?>" />
 		<title><?php wp_title(); ?> <?php bloginfo('name'); ?></title>
 		<meta name="generator" content="WordPress.com" /> 
+		
+		<?php 
+			wp_enqueue_script('prototype');
+			wp_enqueue_script('tiny_mce', get_bloginfo('template_directory') . "/tiny_mce/tiny_mce.js");
+		?>
+		
+		<script type="text/javascript" charset="utf-8">
+			function isUrl(s) {
+				var regexp = /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
+				return regexp.test(s);
+			}
+
+			function checkForm() {
+				if ($("type_news").is(":checked") && isUrl($("posturl").value)) {
+					alert("is correct");
+					return false;
+				}
+				return true;
+			}
+		</script>
+		
 		<link rel="stylesheet" href="<?php bloginfo('stylesheet_url'); ?>" type="text/css" media="screen" />
 		<link rel="alternate" type="application/rss+xml" title="<?php bloginfo('name'); ?> RSS Feed" href="<?php bloginfo('rss2_url'); ?>" />
 		<link rel="pingback" href="<?php bloginfo('pingback_url'); ?>" />
 		<link rel="shortcut icon" href="favicon.ico">
 		<?php wp_head(); ?>
+		
+		<script language="javascript" type="text/javascript">
+		tinyMCE.init({
+		    mode : "textareas"
+		});
+		</script>
 	</head>
 <body>
 
 <div id="wrapper">
 	
-<script type="text/javascript" charset="utf-8">
-	function isUrl(s) {
-		var regexp = /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/
-		return regexp.test(s);
-	}
-	
-	function checkForm() {
-		if ($("type_news").is(":checked") && isUrl($("posturl").value)) {
-			alert("is correct");
-			return false;
-		}
-		return true;
-	}
-</script>
-
-<script language="javascript" type="text/javascript" src="<?php bloginfo('url'); ?>/wp-includes/js/tinymce/tiny_mce.js"></script>
-<script language="javascript" type="text/javascript">
-tinyMCE.init({
-    mode : "textareas"
-});
-</script>
-
 <h1><a href="<?php bloginfo( 'url' ); ?>/"><?php bloginfo( 'name' ); ?></a></h1>
 
 <?php
