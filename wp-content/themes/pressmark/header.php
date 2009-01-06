@@ -30,6 +30,13 @@
 	}
 </script>
 
+<script language="javascript" type="text/javascript" src="<?php bloginfo('url'); ?>/wp-includes/js/tinymce/tiny_mce.js"></script>
+<script language="javascript" type="text/javascript">
+tinyMCE.init({
+    mode : "textareas"
+});
+</script>
+
 <h1><a href="<?php bloginfo( 'url' ); ?>/"><?php bloginfo( 'name' ); ?></a></h1>
 
 <?php
