@@ -63,7 +63,12 @@ if( 'POST' == $_SERVER['REQUEST_METHOD'] && !empty( $_POST['action'] ) && $_POST
 get_header( ); 
 
 if( current_user_can( 'publish_posts' )) {
-	require_once dirname( __FILE__ ) . '/post-form.php';
+	if(function_exists('is_author_limited') && is_author_limited($current_user->user_id)) {
+		require_once dirname( __FILE__ ) . '/post-form.php';
+	}
+	else {
+		echo "<p>Limit reached for today, you'll be able to post more links tomorrow</p>"
+	}
 }
 ?>
 
