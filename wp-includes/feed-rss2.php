@@ -53,6 +53,14 @@ $more = 1;
 <?php endif; ?>
 		<wfw:commentRss><?php echo get_post_comments_feed_link(); ?></wfw:commentRss>
 <?php rss_enclosure(); ?>
+
+<?php
+	$url = post_custom("pressmark-url");
+	if(strlen($url) > 0) :
+?>
+		<source url="<?php echo $url ?>"><?php the_title_rss() ?></source>
+<?php endif; ?>
+		
 	<?php do_action('rss2_item'); ?>
 	</item>
 	<?php endwhile; ?>
