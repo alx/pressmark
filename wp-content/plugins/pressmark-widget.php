@@ -65,7 +65,7 @@ function pressmark_widget() {
 	echo $before_widget;
 	echo $before_title . $title . $after_title;
 
-	pressmark_output( $rss, $options[$number] );
+	pressmark_widget_output( $rss, $options[$number] );
 
 	echo $after_widget;
 }
@@ -78,7 +78,7 @@ function pressmark_widget() {
  * @param string|array|object $rss RSS url.
  * @param array $args Widget arguments.
  */
-function pressmark_output( $rss, $args = array() ) {
+function pressmark_widget_output( $rss, $args = array() ) {
 	if ( is_string( $rss ) ) {
 		require_once(ABSPATH . WPINC . '/rss.php');
 		if ( !$rss = fetch_rss($rss) )
@@ -125,7 +125,7 @@ function pressmark_output( $rss, $args = array() ) {
 			if ( $show_summary ) {
 				$desc = '';
 				$summary = wp_specialchars( $summary );
-				$summary = "<div class='rssSummary'>$summary</div>";
+				$summary = "<div class='pressmarkSummary'>$summary</div>";
 			} else {
 				$summary = '';
 			}
@@ -139,7 +139,7 @@ function pressmark_output( $rss, $args = array() ) {
 
 				if ( $date ) {
 					if ( $date_stamp = strtotime( $date ) )
-						$date = ' <span class="rss-date">' . date_i18n( get_option( 'date_format' ), $date_stamp ) . '</span>';
+						$date = ' <span class="pressmark-date">' . date_i18n( get_option( 'date_format' ), $date_stamp ) . '</span>';
 					else
 						$date = '';
 				}
@@ -156,7 +156,7 @@ function pressmark_output( $rss, $args = array() ) {
 			if ( $link == '' ) {
 				echo "<li>$title{$date}{$summary}{$author}</li>";
 			} else {
-				echo "<li><a class='rsswidget' href='$link' title='$desc'>$title</a>{$date}{$summary}{$author}</li>";
+				echo "<li><a class='pressmarkwidget' href='$link' title='$desc'>$title</a>{$date}{$summary}{$author}</li>";
 			}
 }
 		echo '</ul>';
@@ -207,12 +207,12 @@ function pressmark_widget_control($widget_args) {
 			}
 		}
 
-		foreach( (array) $_POST['pressmark-rss'] as $widget_number => $pressmark_widget ) {
+		foreach( (array) $_POST['pressmark-widget'] as $widget_number => $pressmark_widget ) {
 			if ( !isset($pressmark_widget['url']) && isset($options[$widget_number]) ) // user clicked cancel
 				continue;
 			$pressmark_widget = stripslashes_deep( $pressmark_widget );
 			$url = sanitize_url(strip_tags($pressmark_widget['url']));
-			$options[$widget_number] = wp_widget_rss_process( $pressmark_widget, !isset($urls[$url]) );
+			$options[$widget_number] = pressmark_widget_process( $pressmark_widget, !isset($urls[$url]) );
 		}
 
 		update_option('pressmark_widget', $options);
@@ -232,7 +232,7 @@ function pressmark_widget_control($widget_args) {
 		extract( (array) $options[$number] );
 	}
 
-	pressmark_form( compact( 'number', 'title', 'url', 'items', 'error', 'show_summary', 'show_author', 'show_date' ) );
+	pressmark_widget_form( compact( 'number', 'title', 'url', 'items', 'error', 'show_summary', 'show_author', 'show_date' ) );
 }
 
 /**
@@ -247,7 +247,7 @@ function pressmark_widget_control($widget_args) {
  * @param array|string $args Values for input fields.
  * @param array $inputs Override default display options.
  */
-function pressmark_form( $args, $inputs = null ) {
+function pressmark_widget_form( $args, $inputs = null ) {
 
 	$default_inputs = array( 'url' => true, 'title' => true, 'items' => true, 'show_summary' => true, 'show_author' => true, 'show_date' => true );
 	$inputs = wp_parse_args( $inputs, $default_inputs );
@@ -268,19 +268,19 @@ function pressmark_form( $args, $inputs = null ) {
 ?>
 	<p>
 		<label for="pressmark-url-<?php echo $number; ?>"><?php _e('Enter the Pressmark feed URL here:'); ?>
-			<input class="widefat" id="pressmark-url-<?php echo $number; ?>" name="pressmark-rss[<?php echo $number; ?>][url]" type="text" value="<?php echo $url; ?>" />
+			<input class="widefat" id="pressmark-url-<?php echo $number; ?>" name="pressmark-widget[<?php echo $number; ?>][url]" type="text" value="<?php echo $url; ?>" />
 		</label>
 	</p>
 <?php endif; if ( $inputs['title'] ) : ?>
 	<p>
-		<label for="pressmark-title-<?php echo $number; ?>"><?php _e('Give the feed a title (optional):'); ?>
-			<input class="widefat" id="pressmark-title-<?php echo $number; ?>" name="pressmark-rss[<?php echo $number; ?>][title]" type="text" value="<?php echo $title; ?>" />
+		<label for="pressmark-title-<?php echo $number; ?>"><?php _e('Give the Pressmark a title (optional):'); ?>
+			<input class="widefat" id="pressmark-title-<?php echo $number; ?>" name="pressmark-widget[<?php echo $number; ?>][title]" type="text" value="<?php echo $title; ?>" />
 		</label>
 	</p>
 <?php endif; if ( $inputs['items'] ) : ?>
 	<p>
 		<label for="pressmark-items-<?php echo $number; ?>"><?php _e('How many items would you like to display?'); ?>
-			<select id="pressmark-items-<?php echo $number; ?>" name="pressmark-rss[<?php echo $number; ?>][items]">
+			<select id="pressmark-items-<?php echo $number; ?>" name="pressmark-widget[<?php echo $number; ?>][items]">
 				<?php
 					for ( $i = 1; $i <= 20; ++$i )
 						echo "<option value='$i' " . ( $items == $i ? "selected='selected'" : '' ) . ">$i</option>";
@@ -291,35 +291,107 @@ function pressmark_form( $args, $inputs = null ) {
 <?php endif; if ( $inputs['show_summary'] ) : ?>
 	<p>
 		<label for="pressmark-show-summary-<?php echo $number; ?>">
-			<input id="pressmark-show-summary-<?php echo $number; ?>" name="pressmark-rss[<?php echo $number; ?>][show_summary]" type="checkbox" value="1" <?php if ( $show_summary ) echo 'checked="checked"'; ?>/>
+			<input id="pressmark-show-summary-<?php echo $number; ?>" name="pressmark-widget[<?php echo $number; ?>][show_summary]" type="checkbox" value="1" <?php if ( $show_summary ) echo 'checked="checked"'; ?>/>
 			<?php _e('Display item content?'); ?>
 		</label>
 	</p>
 <?php endif; if ( $inputs['show_author'] ) : ?>
 	<p>
 		<label for="pressmark-show-author-<?php echo $number; ?>">
-			<input id="pressmark-show-author-<?php echo $number; ?>" name="pressmark-rss[<?php echo $number; ?>][show_author]" type="checkbox" value="1" <?php if ( $show_author ) echo 'checked="checked"'; ?>/>
+			<input id="pressmark-show-author-<?php echo $number; ?>" name="pressmark-widget[<?php echo $number; ?>][show_author]" type="checkbox" value="1" <?php if ( $show_author ) echo 'checked="checked"'; ?>/>
 			<?php _e('Display item author if available?'); ?>
 		</label>
 	</p>
 <?php endif; if ( $inputs['show_date'] ) : ?>
 	<p>
 		<label for="pressmark-show-date-<?php echo $number; ?>">
-			<input id="pressmark-show-date-<?php echo $number; ?>" name="pressmark-rss[<?php echo $number; ?>][show_date]" type="checkbox" value="1" <?php if ( $show_date ) echo 'checked="checked"'; ?>/>
+			<input id="pressmark-show-date-<?php echo $number; ?>" name="pressmark-widget[<?php echo $number; ?>][show_date]" type="checkbox" value="1" <?php if ( $show_date ) echo 'checked="checked"'; ?>/>
 			<?php _e('Display item date?'); ?>
 		</label>
 	</p>
-	<input type="hidden" name="pressmark-rss[<?php echo $number; ?>][submit]" value="1" />
+	<input type="hidden" name="pressmark-widget[<?php echo $number; ?>][submit]" value="1" />
 <?php
 	endif;
 	foreach ( array_keys($default_inputs) as $input ) :
 		if ( 'hidden' === $inputs[$input] ) :
 			$id = str_replace( '_', '-', $input );
 ?>
-	<input type="hidden" id="pressmark-<?php echo $id; ?>-<?php echo $number; ?>" name="pressmark-rss[<?php echo $number; ?>][<?php echo $input; ?>]" value="<?php echo $$input; ?>" />
+	<input type="hidden" id="pressmark-<?php echo $id; ?>-<?php echo $number; ?>" name="pressmark-widget[<?php echo $number; ?>][<?php echo $input; ?>]" value="<?php echo $$input; ?>" />
 <?php
 		endif;
 	endforeach;
 }
+
+/**
+ * Process Pressmark feed widget data and optionally retrieve feed items.
+ *
+ * The feed widget can not have more than 20 items or it will reset back to the
+ * default, which is 10.
+ *
+ * The resulting array has the feed title, feed url, feed link (from channel),
+ * feed items, error (if any), and whether to show summary, author, and date.
+ * All respectively in the order of the array elements.
+ *
+ * @since 2.5.0
+ *
+ * @param array $widget_rss RSS widget feed data. Expects unescaped data.
+ * @param bool $check_feed Optional, default is true. Whether to check feed for errors.
+ * @return array
+ */
+function pressmark_widget_process( $widget_rss, $check_feed = true ) {
+	$items = (int) $widget_rss['items'];
+	if ( $items < 1 || 20 < $items )
+		$items = 10;
+	$url           = sanitize_url(strip_tags( $widget_rss['url'] ));
+	$title         = trim(strip_tags( $widget_rss['title'] ));
+	$show_summary  = (int) $widget_rss['show_summary'];
+	$show_author   = (int) $widget_rss['show_author'];
+	$show_date     = (int) $widget_rss['show_date'];
+
+	if ( $check_feed ) {
+		require_once(ABSPATH . WPINC . '/rss.php');
+		$rss = fetch_rss($url);
+		$error = false;
+		$link = '';
+		if ( !is_object($rss) ) {
+			$url = wp_specialchars(__('Error: could not find an RSS or ATOM feed at that URL.'), 1);
+			$error = sprintf(__('Error in RSS %1$d'), $widget_number );
+		} else {
+			$link = clean_url(strip_tags($rss->channel['source']['url']));
+			while ( strstr($link, 'http') != $link )
+				$link = substr($link, 1);
+		}
+	}
+
+	return compact( 'title', 'url', 'link', 'items', 'error', 'show_summary', 'show_author', 'show_date' );
+}
+
+/**
+ * Register Pressmark widget to allow multiple widgets on startup.
+ *
+ * @since 2.2.0
+ */
+function pressmark_widget_register() {
+		if ( !$options = get_option('pressmark_widget') )
+			$options = array();
+		$widget_ops = array('classname' => 'pressmark_widget', 'description' => __( 'Pressmark Link list' ));
+		$control_ops = array('width' => 400, 'height' => 200, 'id_base' => 'pressmark');
+		$name = __('Pressmark');
+
+		$id = false;
+		foreach ( (array) array_keys($options) as $o ) {
+			$id = "pressmark-$o"; // Never never never translate an id
+			wp_register_sidebar_widget($id, $name, 'pressmark_widget', $widget_ops, array( 'number' => $o ));
+			wp_register_widget_control($id, $name, 'pressmark_widget_control', $control_ops, array( 'number' => $o ));
+		}
+
+		// If there are none, we register the widget's existance with a generic template
+		if ( !$id ) {
+			wp_register_sidebar_widget( 'pressmark-1', $name, 'pressmark_widget', $widget_ops, array( 'number' => -1 ) );
+			wp_register_widget_control( 'pressmark-1', $name, 'pressmark_widget_control', $control_ops, array( 'number' => -1 ) );
+		}
+}
+
+add_action('init', 'pressmark_widget_register');
 
 ?>
