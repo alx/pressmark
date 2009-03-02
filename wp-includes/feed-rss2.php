@@ -64,6 +64,7 @@ $more = 1;
 <?php rss_enclosure(); ?>
 
 <?php
+	$url = post_custom("pressmark-url");
 	if(strlen($url) > 0) :
 ?>
 		<source url="<?php echo $url ?>"><?php the_title_rss() ?></source>
