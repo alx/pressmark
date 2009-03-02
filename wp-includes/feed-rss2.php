@@ -34,7 +34,16 @@ $more = 1;
 	<?php while( have_posts()) : the_post(); ?>
 	<item>
 		<title><?php the_title_rss() ?></title>
-		<link><?php the_permalink_rss() ?></link>
+		<?php
+			$url = post_custom("pressmark-url");
+			if(strlen($url) > 0) : ?>
+			
+			<link><?php echo $url ?></link>
+				
+		<?php else: ?>
+			<link><?php the_permalink_rss() ?></link>
+		<?php endif; ?>
+		
 		<comments><?php comments_link(); ?></comments>
 		<pubDate><?php echo mysql2date('D, d M Y H:i:s +0000', get_post_time('Y-m-d H:i:s', true), false); ?></pubDate>
 		<dc:creator><?php the_author() ?></dc:creator>
@@ -55,7 +64,6 @@ $more = 1;
 <?php rss_enclosure(); ?>
 
 <?php
-	$url = post_custom("pressmark-url");
 	if(strlen($url) > 0) :
 ?>
 		<source url="<?php echo $url ?>"><?php the_title_rss() ?></source>
