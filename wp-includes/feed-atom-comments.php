@@ -11,6 +11,7 @@ echo '<?xml version="1.0" encoding="' . get_option('blog_charset') . '" ?' . '>'
 <feed
 	xmlns="http://www.w3.org/2005/Atom"
 	xml:lang="<?php echo get_option('rss_language'); ?>"
+	xmlns:thr="http://purl.org/syndication/thread/1.0"
 	<?php do_action('atom_ns'); ?>
 >
 	<title type="text"><?php
@@ -63,7 +64,7 @@ if ( have_comments() ) : while ( have_comments() ) : the_comment();
 
 		</author>
 
-		<id><?php comment_link(); ?></id>
+		<id><?php comment_guid(); ?></id>
 		<updated><?php echo mysql2date('Y-m-d\TH:i:s\Z', get_comment_time('Y-m-d H:i:s', true), false); ?></updated>
 		<published><?php echo mysql2date('Y-m-d\TH:i:s\Z', get_comment_time('Y-m-d H:i:s', true), false); ?></published>
 <?php if ( post_password_required($comment_post) ) : ?>
@@ -78,7 +79,7 @@ if ( have_comments() ) : while ( have_comments() ) : the_comment();
 	$parent_comment = get_comment($comment->comment_parent);
 	// The rel attribute below and the id tag above should be GUIDs, but WP doesn't create them for comments (unlike posts). Either way, its more important that they both use the same system
 ?>
-		<thr:in-reply-to ref="<?php echo get_comment_link($parent_comment) ?>" href="<?php echo get_comment_link($parent_comment) ?>" type="<?php bloginfo_rss('html_type'); ?>" />
+		<thr:in-reply-to ref="<?php comment_guid($parent_comment) ?>" href="<?php echo get_comment_link($parent_comment) ?>" type="<?php bloginfo_rss('html_type'); ?>" />
 <?php endif;
 	do_action('comment_atom_entry', $comment->comment_ID, $comment_post->ID);
 ?>

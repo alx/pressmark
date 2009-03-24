@@ -15,8 +15,8 @@ p, ul, ol, blockquote { font-size: 12px; }
 	padding: 0;
 }
 
-.plugins .togl {
-	width: 150px;
+.plugins .action-links { 
+	white-space: nowrap;
 }
 
 .import-system {
@@ -435,7 +435,8 @@ textarea.all-options, input.all-options {
 	padding: 2px 4px 0;
 }
 
-#ed_toolbar input {
+#ed_toolbar input,
+#ed_reply_toolbar input {
 	margin: 3px 1px 4px;
 	line-height: 18px;
 	display: inline-block;
@@ -448,6 +449,10 @@ textarea.all-options, input.all-options {
 	-khtml-border-radius: 3px;
 	-webkit-border-radius: 3px;
 	border-radius: 3px;
+}
+
+#ed_reply_toolbar input {
+	margin: 1px 2px 1px 1px;
 }
 
 #quicktags #ed_link,
@@ -1643,6 +1648,7 @@ input#link_url {
 }
 
 #edit-slug-box {
+	height: 1em;
 	margin-top: 8px;
 	padding: 0 7px;
 }
@@ -1852,6 +1858,31 @@ ul.categorychecklist li {
 	margin: 0;
 	padding: 0;
 	line-height: 19px;
+}
+
+#category-adder h4 {
+	margin-top: 4px;
+	margin-bottom: 0px;
+}
+
+#categorydiv .ui-tabs-panel {
+	border-width: 3px;
+	border-style: solid; 
+}
+
+ul#category-tabs {
+	margin-top: 12px;
+}
+
+ul#category-tabs li {
+	padding: 5px 8px;
+	-moz-border-radius: 3px 3px 0 0;
+	-webkit-border-top-left-radius: 3px;
+	-webkit-border-top-right-radius: 3px;
+	-khtml-border-top-left-radius: 3px;
+	-khtml-border-top-right-radius: 3px;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
 }
 
 /* positioning etc. */
@@ -2252,19 +2283,7 @@ fieldset {
 	padding: 2px 3px;
 }
 
-#replyrow #ed_reply_toolbar input {
-	margin: 1px 2px 1px 1px;
-	min-width: 24px;
-	padding: 3px 4px;
-	font-size: 11px;
-	-moz-border-radius: 3px;
-	-khtml-border-radius: 3px;
-	-webkit-border-radius: 3px;
-	border-radius: 3px;
-}
-
 /* show/hide settings */
-
 #screen-meta {
 	position: relative;
 	clear: both;

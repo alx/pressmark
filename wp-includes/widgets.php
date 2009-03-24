@@ -548,7 +548,7 @@ function is_dynamic_sidebar() {
 function wp_get_sidebars_widgets($update = true) {
 	global $wp_registered_widgets, $wp_registered_sidebars;
 
-	$sidebars_widgets = get_option('sidebars_widgets');
+	$sidebars_widgets = get_option('sidebars_widgets', array());
 	$_sidebars_widgets = array();
 
 	if ( !isset($sidebars_widgets['array_version']) )
@@ -618,7 +618,8 @@ function wp_get_sidebars_widgets($update = true) {
 				update_option('sidebars_widgets', $sidebars_widgets);
 	}
 
-	unset($sidebars_widgets['array_version']);
+	if ( isset($sidebars_widgets['array_version']) )
+		unset($sidebars_widgets['array_version']);
 
 	$sidebars_widgets = apply_filters('sidebars_widgets', $sidebars_widgets);
 	return $sidebars_widgets;
@@ -1398,7 +1399,7 @@ function wp_widget_recent_comments($args) {
 			<?php echo $before_title . $title . $after_title; ?>
 			<ul id="recentcomments"><?php
 			if ( $comments ) : foreach ( (array) $comments as $comment) :
-			echo  '<li class="recentcomments">' . sprintf(__('%1$s on %2$s'), get_comment_author_link(), '<a href="'. get_comment_link($comment->comment_ID) . '">' . get_the_title($comment->comment_post_ID) . '</a>') . '</li>';
+			echo  '<li class="recentcomments">' . sprintf(__('%1$s on %2$s'), get_comment_author_link(), '<a href="' . clean_url( get_comment_link($comment->comment_ID) ) . '">' . get_the_title($comment->comment_post_ID) . '</a>') . '</li>';
 			endforeach; endif;?></ul>
 		<?php echo $after_widget; ?>
 <?php
@@ -2092,7 +2093,7 @@ function widget_many_register() {
 }
 
 // This is important
-add_action( 'widgets_init', 'widget_many_register' )
+add_action( 'widgets_init', 'widget_many_register' );
 
 */
 

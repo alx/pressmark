@@ -534,6 +534,10 @@ function get_term_to_edit( $id, $taxonomy ) {
  * of term ids to exclude from the return array.  If 'include' is non-empty,
  * 'exclude' is ignored.
  *
+ * exclude_tree - A comma- or space-delimited string of term ids to exclude
+ * from the return array, along with all of their descendant terms according to 
+ * the primary taxonomy.  If 'include' is non-empty, 'exclude_tree' is ignored.
+ *
  * include - Default is an empty string.  A comma- or space-delimited string
  * of term ids to include in the return array.
  *
@@ -604,7 +608,7 @@ function &get_terms($taxonomies, $args = '') {
 	$in_taxonomies = "'" . implode("', '", $taxonomies) . "'";
 
 	$defaults = array('orderby' => 'name', 'order' => 'ASC',
-		'hide_empty' => true, 'exclude' => '', 'include' => '',
+		'hide_empty' => true, 'exclude' => '', 'exclude_tree' => '', 'include' => '',
 		'number' => '', 'fields' => 'all', 'slug' => '', 'parent' => '',
 		'hierarchical' => true, 'child_of' => 0, 'get' => '', 'name__like' => '',
 		'pad_counts' => false, 'offset' => '', 'search' => '');
@@ -668,6 +672,7 @@ function &get_terms($taxonomies, $args = '') {
 	$inclusions = '';
 	if ( !empty($include) ) {
 		$exclude = '';
+		$exclude_tree = '';
 		$interms = preg_split('/[\s,]+/',$include);
 		if ( count($interms) ) {
 			foreach ( (array) $interms as $interm ) {
@@ -684,11 +689,25 @@ function &get_terms($taxonomies, $args = '') {
 	$where .= $inclusions;
 
 	$exclusions = '';
+	if ( ! empty( $exclude_tree ) ) {
+		$excluded_trunks = preg_split('/[\s,]+/',$exclude_tree);
+		foreach( (array) $excluded_trunks as $extrunk ) {
+			$excluded_children = (array) get_terms($taxonomies[0], array('child_of' => intval($extrunk), 'fields' => 'ids'));	
+			$excluded_children[] = $extrunk;
+			foreach( (array) $excluded_children as $exterm ) {
+				if ( empty($exclusions) )
+					$exclusions = ' AND ( t.term_id <> ' . intval($exterm) . ' ';
+				else
+					$exclusions .= ' AND t.term_id <> ' . intval($exterm) . ' ';
+
+			}
+		}
+	}
 	if ( !empty($exclude) ) {
 		$exterms = preg_split('/[\s,]+/',$exclude);
 		if ( count($exterms) ) {
 			foreach ( (array) $exterms as $exterm ) {
-				if (empty($exclusions))
+				if ( empty($exclusions) )
 					$exclusions = ' AND ( t.term_id <> ' . intval($exterm) . ' ';
 				else
 					$exclusions .= ' AND t.term_id <> ' . intval($exterm) . ' ';
@@ -717,14 +736,15 @@ function &get_terms($taxonomies, $args = '') {
 	if ( $hide_empty && !$hierarchical )
 		$where .= ' AND tt.count > 0';
 
-	if ( !empty($number) ) {
+	// don't limit the query results when we have to descend the family tree 
+	if ( ! empty($number) && ! $hierarchical && empty( $child_of ) && '' == $parent ) {
 		if( $offset )
-			$number = 'LIMIT ' . $offset . ',' . $number;
+			$limit = 'LIMIT ' . $offset . ',' . $number;
 		else
-			$number = 'LIMIT ' . $number;
+			$limit = 'LIMIT ' . $number;
 
 	} else
-		$number = '';
+		$limit = '';
 
 	if ( !empty($search) ) {
 		$search = like_escape($search);
@@ -739,13 +759,11 @@ function &get_terms($taxonomies, $args = '') {
 	else if ( 'names' == $fields )
 		$select_this = 't.term_id, tt.parent, tt.count, t.name';
 
-	$query = "SELECT $select_this FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.taxonomy IN ($in_taxonomies) $where ORDER BY $orderby $order $number";
+	$query = "SELECT $select_this FROM $wpdb->terms AS t INNER JOIN $wpdb->term_taxonomy AS tt ON t.term_id = tt.term_id WHERE tt.taxonomy IN ($in_taxonomies) $where ORDER BY $orderby $order $limit";
 
+	$terms = $wpdb->get_results($query);
 	if ( 'all' == $fields ) {
-		$terms = $wpdb->get_results($query);
 		update_term_cache($terms);
-	} else if ( ('ids' == $fields) || ('names' == $fields) ) {
-		$terms = $wpdb->get_results($query);
 	}
 
 	if ( empty($terms) ) {
@@ -791,6 +809,10 @@ function &get_terms($taxonomies, $args = '') {
 		while ( $term = array_shift($terms) )
 			$_terms[] = $term->name;
 		$terms = $_terms;
+	}
+
+	if ( 0 < $number && intval(@count($terms)) > $number ) {
+		$terms = array_slice($terms, $offset, $number);
 	}
 
 	wp_cache_add( $cache_key, $terms, 'terms' );

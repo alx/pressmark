@@ -228,7 +228,7 @@ function bulk_edit_posts( $post_data = null ) {
 	if ( empty($post_data) )
 		$post_data = &$_POST;
 
-	if ( 'page' == $post_data['post_type'] ) {
+	if ( isset($post_data['post_type']) && 'page' == $post_data['post_type'] ) {
 		if ( ! current_user_can( 'edit_pages' ) )
 			wp_die( __('You are not allowed to edit pages.') );
 	} else {
@@ -236,7 +236,7 @@ function bulk_edit_posts( $post_data = null ) {
 			wp_die( __('You are not allowed to edit posts.') );
 	}
 
-	$post_IDs = array_map( intval, (array) $post_data['post'] );
+	$post_IDs = array_map( 'intval', (array) $post_data['post'] );
 
 	$reset = array( 'post_author', 'post_status', 'post_password', 'post_parent', 'page_template', 'comment_status', 'ping_status', 'keep_private', 'tags_input', 'post_category', 'sticky' );
 	foreach ( $reset as $field ) {
@@ -909,6 +909,8 @@ function get_sample_permalink($id, $title=null, $name = null) {
 		$post->post_name = sanitize_title($name? $name : $title, $post->ID);
 	}
 
+	$post->filter = 'sample'; 
+
 	$permalink = get_permalink($post, true);
 
 	// Handle page hierarchy
@@ -926,6 +928,8 @@ function get_sample_permalink($id, $title=null, $name = null) {
 	$post->post_status = $original_status;
 	$post->post_date = $original_date;
 	$post->post_name = $original_name;
+	unset($post->filter);
+
 	return $permalink;
 }
 
@@ -1161,9 +1165,9 @@ function wp_tiny_mce( $teeny = false ) {
 
 			if ( ! empty($mce_external_languages) ) {
 				foreach ( $mce_external_languages as $name => $path ) {
-					if ( is_file($path) && is_readable($path) ) {
+					if ( @is_file($path) && @is_readable($path) ) {
 						include_once($path);
-						$ext_plugins .= $strings;
+						$ext_plugins .= $strings . "\n";
 						$loaded_langs[] = $name;
 					}
 				}
@@ -1184,21 +1188,21 @@ function wp_tiny_mce( $teeny = false ) {
 					if ( function_exists('realpath') )
 						$path = trailingslashit( realpath($path) );
 
-					if ( is_file($path . $mce_locale . '.js') )
-						$strings .= @file_get_contents($path . $mce_locale . '.js');
+					if ( @is_file($path . $mce_locale . '.js') )
+						$strings .= @file_get_contents($path . $mce_locale . '.js') . "\n";
 
-					if ( is_file($path . $mce_locale . '_dlg.js') )
-						$strings .= @file_get_contents($path . $mce_locale . '_dlg.js');
+					if ( @is_file($path . $mce_locale . '_dlg.js') )
+						$strings .= @file_get_contents($path . $mce_locale . '_dlg.js') . "\n";
 
 					if ( 'en' != $mce_locale && empty($strings) ) {
-						if ( is_file($path . 'en.js') ) {
+						if ( @is_file($path . 'en.js') ) {
 							$str1 = @file_get_contents($path . 'en.js');
-							$strings .= preg_replace( '/([\'"])en\./', '$1' . $mce_locale . '.', $str1, 1 );
+							$strings .= preg_replace( '/([\'"])en\./', '$1' . $mce_locale . '.', $str1, 1 ) . "\n";
 						}
 
-						if ( is_file($path . 'en_dlg.js') ) {
+						if ( @is_file($path . 'en_dlg.js') ) {
 							$str2 = @file_get_contents($path . 'en_dlg.js');
-							$strings .= preg_replace( '/([\'"])en\./', '$1' . $mce_locale . '.', $str2, 1 );
+							$strings .= preg_replace( '/([\'"])en\./', '$1' . $mce_locale . '.', $str2, 1 ) . "\n";
 						}
 					}
 

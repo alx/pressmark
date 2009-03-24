@@ -397,12 +397,14 @@ function wp_dropdown_categories( $args = '' ) {
 
 		if ( $show_option_all ) {
 			$show_option_all = apply_filters( 'list_cats', $show_option_all );
-			$output .= "\t<option value='0'>$show_option_all</option>\n";
+			$selected = ( '0' === strval($r['selected']) ) ? " selected='selected'" : '';
+			$output .= "\t<option value='0'$selected>$show_option_all</option>\n";
 		}
 
 		if ( $show_option_none ) {
 			$show_option_none = apply_filters( 'list_cats', $show_option_none );
-			$output .= "\t<option value='-1'>$show_option_none</option>\n";
+			$selected = ( '-1' === strval($r['selected']) ) ? " selected='selected'" : '';
+			$output .= "\t<option value='-1'$selected>$show_option_none</option>\n";
 		}
 
 		if ( $hierarchical )
@@ -443,6 +445,7 @@ function wp_dropdown_categories( $args = '' ) {
  *     'feed_image' - See {@link get_categories()}.
  *     'child_of' (int) default is 0 - See {@link get_categories()}.
  *     'exclude' (string) - See {@link get_categories()}.
+ *     'exclude_tree' (string) - See {@link get_categories()}.
  *     'echo' (bool|int) default is 1 - Whether to display or retrieve content.
  *     'current_category' (int) - See {@link get_categories()}.
  *     'hierarchical' (bool) - See {@link get_categories()}.
@@ -461,7 +464,7 @@ function wp_list_categories( $args = '' ) {
 		'style' => 'list', 'show_count' => 0,
 		'hide_empty' => 1, 'use_desc_for_title' => 1,
 		'child_of' => 0, 'feed' => '', 'feed_type' => '',
-		'feed_image' => '', 'exclude' => '', 'current_category' => 0,
+		'feed_image' => '', 'exclude' => '', 'exclude_tree' => '', 'current_category' => 0,
 		'hierarchical' => true, 'title_li' => __( 'Categories' ),
 		'echo' => 1, 'depth' => 0
 	);
@@ -474,6 +477,11 @@ function wp_list_categories( $args = '' ) {
 
 	if ( isset( $r['show_date'] ) ) {
 		$r['include_last_update_time'] = $r['show_date'];
+	}
+
+	if ( true == $r['hierarchical'] ) {
+		$r['exclude_tree'] = $r['exclude'];
+		$r['exclude'] = '';
 	}
 
 	extract( $r );
@@ -536,9 +544,8 @@ function wp_list_categories( $args = '' ) {
  * The 'number' argument is how many tags to return. By default, the limit will
  * be to return the top 45 tags in the tag cloud list.
  *
-* The 'topic_count_text_callback' argument is a function, which, given the count
+ * The 'topic_count_text_callback' argument is a function, which, given the count
  * of the posts  with that tag, returns a text for the tooltip of the tag link.
- * @see default_topic_count_text
  *
  * The 'exclude' and 'include' arguments are used for the {@link get_tags()}
  * function. Only one should be used, because only one will be used and the
@@ -613,8 +620,6 @@ function default_topic_count_text( $count ) {
  *
  * The 'topic_count_text_callback' argument is a function, which given the count
  * of the posts  with that tag returns a text for the tooltip of the tag link.
- * @see default_topic_count_text
- *
  *
  * @todo Complete functionality.
  * @since 2.3.0
@@ -649,7 +654,7 @@ function wp_generate_tag_cloud( $tags, $args = '' ) {
 	if ( 'name' == $orderby )
 		uasort( $tags, create_function('$a, $b', 'return strnatcasecmp($a->name, $b->name);') );
 	else
-		uasort( $tags, create_function('$a, $b', 'return ($a->count < $b->count);') );
+		uasort( $tags, create_function('$a, $b', 'return ($a->count > $b->count);') );
 
 	if ( 'DESC' == $order )
 		$tags = array_reverse( $tags, true );
@@ -720,8 +725,13 @@ function wp_generate_tag_cloud( $tags, $args = '' ) {
  * @see Walker_Category::walk() for parameters and return description.
  */
 function walk_category_tree() {
-	$walker = new Walker_Category;
 	$args = func_get_args();
+	// the user's options are the third parameter
+	if ( empty($args[2]['walker']) || !is_a($args[2]['walker'], 'Walker') )
+		$walker = new Walker_Category;
+	else
+		$walker = $args[2]['walker'];
+
 	return call_user_func_array(array( &$walker, 'walk' ), $args );
 }
 
@@ -733,8 +743,13 @@ function walk_category_tree() {
  * @see Walker_CategoryDropdown::walk() for parameters and return description.
  */
 function walk_category_dropdown_tree() {
-	$walker = new Walker_CategoryDropdown;
 	$args = func_get_args();
+	// the user's options are the third parameter
+	if ( empty($args[2]['walker']) || !is_a($args[2]['walker'], 'Walker') )
+		$walker = new Walker_CategoryDropdown;
+	else
+		$walker = $args[2]['walker'];
+
 	return call_user_func_array(array( &$walker, 'walk' ), $args );
 }
 
