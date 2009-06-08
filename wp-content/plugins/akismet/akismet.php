@@ -3,7 +3,7 @@
 Plugin Name: Akismet
 Plugin URI: http://akismet.com/
 Description: Akismet checks your comments against the Akismet web service to see if they look like spam or not. You need a <a href="http://wordpress.com/api-keys/">WordPress.com API key</a> to use it. You can review the spam it catches under "Comments." To show off your Akismet stats just put <code>&lt;?php akismet_counter(); ?&gt;</code> in your template. See also: <a href="http://wordpress.org/extend/plugins/stats/">WP Stats plugin</a>.
-Version: 2.2.3
+Version: 2.2.4
 Author: Matt Mullenweg
 Author URI: http://ma.tt/
 */
@@ -176,12 +176,19 @@ addLoadEvent(resizeIframeInit);
 function akismet_stats_display() {
 	global $akismet_api_host, $akismet_api_port, $wpcom_api_key;
 	$blog = urlencode( get_option('home') );
-	$url = "http://".get_option('wordpress_api_key').".web.akismet.com/1.0/user-stats.php?blog={$blog}";
+	$url = "http://".akismet_get_key().".web.akismet.com/1.0/user-stats.php?blog={$blog}";
 	?>
 	<div class="wrap">
 	<iframe src="<?php echo $url; ?>" width="100%" height="100%" frameborder="0" id="akismet-stats-frame"></iframe>
 	</div>
 	<?php
+}
+
+function akismet_get_key() {
+	global $wpcom_api_key;
+	if ( !empty($wpcom_api_key) )
+		return $wpcom_api_key;
+	return get_option('wordpress_api_key');
 }
 
 function akismet_verify_key( $key ) {
@@ -236,6 +243,9 @@ function akismet_auto_check_comment( $comment ) {
 	$comment['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
 	$comment['referrer']   = $_SERVER['HTTP_REFERER'];
 	$comment['blog']       = get_option('home');
+	$comment['blog_lang']  = get_locale();
+	$comment['blog_charset'] = get_option('blog_charset');
+	$comment['permalink']  = get_permalink($comment['comment_post_ID']);
 
 	$ignore = array( 'HTTP_COOKIE' );
 
@@ -276,21 +286,31 @@ function akismet_delete_old() {
 }
 
 function akismet_submit_nonspam_comment ( $comment_id ) {
-	global $wpdb, $akismet_api_host, $akismet_api_port;
+	global $wpdb, $akismet_api_host, $akismet_api_port, $current_user, $current_site;
 	$comment_id = (int) $comment_id;
-
+	
 	$comment = $wpdb->get_row("SELECT * FROM $wpdb->comments WHERE comment_ID = '$comment_id'");
 	if ( !$comment ) // it was deleted
 		return;
 	$comment->blog = get_option('home');
+	$comment->blog_lang = get_locale();
+	$comment->blog_charset = get_option('blog_charset');
+	$comment->permalink = get_permalink($comment->comment_post_ID);
+	if ( is_object($current_user) ) {
+	    $comment->reporter = $current_user->user_login;
+	}
+	if ( is_object($current_site) ) {
+		$comment->site_domain = $current_site->domain;
+	}
 	$query_string = '';
 	foreach ( $comment as $key => $data )
 		$query_string .= $key . '=' . urlencode( stripslashes($data) ) . '&';
+
 	$response = akismet_http_post($query_string, $akismet_api_host, "/1.1/submit-ham", $akismet_api_port);
 }
 
 function akismet_submit_spam_comment ( $comment_id ) {
-	global $wpdb, $akismet_api_host, $akismet_api_port;
+	global $wpdb, $akismet_api_host, $akismet_api_port, $current_user, $current_site;
 	$comment_id = (int) $comment_id;
 
 	$comment = $wpdb->get_row("SELECT * FROM $wpdb->comments WHERE comment_ID = '$comment_id'");
@@ -299,6 +319,15 @@ function akismet_submit_spam_comment ( $comment_id ) {
 	if ( 'spam' != $comment->comment_approved )
 		return;
 	$comment->blog = get_option('home');
+	$comment->blog_lang = get_locale();
+	$comment->blog_charset = get_option('blog_charset');
+	$comment->permalink = get_permalink($comment->comment_post_ID);
+	if ( is_object($current_user) ) {
+	    $comment->reporter = $current_user->user_login;
+	}
+	if ( is_object($current_site) ) {
+		$comment->site_domain = $current_site->domain;
+	}
 	$query_string = '';
 	foreach ( $comment as $key => $data )
 		$query_string .= $key . '=' . urlencode( stripslashes($data) ) . '&';
@@ -787,6 +816,9 @@ function akismet_recheck_queue() {
 		$c['user_agent'] = $c['comment_agent'];
 		$c['referrer']   = '';
 		$c['blog']       = get_option('home');
+		$c['blog_lang']  = get_locale();
+		$c['blog_charset'] = get_option('blog_charset');
+		$c['permalink']  = get_permalink($c['comment_post_ID']);
 		$id = (int) $c['comment_ID'];
 
 		$query_string = '';
@@ -816,6 +848,9 @@ function akismet_check_db_comment( $id ) {
 	$c['user_agent'] = $c['comment_agent'];
 	$c['referrer']   = '';
 	$c['blog']       = get_option('home');
+	$c['blog_lang']  = get_locale();
+	$c['blog_charset'] = get_option('blog_charset');
+	$c['permalink']  = get_permalink($c['comment_post_ID']);
 	$id = $c['comment_ID'];
 
 	$query_string = '';
