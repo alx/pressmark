@@ -41,7 +41,7 @@ class Custom_Image_Header {
 	 * @since unknown
 	 */
 	function init() {
-		$page = add_theme_page(__('Custom Image Header'), __('Custom Image Header'), 'edit_themes', 'custom-header', array(&$this, 'admin_page'));
+		$page = add_theme_page(__('Custom Header'), __('Custom Header'), 'edit_themes', 'custom-header', array(&$this, 'admin_page'));
 
 		add_action("admin_print_scripts-$page", array(&$this, 'js_includes'));
 		add_action("admin_print_styles-$page", array(&$this, 'css_includes'));
@@ -79,7 +79,7 @@ class Custom_Image_Header {
 		if ( 1 == $step )
 			wp_enqueue_script('farbtastic');
 		elseif ( 2 == $step )
-			wp_enqueue_script('cropper');
+			wp_enqueue_script('jcrop');
 	}
 
 	/**
@@ -90,9 +90,10 @@ class Custom_Image_Header {
 	function css_includes() {
 		$step = $this->step();
 
-		if ( 1 == $step ) {
+		if ( 1 == $step )
 			wp_enqueue_style('farbtastic');
-		}
+		elseif ( 2 == $step )
+			wp_enqueue_style('jcrop');
 	}
 
 	/**
@@ -215,13 +216,13 @@ class Custom_Image_Header {
 	 */
 	function js_2() { ?>
 <script type="text/javascript">
-	function onEndCrop( coords, dimensions ) {
-		jQuery( '#x1' ).val(coords.x1);
-		jQuery( '#y1' ).val(coords.y1);
+	function onEndCrop( coords ) {
+		jQuery( '#x1' ).val(coords.x);
+		jQuery( '#y1' ).val(coords.y);
 		jQuery( '#x2' ).val(coords.x2);
 		jQuery( '#y2' ).val(coords.y2);
-		jQuery( '#width' ).val(dimensions.width);
-		jQuery( '#height' ).val(dimensions.height);
+		jQuery( '#width' ).val(coords.w);
+		jQuery( '#height' ).val(coords.h);
 	}
 
 	// with a supplied ratio
@@ -231,6 +232,15 @@ class Custom_Image_Header {
 		var ratio = xinit / yinit;
 		var ximg = jQuery('#upload').width();
 		var yimg = jQuery('#upload').height();
+
+		//set up default values
+		jQuery( '#x1' ).val(0);
+		jQuery( '#y1' ).val(0);
+		jQuery( '#x2' ).val(xinit);
+		jQuery( '#y2' ).val(yinit);
+		jQuery( '#width' ).val(xinit);
+		jQuery( '#height' ).val(yinit);
+
 		if ( yimg < yinit || ximg < xinit ) {
 			if ( ximg / yimg > ratio ) {
 				yinit = yimg;
@@ -240,14 +250,12 @@ class Custom_Image_Header {
 				yinit = xinit / ratio;
 			}
 		}
-		new Cropper.Img(
-			'upload',
-			{
-				ratioDim: { x: xinit, y: yinit },
-				displayOnInit: true,
-				onEndCrop: onEndCrop
-			}
-		)
+
+		jQuery('#upload').Jcrop({
+			aspectRatio: ratio,
+			setSelect: [ 0, 0, xinit, yinit ],
+			onSelect: onEndCrop
+		});
 	});
 </script>
 <?php
@@ -270,16 +278,16 @@ class Custom_Image_Header {
 <h2><?php _e('Your Header Image'); ?></h2>
 <p><?php _e('This is your header image. You can change the text color or upload and crop a new image.'); ?></p>
 
-<div id="headimg" style="background-image: url(<?php clean_url(header_image()) ?>);">
+<div id="headimg" style="background-image: url(<?php esc_url(header_image()) ?>);">
 <h1><a onclick="return false;" href="<?php bloginfo('url'); ?>" title="<?php bloginfo('name'); ?>" id="name"><?php bloginfo('name'); ?></a></h1>
 <div id="desc"><?php bloginfo('description');?></div>
 </div>
 <?php if ( !defined( 'NO_HEADER_TEXT' ) ) { ?>
 <form method="post" action="<?php echo admin_url('themes.php?page=custom-header&amp;updated=true') ?>">
-<input type="button" value="<?php _e('Hide Text'); ?>" onclick="hide_text()" id="hidetext" />
-<input type="button" value="<?php _e('Select a Text Color'); ?>" id="pickcolor" /><input type="button" value="<?php _e('Use Original Color'); ?>" onclick="colorDefault()" id="defaultcolor" />
+<input type="button" class="button" value="<?php esc_attr_e('Hide Text'); ?>" onclick="hide_text()" id="hidetext" />
+<input type="button" class="button" value="<?php esc_attr_e('Select a Text Color'); ?>" id="pickcolor" /><input type="button" class="button" value="<?php esc_attr_e('Use Original Color'); ?>" onclick="colorDefault()" id="defaultcolor" />
 <?php wp_nonce_field('custom-header') ?>
-<input type="hidden" name="textcolor" id="textcolor" value="#<?php attribute_escape(header_textcolor()) ?>" /><input name="submit" type="submit" value="<?php _e('Save Changes'); ?>" /></form>
+<input type="hidden" name="textcolor" id="textcolor" value="#<?php esc_attr(header_textcolor()) ?>" /><input name="submit" type="submit" class="button" value="<?php esc_attr_e('Save Changes'); ?>" /></form>
 <?php } ?>
 
 <div id="colorPickerDiv" style="z-index: 100;background:#eee;border:1px solid #ccc;position:absolute;display:none;"> </div>
@@ -288,12 +296,12 @@ class Custom_Image_Header {
 <h2><?php _e('Upload New Header Image'); ?></h2><p><?php _e('Here you can upload a custom header image to be shown at the top of your blog instead of the default one. On the next screen you will be able to crop the image.'); ?></p>
 <p><?php printf(__('Images of exactly <strong>%1$d x %2$d pixels</strong> will be used as-is.'), HEADER_IMAGE_WIDTH, HEADER_IMAGE_HEIGHT); ?></p>
 
-<form enctype="multipart/form-data" id="uploadForm" method="POST" action="<?php echo attribute_escape(add_query_arg('step', 2)) ?>" style="margin: auto; width: 50%;">
+<form enctype="multipart/form-data" id="uploadForm" method="POST" action="<?php echo esc_attr(add_query_arg('step', 2)) ?>" style="margin: auto; width: 50%;">
 <label for="upload"><?php _e('Choose an image from your computer:'); ?></label><br /><input type="file" id="upload" name="import" />
 <input type="hidden" name="action" value="save" />
 <?php wp_nonce_field('custom-header') ?>
 <p class="submit">
-<input type="submit" value="<?php _e('Upload'); ?>" />
+<input type="submit" value="<?php esc_attr_e('Upload'); ?>" />
 </p>
 </form>
 
@@ -303,9 +311,9 @@ class Custom_Image_Header {
 <div class="wrap">
 <h2><?php _e('Reset Header Image and Color'); ?></h2>
 <p><?php _e('This will restore the original header image and color. You will not be able to retrieve any customizations.') ?></p>
-<form method="post" action="<?php echo attribute_escape(add_query_arg('step', 1)) ?>">
+<form method="post" action="<?php echo esc_attr(add_query_arg('step', 1)) ?>">
 <?php wp_nonce_field('custom-header'); ?>
-<input type="submit" name="resetheader" value="<?php _e('Restore Original Header'); ?>" />
+<input type="submit" class="button" name="resetheader" value="<?php esc_attr_e('Restore Original Header'); ?>" />
 </form>
 </div>
 		<?php endif;
@@ -346,7 +354,7 @@ class Custom_Image_Header {
 			// Add the meta-data
 			wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $file ) );
 
-			set_theme_mod('header_image', clean_url($url));
+			set_theme_mod('header_image', esc_url($url));
 			do_action('wp_create_file_in_uploads', $file, $id); // For replication
 			return $this->finished();
 		} elseif ( $width > HEADER_IMAGE_WIDTH ) {
@@ -364,7 +372,7 @@ class Custom_Image_Header {
 
 <div class="wrap">
 
-<form method="POST" action="<?php echo attribute_escape(add_query_arg('step', 3)) ?>">
+<form method="POST" action="<?php echo esc_attr(add_query_arg('step', 3)) ?>">
 
 <p><?php _e('Choose the part of the image you want to use as your header.'); ?></p>
 <div id="testWrap" style="position: relative">
@@ -378,10 +386,10 @@ class Custom_Image_Header {
 <input type="hidden" name="y2" id="y2" />
 <input type="hidden" name="width" id="width" />
 <input type="hidden" name="height" id="height" />
-<input type="hidden" name="attachment_id" id="attachment_id" value="<?php echo $id; ?>" />
-<input type="hidden" name="oitar" id="oitar" value="<?php echo $oitar; ?>" />
+<input type="hidden" name="attachment_id" id="attachment_id" value="<?php echo esc_attr($id); ?>" />
+<input type="hidden" name="oitar" id="oitar" value="<?php echo esc_attr($oitar); ?>" />
 <?php wp_nonce_field('custom-header') ?>
-<input type="submit" value="<?php _e('Crop Header'); ?>" />
+<input type="submit" value="<?php esc_attr_e('Crop Header'); ?>" />
 </p>
 
 </form>

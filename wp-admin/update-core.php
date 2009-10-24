@@ -13,7 +13,8 @@ if ( ! current_user_can('update_plugins') )
 	wp_die(__('You do not have sufficient permissions to update plugins for this blog.'));
 
 function list_core_update( $update ) {
-	$version_string = 'en_US' == $update->locale ?
+	global $wp_local_package;
+	$version_string = ('en_US' == $update->locale && 'en_US' == get_locale() ) ?
 			$update->current : sprintf("%s&ndash;<strong>%s</strong>", $update->current, $update->locale);
 	$current = false;
 	if ( !isset($update->response) || 'latest' == $update->response )
@@ -40,16 +41,21 @@ function list_core_update( $update ) {
 	echo '<form method="post" action="' . $form_action . '" name="upgrade" class="upgrade">';
 	wp_nonce_field('upgrade-core');
 	echo '<p>';
-	echo '<input id="upgrade" class="button" type="submit" value="' . $submit . '" name="upgrade" />&nbsp;';
-	echo '<input name="version" value="'.$update->current.'" type="hidden"/>';
-	echo '<input name="locale" value="'.$update->locale.'" type="hidden"/>';
-	echo '<a href="' . $update->package . '" class="button">' . $download . '</a>&nbsp;';
+	echo '<input id="upgrade" class="button" type="submit" value="' . esc_attr($submit) . '" name="upgrade" />&nbsp;';
+	echo '<input name="version" value="'. esc_attr($update->current) .'" type="hidden"/>';
+	echo '<input name="locale" value="'. esc_attr($update->locale) .'" type="hidden"/>';
+	echo '<a href="' . esc_url($update->package) . '" class="button">' . $download . '</a>&nbsp;';
 	if ( 'en_US' != $update->locale )
 		if ( !isset( $update->dismissed ) || !$update->dismissed )
-			echo '<input id="dismiss" class="button" type="submit" value="' . attribute_escape(__('Hide this update')) . '" name="dismiss" />';
+			echo '<input id="dismiss" class="button" type="submit" value="' . esc_attr__('Hide this update') . '" name="dismiss" />';
 		else
-			echo '<input id="undismiss" class="button" type="submit" value="' . attribute_escape(__('Bring back this update')) . '" name="undismiss" />';
+			echo '<input id="undismiss" class="button" type="submit" value="' . esc_attr__('Bring back this update') . '" name="undismiss" />';
 	echo '</p>';
+	if ( 'en_US' != $update->locale && ( !isset($wp_local_package) || $wp_local_package != $update->locale ) )
+	    echo '<p class="hint">'.__('This localized version contains both the translation and various other localization fixes. You can skip upgrading if you want to keep your current translation.').'</p>';
+	else if ( 'en_US' == $update->locale && get_locale() != 'en_US' ) {
+	    echo '<p class="hint">'.sprintf( __('You are about to install WordPress %s <strong>in English.</strong> There is a chance this upgrade will break your translation. You may prefer to wait for the localized version to be released.'), $update->current ).'</p>';
+	}
 	echo '</form>';
 
 }
@@ -58,8 +64,8 @@ function dismissed_updates() {
 	$dismissed = get_core_updates( array( 'dismissed' => true, 'available' => false ) );
 	if ( $dismissed ) {
 
-		$show_text = js_escape(__('Show hidden updates'));
-		$hide_text = js_escape(__('Hide hidden updates'));
+		$show_text = esc_js(__('Show hidden updates'));
+		$hide_text = esc_js(__('Hide hidden updates'));
 	?>
 	<script type="text/javascript">
 
@@ -139,7 +145,7 @@ function do_core_upgrade( $reinstall = false ) {
 	else
 		$url = 'update-core.php?action=do-core-upgrade';
 	$url = wp_nonce_url($url, 'upgrade-core');
-	if ( false === ($credentials = request_filesystem_credentials($url)) )
+	if ( false === ($credentials = request_filesystem_credentials($url, '', false, ABSPATH)) )
 		return;
 
 	$version = isset( $_POST['version'] )? $_POST['version'] : false;
@@ -149,8 +155,8 @@ function do_core_upgrade( $reinstall = false ) {
 		return;
 
 
-	if ( ! WP_Filesystem($credentials) ) {
-		request_filesystem_credentials($url, '', true); //Failed to connect, Error and request again
+	if ( ! WP_Filesystem($credentials, ABSPATH) ) {
+		request_filesystem_credentials($url, '', true, ABSPATH); //Failed to connect, Error and request again
 		return;
 	}
 ?>
@@ -203,6 +209,7 @@ function do_undismiss_core_update() {
 $action = isset($_GET['action']) ? $_GET['action'] : 'upgrade-core';
 
 if ( 'upgrade-core' == $action ) {
+	wp_version_check();
 	$title = __('Upgrade WordPress');
 	$parent_file = 'tools.php';
 	require_once('admin-header.php');

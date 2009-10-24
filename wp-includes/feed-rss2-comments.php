@@ -5,7 +5,7 @@
  * @package WordPress
  */
 
-header('Content-Type: text/xml;charset=' . get_option('blog_charset'), true);
+header('Content-Type: ' . feed_content_type('rss-http') . '; charset=' . get_option('blog_charset'), true);
 
 echo '<?xml version="1.0" encoding="'.get_option('blog_charset').'"?'.'>';
 ?>
@@ -14,20 +14,21 @@ echo '<?xml version="1.0" encoding="'.get_option('blog_charset').'"?'.'>';
 	xmlns:dc="http://purl.org/dc/elements/1.1/"
 	xmlns:atom="http://www.w3.org/2005/Atom"
 	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	<?php do_action('rss2_ns'); do_action('rss2_comments_ns'); ?>
 	>
 <channel>
 	<title><?php
 		if ( is_singular() )
 			printf(ent2ncr(__('Comments on: %s')), get_the_title_rss());
 		elseif ( is_search() )
-			printf(ent2ncr(__('Comments for %s searching on %s')), get_bloginfo_rss( 'name' ), attribute_escape($wp_query->query_vars['s']));
+			printf(ent2ncr(__('Comments for %s searching on %s')), get_bloginfo_rss( 'name' ), esc_attr($wp_query->query_vars['s']));
 		else
 			printf(ent2ncr(__('Comments for %s')), get_bloginfo_rss( 'name' ) . get_wp_title_rss());
 	?></title>
 	<atom:link href="<?php self_link(); ?>" rel="self" type="application/rss+xml" />
 	<link><?php (is_single()) ? the_permalink_rss() : bloginfo_rss("url") ?></link>
 	<description><?php bloginfo_rss("description") ?></description>
-	<pubDate><?php echo gmdate('r'); ?></pubDate>
+	<lastBuildDate><?php echo mysql2date('r', get_lastcommentmodified('GMT')); ?></lastBuildDate>
 	<?php the_generator( 'rss2' ); ?>
 	<sy:updatePeriod><?php echo apply_filters( 'rss_update_period', 'hourly' ); ?></sy:updatePeriod>
 	<sy:updateFrequency><?php echo apply_filters( 'rss_update_frequency', '1' ); ?></sy:updateFrequency>
@@ -49,7 +50,7 @@ if ( have_comments() ) : while ( have_comments() ) : the_comment();
 		?></title>
 		<link><?php comment_link() ?></link>
 		<dc:creator><?php echo get_comment_author_rss() ?></dc:creator>
-		<pubDate><?php echo mysql2date('D, d M Y H:i:s +0000', get_comment_time('Y-m-d H:i:s', true), false); ?></pubDate>
+		<pubDate><?php echo mysql2date('D, d M Y H:i:s +0000', get_comment_time('Y-m-d H:i:s', true, false), false); ?></pubDate>
 		<guid isPermaLink="false"><?php comment_guid() ?></guid>
 <?php if ( post_password_required($comment_post) ) : ?>
 		<description><?php echo ent2ncr(__('Protected Comments: Please enter your password to view comments.')); ?></description>

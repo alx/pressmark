@@ -9,6 +9,9 @@
 /** WordPress Administration Bootstrap */
 require_once('admin.php');
 
+if ( ! current_user_can('manage_options') )
+	wp_die(__('You do not have sufficient permissions to manage options for this blog.'));
+
 $title = __('Writing Settings');
 $parent_file = 'options-general.php';
 
@@ -17,7 +20,7 @@ include('admin-header.php');
 
 <div class="wrap">
 <?php screen_icon(); ?>
-<h2><?php echo wp_specialchars( $title ); ?></h2>
+<h2><?php echo esc_html( $title ); ?></h2>
 
 <form method="post" action="options.php">
 <?php settings_fields('writing'); ?>
@@ -30,7 +33,7 @@ include('admin-header.php');
 </tr>
 <tr valign="top">
 <th scope="row"><?php _e('Formatting') ?></th>
-<td><fieldset><legend class="hidden"><?php _e('Formatting') ?></legend>
+<td><fieldset><legend class="screen-reader-text"><span><?php _e('Formatting') ?></span></legend>
 <label for="use_smilies">
 <input name="use_smilies" type="checkbox" id="use_smilies" value="1" <?php checked('1', get_option('use_smilies')); ?> />
 <?php _e('Convert emoticons like <code>:-)</code> and <code>:-P</code> to graphics on display') ?></label><br />
@@ -61,7 +64,7 @@ wp_dropdown_categories(array('hide_empty' => 0, 'name' => 'default_link_category
 <table class="form-table">
 <tr valign="top">
 <th scope="row"><?php _e('Atom Publishing Protocol') ?></th>
-<td><fieldset><legend class="hidden"><?php _e('Atom Publishing Protocol') ?></legend>
+<td><fieldset><legend class="screen-reader-text"><span><?php _e('Atom Publishing Protocol') ?></span></legend>
 <label for="enable_app">
 <input name="enable_app" type="checkbox" id="enable_app" value="1" <?php checked('1', get_option('enable_app')); ?> />
 <?php _e('Enable the Atom Publishing Protocol.') ?></label><br />
@@ -69,7 +72,7 @@ wp_dropdown_categories(array('hide_empty' => 0, 'name' => 'default_link_category
 </tr>
 <tr valign="top">
 <th scope="row"><?php _e('XML-RPC') ?></th>
-<td><fieldset><legend class="hidden"><?php _e('XML-RPC') ?></legend>
+<td><fieldset><legend class="screen-reader-text"><span><?php _e('XML-RPC') ?></span></legend>
 <label for="enable_xmlrpc">
 <input name="enable_xmlrpc" type="checkbox" id="enable_xmlrpc" value="1" <?php checked('1', get_option('enable_xmlrpc')); ?> />
 <?php _e('Enable the WordPress, Movable Type, MetaWeblog and Blogger XML-RPC publishing protocols.') ?></label><br />
@@ -84,7 +87,7 @@ wp_dropdown_categories(array('hide_empty' => 0, 'name' => 'default_link_category
 <table class="form-table">
 <tr valign="top">
 <th scope="row"><label for="mailserver_url"><?php _e('Mail Server') ?></label></th>
-<td><input name="mailserver_url" type="text" id="mailserver_url" value="<?php form_option('mailserver_url'); ?>" class="regular-text" />
+<td><input name="mailserver_url" type="text" id="mailserver_url" value="<?php form_option('mailserver_url'); ?>" class="regular-text code" />
 <label for="mailserver_port"><?php _e('Port') ?></label>
 <input name="mailserver_port" type="text" id="mailserver_port" value="<?php form_option('mailserver_port'); ?>" class="small-text" />
 </td>
@@ -116,18 +119,18 @@ wp_dropdown_categories(array('hide_empty' => 0, 'name' => 'default_email_categor
 
 <p><label for="ping_sites"><?php _e('When you publish a new post, WordPress automatically notifies the following site update services. For more about this, see <a href="http://codex.wordpress.org/Update_Services">Update Services</a> on the Codex. Separate multiple service <abbr title="Universal Resource Locator">URL</abbr>s with line breaks.') ?></label></p>
 
-<textarea name="ping_sites" id="ping_sites" class="large-text" rows="3"><?php form_option('ping_sites'); ?></textarea>
+<textarea name="ping_sites" id="ping_sites" class="large-text code" rows="3"><?php form_option('ping_sites'); ?></textarea>
 
 <?php else : ?>
 
-	<p><?php printf(__('WordPress is not notifying any <a href="http://codex.wordpress.org/Update_Services">Update Services</a> because of your blog\'s <a href="%s">privacy settings</a>.'), 'options-privacy.php'); ?></p>
+	<p><?php printf(__('WordPress is not notifying any <a href="http://codex.wordpress.org/Update_Services">Update Services</a> because of your blog&#8217;s <a href="%s">privacy settings</a>.'), 'options-privacy.php'); ?></p>
 
 <?php endif; ?>
 
 <?php do_settings_sections('writing'); ?>
 
 <p class="submit">
-	<input type="submit" name="Submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
+	<input type="submit" name="Submit" class="button-primary" value="<?php esc_attr_e('Save Changes') ?>" />
 </p>
 </form>
 </div>

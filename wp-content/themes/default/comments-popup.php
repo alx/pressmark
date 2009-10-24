@@ -29,7 +29,7 @@ while ( have_posts() ) : the_post();
 
 <p><a href="<?php echo get_post_comments_feed_link($post->ID); ?>"><abbr title="Really Simple Syndication">RSS</abbr> feed for comments on this post.</a></p>
 
-<?php if ('open' == $post->ping_status) { ?>
+<?php if ( pings_open() ) { ?>
 <p>The <abbr title="Universal Resource Locator">URL</abbr> to TrackBack this entry is: <em><?php trackback_url() ?></em></p>
 <?php } ?>
 
@@ -57,7 +57,7 @@ if ( post_password_required($post) ) {  // and it doesn't match the cookie
 	<p>No comments yet.</p>
 <?php } ?>
 
-<?php if ('open' == $post->comment_status) { ?>
+<?php if ( comments_open() ) { ?>
 <h2>Leave a comment</h2>
 <p>Line and paragraph breaks automatic, e-mail address never displayed, <acronym title="Hypertext Markup Language">HTML</acronym> allowed: <code><?php echo allowed_tags(); ?></code></p>
 
@@ -66,17 +66,17 @@ if ( post_password_required($post) ) {  // and it doesn't match the cookie
 	<p>Logged in as <a href="<?php echo get_option('siteurl'); ?>/wp-admin/profile.php"><?php echo $user_identity; ?></a>. <a href="<?php echo wp_logout_url(get_permalink()); ?>" title="Log out of this account">Log out &raquo;</a></p>
 <?php else : ?>
 	<p>
-	  <input type="text" name="author" id="author" class="textarea" value="<?php echo $comment_author; ?>" size="28" tabindex="1" />
+	  <input type="text" name="author" id="author" class="textarea" value="<?php echo esc_attr($comment_author); ?>" size="28" tabindex="1" />
 	   <label for="author">Name</label>
 	</p>
 
 	<p>
-	  <input type="text" name="email" id="email" value="<?php echo $comment_author_email; ?>" size="28" tabindex="2" />
+	  <input type="text" name="email" id="email" value="<?php echo esc_attr($comment_author_email); ?>" size="28" tabindex="2" />
 	   <label for="email">E-mail</label>
 	</p>
 
 	<p>
-	  <input type="text" name="url" id="url" value="<?php echo $comment_author_url; ?>" size="28" tabindex="3" />
+	  <input type="text" name="url" id="url" value="<?php echo esc_attr($comment_author_url); ?>" size="28" tabindex="3" />
 	   <label for="url"><abbr title="Universal Resource Locator">URL</abbr></label>
 	</p>
 <?php endif; ?>
@@ -89,7 +89,7 @@ if ( post_password_required($post) ) {  // and it doesn't match the cookie
 
 	<p>
       <input type="hidden" name="comment_post_ID" value="<?php echo $id; ?>" />
-	  <input type="hidden" name="redirect_to" value="<?php echo attribute_escape($_SERVER["REQUEST_URI"]); ?>" />
+	  <input type="hidden" name="redirect_to" value="<?php echo esc_attr($_SERVER["REQUEST_URI"]); ?>" />
 	  <input name="submit" type="submit" tabindex="5" value="Say It!" />
 	</p>
 	<?php do_action('comment_form', $post->ID); ?>

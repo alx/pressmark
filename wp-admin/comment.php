@@ -22,7 +22,7 @@ if ( isset( $_POST['deletecomment'] ) )
  *
  * @param string $msg Error Message. Assumed to contain HTML and be sanitized.
  */
-function comment_footer_die( $msg ) {  //
+function comment_footer_die( $msg ) {
 	echo "<div class='wrap'><p>$msg</p></div>";
 	include('admin-footer.php');
 	die;
@@ -90,18 +90,18 @@ if ( 'spam' == $_GET['dt'] ) {
 
 <table width="100%">
 <tr>
-<td><input type='button' class="button" value='<?php _e('No'); ?>' onclick="self.location='<?php echo admin_url('edit-comments.php'); ?>" /></td>
-<td class="textright"><input type='submit' class="button" value='<?php echo $button; ?>' /></td>
+<td><input type='button' class="button" value='<?php esc_attr_e('No'); ?>' onclick="self.location='<?php echo admin_url('edit-comments.php'); ?>" /></td>
+<td class="textright"><input type='submit' class="button" value='<?php echo esc_attr($button); ?>' /></td>
 </tr>
 </table>
 
 <?php wp_nonce_field( $nonce_action ); ?>
-<input type='hidden' name='action' value='<?php echo $formaction; ?>' />
+<input type='hidden' name='action' value='<?php echo esc_attr($formaction); ?>' />
 <?php if ( 'spam' == $_GET['dt'] ) { ?>
 <input type='hidden' name='dt' value='spam' />
 <?php } ?>
-<input type='hidden' name='p' value='<?php echo $comment->comment_post_ID; ?>' />
-<input type='hidden' name='c' value='<?php echo $comment->comment_ID; ?>' />
+<input type='hidden' name='p' value='<?php echo esc_attr($comment->comment_post_ID); ?>' />
+<input type='hidden' name='c' value='<?php echo esc_attr($comment->comment_ID); ?>' />
 <input type='hidden' name='noredir' value='1' />
 </form>
 
@@ -119,11 +119,11 @@ if ( 'spam' == $_GET['dt'] ) {
 <?php if ( $comment->comment_author_url ) { ?>
 <tr>
 <th scope="row"><?php _e('URL'); ?></th>
-<td><a href='<?php echo $comment->comment_author_url; ?>'><?php echo $comment->comment_author_url; ?></a></td>
+<td><a href="<?php echo $comment->comment_author_url; ?>"><?php echo $comment->comment_author_url; ?></a></td>
 </tr>
 <?php } ?>
 <tr>
-<th scope="row" valign="top"><?php echo _c('Comment|noun'); ?></th>
+<th scope="row" valign="top"><?php /* translators: field name in comment form */ echo _x('Comment', 'noun'); ?></th>
 <td><?php echo $comment->comment_content; ?></td>
 </tr>
 </table>
@@ -216,7 +216,7 @@ case 'approvecomment' :
 case 'editedcomment' :
 
 	$comment_id = absint( $_POST['comment_ID'] );
-	$comment_post_id = absint( $_POST['comment_post_id'] );
+	$comment_post_id = absint( $_POST['comment_post_ID'] );
 
 	check_admin_referer( 'update-comment_' . $comment_id );
 

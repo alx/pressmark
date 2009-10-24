@@ -158,7 +158,7 @@ class IXR_Message {
     }
     function parse() {
         // first remove the XML declaration
-        $this->message = preg_replace('/<\?xml(.*)?\?'.'>/', '', $this->message);
+        $this->message = preg_replace('/<\?xml.*?\?'.'>/', '', $this->message);
         if (trim($this->message) == '') {
             return false;
         }
@@ -301,6 +301,7 @@ class IXR_Server {
         if (!$data) {
             global $HTTP_RAW_POST_DATA;
             if (!$HTTP_RAW_POST_DATA) {
+               header( 'Content-Type: text/plain' );
                die('XML-RPC server accepts POST requests only.');
             }
             $data = $HTTP_RAW_POST_DATA;
@@ -495,6 +496,7 @@ class IXR_Client {
     var $port;
     var $path;
     var $useragent;
+	var $headers;
     var $response;
     var $message = false;
     var $debug = false;
@@ -528,14 +530,21 @@ class IXR_Client {
         $xml = $request->getXml();
         $r = "\r\n";
         $request  = "POST {$this->path} HTTP/1.0$r";
-        $request .= "Host: {$this->server}$r";
-        $request .= "Content-Type: text/xml$r";
-        $request .= "User-Agent: {$this->useragent}$r";
-        $request .= "Content-length: {$length}$r$r";
+
+		$this->headers['Host']			= $this->server;
+		$this->headers['Content-Type']	= 'text/xml';
+		$this->headers['User-Agent']	= $this->useragent;
+		$this->headers['Content-Length']= $length;
+
+		foreach( $this->headers as $header => $value ) {
+			$request .= "{$header}: {$value}{$r}";
+		}
+		$request .= $r;
+
         $request .= $xml;
         // Now send the request
         if ($this->debug) {
-            echo '<pre>'.htmlspecialchars($request)."\n</pre>\n\n";
+            echo '<pre class="ixr_request">'.htmlspecialchars($request)."\n</pre>\n\n";
         }
         if ($this->timeout) {
             $fp = @fsockopen($this->server, $this->port, $errno, $errstr, $this->timeout);
@@ -548,6 +557,7 @@ class IXR_Client {
         }
         fputs($fp, $request);
         $contents = '';
+        $debug_contents = '';
         $gotFirstLine = false;
         $gettingHeaders = true;
         while (!feof($fp)) {
@@ -555,7 +565,7 @@ class IXR_Client {
             if (!$gotFirstLine) {
                 // Check line for '200'
                 if (strstr($line, '200') === false) {
-                    $this->error = new IXR_Error(-32300, 'transport error - HTTP status code was not 200');
+                    $this->error = new IXR_Error(-32301, 'transport error - HTTP status code was not 200');
                     return false;
                 }
                 $gotFirstLine = true;
@@ -566,9 +576,12 @@ class IXR_Client {
             if (!$gettingHeaders) {
                 $contents .= trim($line);
             }
+            if ($this->debug) {
+                $debug_contents .= $line;
+            }
         }
         if ($this->debug) {
-            echo '<pre>'.htmlspecialchars($contents)."\n</pre>\n\n";
+            echo '<pre class="ixr_response">'.htmlspecialchars($debug_contents)."\n</pre>\n\n";
         }
         // Now parse what we've got back
         $this->message = new IXR_Message($contents);

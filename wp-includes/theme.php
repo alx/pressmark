@@ -179,44 +179,51 @@ function get_theme_data( $theme_file ) {
 
 	$theme_data = implode( '', file( $theme_file ) );
 	$theme_data = str_replace ( '\r', '\n', $theme_data );
-	preg_match( '|Theme Name:(.*)$|mi', $theme_data, $theme_name );
-	preg_match( '|Theme URI:(.*)$|mi', $theme_data, $theme_uri );
-	preg_match( '|Description:(.*)$|mi', $theme_data, $description );
+	if ( preg_match( '|Theme Name:(.*)$|mi', $theme_data, $theme_name ) )
+		$name = $theme = wp_kses( _cleanup_header_comment($theme_name[1]), $themes_allowed_tags );
+	else
+		$name = $theme = '';
+
+	if ( preg_match( '|Theme URI:(.*)$|mi', $theme_data, $theme_uri ) )
+		$theme_uri = esc_url( _cleanup_header_comment($theme_uri[1]) );
+	else
+		$theme_uri = '';
+
+	if ( preg_match( '|Description:(.*)$|mi', $theme_data, $description ) )
+		$description = wptexturize( wp_kses( _cleanup_header_comment($description[1]), $themes_allowed_tags ) );
+	else
+		$description = '';
 
 	if ( preg_match( '|Author URI:(.*)$|mi', $theme_data, $author_uri ) )
-		$author_uri = clean_url( trim( $author_uri[1]) );
+		$author_uri = esc_url( _cleanup_header_comment($author_uri[1]) );
 	else
 		$author_uri = '';
 
 	if ( preg_match( '|Template:(.*)$|mi', $theme_data, $template ) )
-		$template = wp_kses( trim( $template[1] ), $themes_allowed_tags );
+		$template = wp_kses( _cleanup_header_comment($template[1]), $themes_allowed_tags );
 	else
 		$template = '';
 
 	if ( preg_match( '|Version:(.*)|i', $theme_data, $version ) )
-		$version = wp_kses( trim( $version[1] ), $themes_allowed_tags );
+		$version = wp_kses( _cleanup_header_comment($version[1]), $themes_allowed_tags );
 	else
 		$version = '';
 
 	if ( preg_match('|Status:(.*)|i', $theme_data, $status) )
-		$status = wp_kses( trim( $status[1] ), $themes_allowed_tags );
+		$status = wp_kses( _cleanup_header_comment($status[1]), $themes_allowed_tags );
 	else
 		$status = 'publish';
 
 	if ( preg_match('|Tags:(.*)|i', $theme_data, $tags) )
-		$tags = array_map( 'trim', explode( ',', wp_kses( trim( $tags[1] ), array() ) ) );
+		$tags = array_map( 'trim', explode( ',', wp_kses( _cleanup_header_comment($tags[1]), array() ) ) );
 	else
 		$tags = array();
 
-	$name = $theme = wp_kses( trim( $theme_name[1] ), $themes_allowed_tags );
-	$theme_uri = clean_url( trim( $theme_uri[1] ) );
-	$description = wptexturize( wp_kses( trim( $description[1] ), $themes_allowed_tags ) );
-
 	if ( preg_match( '|Author:(.*)$|mi', $theme_data, $author_name ) ) {
 		if ( empty( $author_uri ) ) {
-			$author = wp_kses( trim( $author_name[1] ), $themes_allowed_tags );
+			$author = wp_kses( _cleanup_header_comment($author_name[1]), $themes_allowed_tags );
 		} else {
-			$author = sprintf( '<a href="%1$s" title="%2$s">%3$s</a>', $author_uri, __( 'Visit author homepage' ), wp_kses( trim( $author_name[1] ), $themes_allowed_tags ) );
+			$author = sprintf( '<a href="%1$s" title="%2$s">%3$s</a>', $author_uri, __( 'Visit author homepage' ), wp_kses( _cleanup_header_comment($author_name[1]), $themes_allowed_tags ) );
 		}
 	} else {
 		$author = __('Anonymous');
@@ -365,14 +372,28 @@ function get_themes() {
 						$template_files[] = "$theme_loc/$stylesheet/$file";
 				}
 			}
+			@ $stylesheet_dir->close();
 		}
 
 		$template_dir = @ dir("$theme_root/$template");
 		if ( $template_dir ) {
-			while(($file = $template_dir->read()) !== false) {
-				if ( !preg_match('|^\.+$|', $file) && preg_match('|\.php$|', $file) )
+			while ( ($file = $template_dir->read()) !== false ) {
+				if ( preg_match('|^\.+$|', $file) )
+					continue;
+				if ( preg_match('|\.php$|', $file) ) {
 					$template_files[] = "$theme_loc/$template/$file";
+				} elseif ( is_dir("$theme_root/$template/$file") ) {
+					$template_subdir = @ dir("$theme_root/$template/$file");
+					while ( ($subfile = $template_subdir->read()) !== false ) {
+						if ( preg_match('|^\.+$|', $subfile) )
+							continue;
+						if ( preg_match('|\.php$|', $subfile) )
+							$template_files[] = "$theme_loc/$template/$file/$subfile";
+					}
+					@ $template_subdir->close();
+				}
 			}
+			@ $template_dir->close();
 		}
 
 		$template_dir = dirname($template_files[0]);
@@ -849,23 +870,44 @@ function preview_theme() {
 	if ( !current_user_can( 'switch_themes' ) )
 		return;
 
-	$_GET['template'] = preg_replace('|[^a-z0-9_.-/]|i', '', $_GET['template']);
+	$_GET['template'] = preg_replace('|[^a-z0-9_./-]|i', '', $_GET['template']);
 
 	if ( validate_file($_GET['template']) )
 		return;
 
-	add_filter('template', create_function('', "return '{$_GET['template']}';") );
+	add_filter( 'template', '_preview_theme_template_filter' );
 
 	if ( isset($_GET['stylesheet']) ) {
-		$_GET['stylesheet'] = preg_replace('|[^a-z0-9_.-/]|i', '', $_GET['stylesheet']);
+		$_GET['stylesheet'] = preg_replace('|[^a-z0-9_./-]|i', '', $_GET['stylesheet']);
 		if ( validate_file($_GET['stylesheet']) )
 			return;
-		add_filter('stylesheet', create_function('', "return '{$_GET['stylesheet']}';") );
+		add_filter( 'stylesheet', '_preview_theme_stylesheet_filter' );
 	}
+
+	// Prevent theme mods to current theme being used on theme being previewed
+	add_filter( 'pre_option_mods_' . get_current_theme(), create_function( '', "return array();" ) );
 
 	ob_start( 'preview_theme_ob_filter' );
 }
 add_action('setup_theme', 'preview_theme');
+
+/**
+ * Private function to modify the current template when previewing a theme
+ * 
+ * @return string
+ */
+function _preview_theme_template_filter() {
+	return isset($_GET['template']) ? $_GET['template'] : '';
+}
+
+/**
+ * Private function to modify the current stylesheet when previewing a theme
+ * 
+ * @return string
+ */
+function _preview_theme_stylesheet_filter() {
+	return isset($_GET['stylesheet']) ? $_GET['stylesheet'] : '';
+}
 
 /**
  * Callback function for ob_start() to capture all links in the theme.
@@ -908,7 +950,7 @@ function preview_theme_ob_filter_callback( $matches ) {
 	$link = add_query_arg( array('preview' => 1, 'template' => $_GET['template'], 'stylesheet' => @$_GET['stylesheet'] ), $matches[3] );
 	if ( 0 === strpos($link, 'preview=1') )
 		$link = "?$link";
-	return $matches[1] . attribute_escape( $link ) . $matches[4];
+	return $matches[1] . esc_attr( $link ) . $matches[4];
 }
 
 /**

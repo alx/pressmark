@@ -6,7 +6,9 @@
  * @subpackage Administration
  */
 
-if ( ! defined('ABSPATH') ) die();
+// don't load directly
+if ( !defined('ABSPATH') )
+	die('-1');
 
 if ( have_posts() ) { ?>
 <table class="widefat fixed" cellspacing="0">
@@ -24,7 +26,7 @@ if ( have_posts() ) { ?>
 
 	<tbody id="the-list" class="list:post">
 <?php
-add_filter('the_title','wp_specialchars');
+add_filter('the_title','esc_html');
 $alt = '';
 $posts_columns = get_column_headers('upload');
 $hidden = get_hidden_columns('upload');
@@ -62,7 +64,7 @@ foreach ($posts_columns as $column_name => $column_display_name ) {
 			if ( $thumb = wp_get_attachment_image( $post->ID, array(80, 60), true ) ) {
 ?>
 
-				<a href="media.php?action=edit&amp;attachment_id=<?php the_ID(); ?>" title="<?php echo attribute_escape(sprintf(__('Edit "%s"'), $att_title)); ?>">
+				<a href="media.php?action=edit&amp;attachment_id=<?php the_ID(); ?>" title="<?php echo esc_attr(sprintf(__('Edit &#8220;%s&#8221;'), $att_title)); ?>">
 					<?php echo $thumb; ?>
 				</a>
 
@@ -74,7 +76,7 @@ foreach ($posts_columns as $column_name => $column_display_name ) {
 
 	case 'media':
 		?>
-		<td <?php echo $attributes ?>><strong><a href="<?php echo get_edit_post_link( $post->ID ); ?>" title="<?php echo attribute_escape(sprintf(__('Edit "%s"'), $att_title)); ?>"><?php echo $att_title; ?></a></strong><br />
+		<td <?php echo $attributes ?>><strong><a href="<?php echo get_edit_post_link( $post->ID ); ?>" title="<?php echo esc_attr(sprintf(__('Edit &#8220;%s&#8221;'), $att_title)); ?>"><?php echo $att_title; ?></a></strong><br />
 		<?php echo strtoupper(preg_replace('/^.*?\.(\w+)$/', '$1', get_attached_file($post->ID))); ?>
 		<p>
 		<?php
@@ -82,8 +84,8 @@ foreach ($posts_columns as $column_name => $column_display_name ) {
 		if ( current_user_can('edit_post', $post->ID) )
 			$actions['edit'] = '<a href="' . get_edit_post_link($post->ID, true) . '">' . __('Edit') . '</a>';
 		if ( current_user_can('delete_post', $post->ID) )
-			$actions['delete'] = "<a class='submitdelete' href='" . wp_nonce_url("post.php?action=delete&amp;post=$post->ID", 'delete-post_' . $post->ID) . "' onclick=\"if ( confirm('" . js_escape(sprintf( ('draft' == $post->post_status) ? __("You are about to delete this attachment '%s'\n  'Cancel' to stop, 'OK' to delete.") : __("You are about to delete this attachment '%s'\n  'Cancel' to stop, 'OK' to delete."), $post->post_title )) . "') ) { return true;}return false;\">" . __('Delete') . "</a>";
-		$actions['view'] = '<a href="' . get_permalink($post->ID) . '" title="' . attribute_escape(sprintf(__('View "%s"'), $title)) . '" rel="permalink">' . __('View') . '</a>';
+			$actions['delete'] = "<a class='submitdelete' href='" . wp_nonce_url("post.php?action=delete&amp;post=$post->ID", 'delete-post_' . $post->ID) . "' onclick=\"if ( confirm('" . esc_js(sprintf( ('draft' == $post->post_status) ? __("You are about to delete this attachment '%s'\n  'Cancel' to stop, 'OK' to delete.") : __("You are about to delete this attachment '%s'\n  'Cancel' to stop, 'OK' to delete."), $post->post_title )) . "') ) { return true;}return false;\">" . __('Delete') . "</a>";
+		$actions['view'] = '<a href="' . get_permalink($post->ID) . '" title="' . esc_attr(sprintf(__('View &#8220;%s&#8221;'), $title)) . '" rel="permalink">' . __('View') . '</a>';
 		$action_count = count($actions);
 		$i = 0;
 		echo '<div class="row-actions">';
@@ -110,7 +112,7 @@ foreach ($posts_columns as $column_name => $column_display_name ) {
 		if ( !empty( $tags ) ) {
 			$out = array();
 			foreach ( $tags as $c )
-				$out[] = "<a href='edit.php?tag=$c->slug'> " . wp_specialchars(sanitize_term_field('name', $c->name, $c->term_id, 'post_tag', 'display')) . "</a>";
+				$out[] = "<a href='edit.php?tag=$c->slug'> " . esc_html(sanitize_term_field('name', $c->name, $c->term_id, 'post_tag', 'display')) . "</a>";
 			echo join( ', ', $out );
 		} else {
 			_e('No Tags');
@@ -131,7 +133,7 @@ foreach ($posts_columns as $column_name => $column_display_name ) {
 		} else {
 			$t_time = get_the_time(__('Y/m/d g:i:s A'));
 			$m_time = $post->post_date;
-			$time = get_post_time( 'G', true, $post );
+			$time = get_post_time( 'G', true, $post, false );
 			if ( ( abs($t_diff = time() - $time) ) < 86400 ) {
 				if ( $t_diff < 0 )
 					$h_time = sprintf( __('%s from now'), human_time_diff( $time ) );
@@ -171,7 +173,7 @@ foreach ($posts_columns as $column_name => $column_display_name ) {
 		$pending_phrase = sprintf( __('%s pending'), number_format( $left ) );
 		if ( $left )
 			echo '<strong>';
-		comments_number("<a href='edit-comments.php?p=$id' title='$pending_phrase' class='post-com-count'><span class='comment-count'>" . __('0') . '</span></a>', "<a href='edit-comments.php?p=$id' title='$pending_phrase' class='post-com-count'><span class='comment-count'>" . __('1') . '</span></a>', "<a href='edit-comments.php?p=$id' title='$pending_phrase' class='post-com-count'><span class='comment-count'>" . __('%') . '</span></a>');
+		comments_number("<a href='edit-comments.php?p=$id' title='$pending_phrase' class='post-com-count'><span class='comment-count'>" . /* translators: comment count link */ _x('0', 'comment count') . '</span></a>', "<a href='edit-comments.php?p=$id' title='$pending_phrase' class='post-com-count'><span class='comment-count'>" . /* translators: comment count link */ _x('1', 'comment count') . '</span></a>', "<a href='edit-comments.php?p=$id' title='$pending_phrase' class='post-com-count'><span class='comment-count'>" . /* translators: comment count link: % will be substituted by comment count */ _x('%', 'comment count') . '</span></a>');
 		if ( $left )
 			echo '</strong>';
 		?>
@@ -182,7 +184,7 @@ foreach ($posts_columns as $column_name => $column_display_name ) {
 	case 'actions':
 		?>
 		<td <?php echo $attributes ?>>
-		<a href="media.php?action=edit&amp;attachment_id=<?php the_ID(); ?>" title="<?php echo attribute_escape(sprintf(__('Edit "%s"'), $att_title)); ?>"><?php _e('Edit'); ?></a> |
+		<a href="media.php?action=edit&amp;attachment_id=<?php the_ID(); ?>" title="<?php echo esc_attr(sprintf(__('Edit &#8220;%s&#8221;'), $att_title)); ?>"><?php _e('Edit'); ?></a> |
 		<a href="<?php the_permalink(); ?>"><?php _e('Get permalink'); ?></a>
 		</td>
 		<?php
@@ -202,9 +204,8 @@ foreach ($posts_columns as $column_name => $column_display_name ) {
 </table>
 <?php } else { ?>
 
-<p><?php _e('No posts found.') ?></p>
+<p><?php _e('No media attachments found.') ?></p>
 
 <?php
 } // end if ( have_posts() )
 ?>
-

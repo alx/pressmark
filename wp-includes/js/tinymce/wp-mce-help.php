@@ -14,7 +14,7 @@ header('Content-Type: text/html; charset=' . get_bloginfo('charset'));
 <head>
 <meta http-equiv="Content-Type" content="<?php bloginfo('html_type'); ?>; charset=<?php echo get_option('blog_charset'); ?>" />
 <title><?php _e('Rich Editor Help') ?></title>
-<script type="text/javascript" src="tiny_mce_popup.js?ver=321"></script>
+<script type="text/javascript" src="tiny_mce_popup.js?ver=3223"></script>
 <?php
 wp_admin_css( 'global', true );
 wp_admin_css( 'wp-admin', true );
@@ -245,7 +245,7 @@ wp_admin_css( 'wp-admin', true );
 	<p><?php _e('For more information about this software visit the <a href="http://tinymce.moxiecode.com" target="_blank">TinyMCE website</a>.') ?></p>
 
 	<div id="buttoncontainer">
-		<a href="http://www.moxiecode.com" target="_new"><img src="themes/advanced/img/gotmoxie.png" alt="<?php _e('Got Moxie?') ?>" style="border: none;" /></a>
+		<a href="http://www.moxiecode.com" target="_blank"><img src="themes/advanced/img/gotmoxie.png" alt="<?php _e('Got Moxie?') ?>" style="border: none;" /></a>
 		<a href="http://sourceforge.net/projects/tinymce/" target="_blank"><img src="themes/advanced/img/sflogo.png" alt="<?php _e('Hosted By Sourceforge') ?>" style="border: none;" /></a>
 		<a href="http://www.freshmeat.net/projects/tinymce" target="_blank"><img src="themes/advanced/img/fm.gif" alt="<?php _e('Also on freshmeat') ?>" style="border: none;" /></a>
 	</div>

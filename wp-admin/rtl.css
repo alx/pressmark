@@ -138,6 +138,12 @@ td.available-theme {
 .folded #adminmenu img.wp-menu-image {
 	padding: 7px 6px 0 0;
 }
+#adminmenu a.separator {
+	cursor: e-resize;
+}
+.folded #adminmenu a.separator {
+ 	cursor: w-resize;
+}
 #adminmenu .wp-submenu .wp-submenu-head {
 	padding: 6px 10px 6px 4px;
 }
@@ -211,7 +217,7 @@ td.available-theme {
 #normal-sortables .postbox .submit {
 	float: left;
 }
-#post-body #tagsdiv #newtag {
+#post-body .tagsdiv #newtag {
 	margin-right: 0;
 	margin-left: 5px;
 }
@@ -221,18 +227,18 @@ td.available-theme {
 #comment-status-radio input {
 	margin: 2px 0 5px 3px;
 }
-#tagchecklist {
+.tagchecklist {
 	margin-left: 0;
 	margin-right: 10px;
 }
-#tagchecklist strong {
+.tagchecklist strong {
 	margin-left: 0;
 	margin-right: -8px;
 }
-#tagchecklist span {
+.tagchecklist span {
 	float: right;
 }
-#tagchecklist span a {
+.tagchecklist span a {
 	margin: 6px -9px 0 0;
 	float: right;
 }
@@ -242,7 +248,7 @@ td.available-theme {
 #poststuff h2 {
 	clear: right;
 }
-.setting-description, .form-wrap p {
+.description, .form-wrap p {
 	font-family: Tahoma, Arial;
 }
 /* 1500 - 1800
@@ -292,7 +298,7 @@ td.available-theme {
 	margin-left: 0;
 	margin-right: 120px;
 }
-#post-body ul#category-tabs li.ui-tabs-selected {
+#post-body ul#category-tabs li.tabs {
 	-moz-border-radius: 0 3px 3px 0;
 	-webkit-border-top-left-radius: 0;
 	-webkit-border-top-right-radius: 3px;
@@ -308,13 +314,13 @@ td.available-theme {
 	text-align: left;
 	margin: 0 0 0 -120px;
 }
-#post-body #categorydiv div.ui-tabs-panel,
-#post-body #linkcategorydiv div.ui-tabs-panel {
+#post-body #categorydiv div.tabs-panel,
+#post-body #linkcategorydiv div.tabs-panel {
 	margin: 0 120px 0 5px;
 }
 /* 1800 - 2000
 =================================== */
-#side-info-column #category-tabs li {
+#side-sortables #category-tabs li {
 	padding-right: 0;
 	padding-left: 8px;
 }
@@ -529,6 +535,14 @@ td.action-links, th.action-links {
 	padding-left: 0;
 	padding-right: 25px;
 }
+
+ol {
+	list-style-type:decimal;
+	margin-left:0;
+	margin-right:2em;
+}
+
+
 /* TinyMCE
 =================================== */
 .clearlooks2 .mceTop .mceLeft {

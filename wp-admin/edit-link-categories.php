@@ -61,9 +61,9 @@ $messages[6] = __('Categories deleted.'); ?>
 
 <div class="wrap nosubsub">
 <?php screen_icon(); ?>
-<h2><?php echo wp_specialchars( $title );
+<h2><?php echo esc_html( $title );
 if ( isset($_GET['s']) && $_GET['s'] )
-	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', wp_specialchars( stripslashes($_GET['s']) ) ); ?>
+	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', esc_html( stripslashes($_GET['s']) ) ); ?>
 </h2>
 
 <?php if ( isset($_GET['message']) && ( $msg = (int) $_GET['message'] ) ) : ?>
@@ -73,9 +73,9 @@ endif; ?>
 
 <form class="search-form" action="" method="get">
 <p class="search-box">
-	<label class="hidden" for="link-category-search-input"><?php _e( 'Search Categories' ); ?>:</label>
-	<input type="text" class="search-input" id="link-category-search-input" name="s" value="<?php _admin_search_query(); ?>" />
-	<input type="submit" value="<?php _e( 'Search Categories' ); ?>" class="button" />
+	<label class="screen-reader-text" for="link-category-search-input"><?php _e( 'Search Categories' ); ?>:</label>
+	<input type="text" id="link-category-search-input" name="s" value="<?php _admin_search_query(); ?>" />
+	<input type="submit" value="<?php esc_attr_e( 'Search Categories' ); ?>" class="button" />
 </p>
 </form>
 <br class="clear" />
@@ -112,7 +112,7 @@ if ( $page_links )
 <option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
 <option value="delete"><?php _e('Delete'); ?></option>
 </select>
-<input type="submit" value="<?php _e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
+<input type="submit" value="<?php esc_attr_e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
 <?php wp_nonce_field('bulk-link-categories'); ?>
 </div>
 
@@ -166,7 +166,7 @@ if ( $page_links )
 <option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
 <option value="delete"><?php _e('Delete'); ?></option>
 </select>
-<input type="submit" value="<?php _e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
+<input type="submit" value="<?php esc_attr_e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
 </div>
 
 <br class="clear" />
@@ -189,19 +189,19 @@ if ( $page_links )
 	$category = (object) array(); $category->parent = 0; do_action('add_link_category_form_pre', $category); ?>
 
 <div class="form-wrap">
-<h3><?php _e('Add Category'); ?></h3>
+<h3><?php _e('Add Link Category'); ?></h3>
 <div id="ajax-response"></div>
 <form name="addcat" id="addcat" class="add:the-list: validate" method="post" action="link-category.php">
 <input type="hidden" name="action" value="addcat" />
 <?php wp_original_referer_field(true, 'previous'); wp_nonce_field('add-link-category'); ?>
 
 <div class="form-field form-required">
-	<label for="name"><?php _e('Category name') ?></label>
+	<label for="name"><?php _e('Link Category name') ?></label>
 	<input name="name" id="name" type="text" value="" size="40" aria-required="true" />
 </div>
 
 <div class="form-field">
-	<label for="slug"><?php _e('Category slug') ?></label>
+	<label for="slug"><?php _e('Link Category slug') ?></label>
 	<input name="slug" id="slug" type="text" value="" size="40" />
 	<p><?php _e('The &#8220;slug&#8221; is the URL-friendly version of the name. It is usually all lowercase and contains only letters, numbers, and hyphens.'); ?></p>
 </div>
@@ -211,7 +211,7 @@ if ( $page_links )
 	<textarea name="description" id="description" rows="5" cols="40"></textarea>
 </div>
 
-<p class="submit"><input type="submit" class="button" name="submit" value="<?php _e('Add Category'); ?>" /></p>
+<p class="submit"><input type="submit" class="button" name="submit" value="<?php esc_attr_e('Add Category'); ?>" /></p>
 <?php do_action('edit_link_category_form', $category); ?>
 </form>
 </div>
@@ -223,21 +223,6 @@ if ( $page_links )
 
 </div><!-- /col-container -->
 </div><!-- /wrap -->
-
-<script type="text/javascript">
-/* <![CDATA[ */
-(function($){
-	$(document).ready(function(){
-		$('#doaction, #doaction2').click(function(){
-			if ( $('select[name^="action"]').val() == 'delete' ) {
-				var m = '<?php echo js_escape(__("You are about to delete the selected link categories.\n  'Cancel' to stop, 'OK' to delete.")); ?>';
-				return showNotice.warn(m);
-			}
-		});
-	});
-})(jQuery);
-/* ]]> */
-</script>
 
 <?php inline_edit_term_row('edit-link-categories'); ?>
 <?php include('admin-footer.php'); ?>

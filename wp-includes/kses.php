@@ -119,23 +119,35 @@ if (!CUSTOM_TAGS) {
 			'target' => array ()),
 		'h1' => array(
 			'align' => array (),
-			'class' => array ()),
-		'h2' => array(
+			'class' => array (),
+			'id'    => array (),
+			'style' => array ()),
+		'h2' => array (
 			'align' => array (),
-			'class' => array ()),
-		'h3' => array(
+			'class' => array (),
+			'id'    => array (),
+			'style' => array ()),
+		'h3' => array (
 			'align' => array (),
-			'class' => array ()),
-		'h4' => array(
+			'class' => array (),
+			'id'    => array (),
+			'style' => array ()),
+		'h4' => array (
 			'align' => array (),
-			'class' => array ()),
-		'h5' => array(
+			'class' => array (),
+			'id'    => array (),
+			'style' => array ()),
+		'h5' => array (
 			'align' => array (),
-			'class' => array ()),
-		'h6' => array(
+			'class' => array (),
+			'id'    => array (),
+			'style' => array ()),
+		'h6' => array (
 			'align' => array (),
-			'class' => array ()),
-		'hr' => array(
+			'class' => array (),
+			'id'    => array (),
+			'style' => array ()),
+		'hr' => array (
 			'align' => array (),
 			'class' => array (),
 			'noshade' => array (),
@@ -520,6 +532,19 @@ function wp_kses_attr($element, $attr, $allowed_html, $allowed_protocols) {
 					$ok = false;
 					break;
 				}
+
+			if ( $arreach['name'] == 'style' ) {
+				$orig_value = $arreach['value'];
+
+				$value = safecss_filter_attr($orig_value);
+
+				if ( empty($value) )
+					continue;
+
+				$arreach['value'] = $value;
+
+				$arreach['whole'] = str_replace($orig_value, $value, $arreach['whole']);
+			}
 
 			if ($ok)
 				$attr2 .= ' '.$arreach['whole']; # it passed them
@@ -1122,4 +1147,49 @@ function kses_init() {
 
 add_action('init', 'kses_init');
 add_action('set_current_user', 'kses_init');
-?>
+
+function safecss_filter_attr( $css, $deprecated = '' ) {
+	$css = wp_kses_no_null($css);
+	$css = str_replace(array("\n","\r","\t"), '', $css);
+
+	if ( preg_match( '%[\\(&]|/\*%', $css ) ) // remove any inline css containing \ ( & or comments
+		return '';
+
+	$css_array = split( ';', trim( $css ) );
+	$allowed_attr = apply_filters( 'safe_style_css', array( 'text-align', 'margin', 'color', 'float', 
+	'border', 'background', 'background-color', 'border-bottom', 'border-bottom-color', 
+	'border-bottom-style', 'border-bottom-width', 'border-collapse', 'border-color', 'border-left',
+	'border-left-color', 'border-left-style', 'border-left-width', 'border-right', 'border-right-color', 
+	'border-right-style', 'border-right-width', 'border-spacing', 'border-style', 'border-top', 
+	'border-top-color', 'border-top-style', 'border-top-width', 'border-width', 'caption-side', 
+	'clear', 'cursor', 'direction', 'font', 'font-family', 'font-size', 'font-style', 
+	'font-variant', 'font-weight', 'height', 'letter-spacing', 'line-height', 'margin-bottom', 
+	'margin-left', 'margin-right', 'margin-top', 'overflow', 'padding', 'padding-bottom', 
+	'padding-left', 'padding-right', 'padding-top', 'text-decoration', 'text-indent', 'vertical-align', 
+	'width' ) );
+
+	if ( empty($allowed_attr) )
+		return $css;
+
+	$css = '';
+	foreach ( $css_array as $css_item ) {
+		if ( $css_item == '' )
+			continue;
+		$css_item = trim( $css_item );
+		$found = false;
+		if ( strpos( $css_item, ':' ) === false ) {
+			$found = true;
+		} else {
+			$parts = split( ':', $css_item );
+			if ( in_array( trim( $parts[0] ), $allowed_attr ) )
+				$found = true;
+		}
+		if ( $found ) {
+			if( $css != '' )
+				$css .= ';';
+			$css .= $css_item;
+		}
+	}
+
+	return $css;
+}

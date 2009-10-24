@@ -9,6 +9,9 @@
 /** WordPress Administration Bootstrap */
 require_once('admin.php');
 
+if ( ! current_user_can('manage_options') )
+	wp_die(__('You do not have sufficient permissions to manage options for this blog.'));
+
 $title = __('Media Settings');
 $parent_file = 'options-general.php';
 
@@ -18,7 +21,7 @@ include('admin-header.php');
 
 <div class="wrap">
 <?php screen_icon(); ?>
-<h2><?php echo wp_specialchars( $title ); ?></h2>
+<h2><?php echo esc_html( $title ); ?></h2>
 
 <form action="options.php" method="post">
 <?php settings_fields('media'); ?>
@@ -41,7 +44,7 @@ include('admin-header.php');
 
 <tr valign="top">
 <th scope="row"><?php _e('Medium size') ?></th>
-<td><fieldset><legend class="hidden"><?php _e('Medium size') ?></legend>
+<td><fieldset><legend class="screen-reader-text"><span><?php _e('Medium size') ?></span></legend>
 <label for="medium_size_w"><?php _e('Max Width'); ?></label>
 <input name="medium_size_w" type="text" id="medium_size_w" value="<?php form_option('medium_size_w'); ?>" class="small-text" />
 <label for="medium_size_h"><?php _e('Max Height'); ?></label>
@@ -51,7 +54,7 @@ include('admin-header.php');
 
 <tr valign="top">
 <th scope="row"><?php _e('Large size') ?></th>
-<td><fieldset><legend class="hidden"><?php _e('Large size') ?></legend>
+<td><fieldset><legend class="screen-reader-text"><span><?php _e('Large size') ?></span></legend>
 <label for="large_size_w"><?php _e('Max Width'); ?></label>
 <input name="large_size_w" type="text" id="large_size_w" value="<?php form_option('large_size_w'); ?>" class="small-text" />
 <label for="large_size_h"><?php _e('Max Height'); ?></label>
@@ -65,7 +68,7 @@ include('admin-header.php');
 <?php do_settings_sections('media'); ?>
 
 <p class="submit">
-	<input type="submit" name="Submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
+	<input type="submit" name="Submit" class="button-primary" value="<?php esc_attr_e('Save Changes') ?>" />
 </p>
 
 </form>

@@ -11,30 +11,31 @@
 
 ignore_user_abort(true);
 
+if ( !empty($_POST) || defined('DOING_AJAX') || defined('DOING_CRON') )
+	die();
+
 /**
  * Tell WordPress we are doing the CRON task.
  *
  * @var bool
  */
 define('DOING_CRON', true);
-/** Setup WordPress environment */
-require_once('./wp-load.php');
 
-if ( $_GET['check'] != wp_hash('187425') )
-	exit;
-
-$local_time = time();
-
-$crons = _get_cron_array();
-$keys = array_keys( $crons );
-
-if (!is_array($crons) || $keys[0] > $local_time) {
-	update_option('doing_cron', 0);
-	return;
+if ( !defined('ABSPATH') ) {
+	/** Setup WordPress environment */
+	require_once('./wp-load.php');
 }
 
-foreach ($crons as $timestamp  => $cronhooks) {
+if ( false === $crons = _get_cron_array() )
+	die();
 
+$keys = array_keys( $crons );
+$local_time = time();
+
+if ( isset($keys[0]) && $keys[0] > $local_time )
+	die();
+
+foreach ($crons as $timestamp  => $cronhooks) {
 	if ( $timestamp > $local_time )
 		break;
 
@@ -56,8 +57,4 @@ foreach ($crons as $timestamp  => $cronhooks) {
 	}
 }
 
-update_option('doing_cron', 0);
-
 die();
-
-?>

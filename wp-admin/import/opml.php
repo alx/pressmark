@@ -42,7 +42,7 @@ switch ($step) {
 <input type="hidden" name="MAX_FILE_SIZE" value="30000" />
 <div style="width: 48%;" class="alignleft">
 <h3><label for="opml_url"><?php _e('Specify an OPML URL:'); ?></label></h3>
-<input type="text" name="opml_url" id="opml_url" size="50" style="width: 90%;" value="http://" />
+<input type="text" name="opml_url" id="opml_url" size="50" class="code" style="width: 90%;" value="http://" />
 </div>
 
 <div style="width: 48%;" class="alignleft">
@@ -58,13 +58,13 @@ switch ($step) {
 $categories = get_terms('link_category', 'get=all');
 foreach ($categories as $category) {
 ?>
-<option value="<?php echo $category->term_id; ?>"><?php echo wp_specialchars(apply_filters('link_category', $category->name)); ?></option>
+<option value="<?php echo $category->term_id; ?>"><?php echo esc_html(apply_filters('link_category', $category->name)); ?></option>
 <?php
 } // end foreach
 ?>
 </select></p>
 
-<p class="submit"><input type="submit" name="submit" value="<?php _e('Import OPML File') ?>" /></p>
+<p class="submit"><input type="submit" name="submit" value="<?php esc_attr_e('Import OPML File') ?>" /></p>
 </form>
 
 </div>
@@ -92,6 +92,7 @@ foreach ($categories as $category) {
 			$blogrolling = true;
 		} else { // try to get the upload file.
 			$overrides = array('test_form' => false, 'test_type' => false);
+			$_FILES['userfile']['name'] .= '.txt';
 			$file = wp_handle_upload($_FILES['userfile'], $overrides);
 
 			if ( isset($file['error']) )

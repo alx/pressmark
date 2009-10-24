@@ -13,15 +13,13 @@
 <title><?php wp_title('&laquo;', true, 'right'); ?> <?php bloginfo('name'); ?></title>
 
 <link rel="stylesheet" href="<?php bloginfo('stylesheet_url'); ?>" type="text/css" media="screen" />
-<link rel="alternate" type="application/rss+xml" title="<?php bloginfo('name'); ?> RSS Feed" href="<?php bloginfo('rss2_url'); ?>" />
-<link rel="alternate" type="application/atom+xml" title="<?php bloginfo('name'); ?> Atom Feed" href="<?php bloginfo('atom_url'); ?>" />
 <link rel="pingback" href="<?php bloginfo('pingback_url'); ?>" />
 
 <style type="text/css" media="screen">
 
 <?php
 // Checks to see whether it needs a sidebar or not
-if ( !empty($withcomments) && !is_single() ) {
+if ( empty($withcomments) && !is_single() ) {
 ?>
 	#page { background: url("<?php bloginfo('stylesheet_directory'); ?>/images/kubrickbg-<?php bloginfo('text_direction'); ?>.jpg") repeat-y top; border: none; }
 <?php } else { // No sidebar ?>
@@ -34,11 +32,11 @@ if ( !empty($withcomments) && !is_single() ) {
 
 <?php wp_head(); ?>
 </head>
-<body>
+<body <?php body_class(); ?>>
 <div id="page">
 
 
-<div id="header">
+<div id="header" role="banner">
 	<div id="headerimg">
 		<h1><a href="<?php echo get_option('home'); ?>/"><?php bloginfo('name'); ?></a></h1>
 		<div class="description"><?php bloginfo('description'); ?></div>

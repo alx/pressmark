@@ -61,12 +61,12 @@ class GM_Import {
 <td><input type="text" style="width:300px" name="archivespath" id="archivespath" value="/home/my/site/cgi-bin/greymatter/archives/" /></td>
 </tr>
 <tr>
-<td><label for="lastentry"><?php _e("Last entry's number:") ?></label></td>
+<td><label for="lastentry"><?php _e('Last entry&#8217;s number:') ?></label></td>
 <td><input type="text" name="lastentry" id="lastentry" value="00000001" /><br />
-	<?php _e("This importer will search for files 00000001.cgi to 000-whatever.cgi,<br />so you need to enter the number of the last GM post here.<br />(if you don't know that number, just log into your FTP and look it out<br />in the entries' folder)") ?></td>
+	<?php _e('This importer will search for files 00000001.cgi to 000-whatever.cgi,<br />so you need to enter the number of the last GM post here.<br />(if you don&#8217;t know that number, just log into your FTP and look it out<br />in the entries&#8217; folder)') ?></td>
 </tr>
 </table>
-<p class="submit"><input type="submit" name="submit" class="button" value="<?php _e('Start Importing') ?>" /></p>
+<p class="submit"><input type="submit" name="submit" class="button" value="<?php esc_attr_e('Start Importing') ?>" /></p>
 </form>
 <?php
 		$this->footer();
@@ -283,12 +283,12 @@ class GM_Import {
 				}
 				if ($numAddedComments > 0) {
 					echo ': ';
-				printf( __ngettext('imported %s comment', 'imported %s comments', $numAddedComments) , $numAddedComments);
+				printf( _n('imported %s comment', 'imported %s comments', $numAddedComments) , $numAddedComments);
 				}
 				$preExisting = $numComments - numAddedComments;
 				if ($preExisting > 0) {
 					echo ' ';
-					printf( __ngettext( 'ignored %s pre-existing comment', 'ignored %s pre-existing comments', $preExisting ) , $preExisting);
+					printf( _n( 'ignored %s pre-existing comment', 'ignored %s pre-existing comments', $preExisting ) , $preExisting);
 				}
 			}
 			echo '... <strong>'.__('Done').'</strong></li>';

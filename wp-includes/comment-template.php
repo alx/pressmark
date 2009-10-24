@@ -193,7 +193,9 @@ function comment_author_IP() {
  */
 function get_comment_author_url() {
 	global $comment;
-	return apply_filters('get_comment_author_url', $comment->comment_author_url);
+	$url = ('http://' == $comment->comment_author_url) ? '' : $comment->comment_author_url;
+	$url = esc_url( $url, array('http', 'https') );
+	return apply_filters('get_comment_author_url', $url);
 }
 
 /**
@@ -292,7 +294,8 @@ function get_comment_class( $class = '', $comment_id = null, $post_id = null ) {
 	// If the comment author has an id (registered), then print the log in name
 	if ( $comment->user_id > 0 && $user = get_userdata($comment->user_id) ) {
 		// For all registered users, 'byuser'
-		$classes[] = 'byuser comment-author-' . $user->user_nicename;
+		$classes[] = 'byuser';
+		$classes[] = 'comment-author-' . sanitize_html_class($user->user_nicename, $comment->user_id);
 		// For comment authors who are the author of the post
 		if ( $post = get_post($post_id) ) {
 			if ( $comment->user_id === $post->post_author )
@@ -335,6 +338,8 @@ function get_comment_class( $class = '', $comment_id = null, $post_id = null ) {
 		$classes = array_merge($classes, $class);
 	}
 
+	$classes = array_map('esc_attr', $classes);
+
 	return apply_filters('comment_class', $classes, $class, $comment_id, $post_id);
 }
 
@@ -351,7 +356,7 @@ function get_comment_class( $class = '', $comment_id = null, $post_id = null ) {
 function get_comment_date( $d = '' ) {
 	global $comment;
 	if ( '' == $d )
-		$date = mysql2date( get_option('date_format'), $comment->comment_date);
+		$date = mysql2date(get_option('date_format'), $comment->comment_date);
 	else
 		$date = mysql2date($d, $comment->comment_date);
 	return apply_filters('get_comment_date', $date, $d);
@@ -442,7 +447,7 @@ function comment_ID() {
  *
  * @param object|string|int $comment Comment to retrieve.
  * @param array $args Optional args.
- * @return string The permalink to the current comment
+ * @return string The permalink to the given comment.
  */
 function get_comment_link( $comment = null, $args = array() ) {
 	global $wp_rewrite, $in_comment_loop;
@@ -472,12 +477,14 @@ function get_comment_link( $comment = null, $args = array() ) {
 			$args['page'] = ( !empty($in_comment_loop) ) ? get_query_var('cpage') : get_page_of_comment( $comment->comment_ID, $args );
 
 		if ( $wp_rewrite->using_permalinks() )
-			return user_trailingslashit( trailingslashit( get_permalink( $comment->comment_post_ID ) ) . 'comment-page-' . $args['page'], 'comment' ) . '#comment-' . $comment->comment_ID;
+			$link = user_trailingslashit( trailingslashit( get_permalink( $comment->comment_post_ID ) ) . 'comment-page-' . $args['page'], 'comment' );
 		else
-			return add_query_arg( 'cpage', $args['page'], get_permalink( $comment->comment_post_ID ) ) . '#comment-' . $comment->comment_ID;
+			$link = add_query_arg( 'cpage', $args['page'], get_permalink( $comment->comment_post_ID ) );
 	} else {
-		return get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID;
+		$link = get_permalink( $comment->comment_post_ID );
 	}
+
+	return apply_filters( 'get_comment_link', $link . '#comment-' . $comment->comment_ID, $comment, $args );
 }
 
 /**
@@ -587,15 +594,16 @@ function comment_text() {
  *
  * @param string $d Optional. The format of the time (defaults to user's config)
  * @param bool $gmt Whether to use the GMT date
+ * @param bool $translate Whether to translate the time (for use in feeds)
  * @return string The formatted time
  */
-function get_comment_time( $d = '', $gmt = false ) {
+function get_comment_time( $d = '', $gmt = false, $translate = true ) {
 	global $comment;
 	$comment_date = $gmt? $comment->comment_date_gmt : $comment->comment_date;
 	if ( '' == $d )
-		$date = mysql2date(get_option('time_format'), $comment_date);
+		$date = mysql2date(get_option('time_format'), $comment_date, $translate);
 	else
-		$date = mysql2date($d, $comment_date);
+		$date = mysql2date($d, $comment_date, $translate);
 	return apply_filters('get_comment_time', $date, $d, $gmt);
 }
 
@@ -637,7 +645,10 @@ function get_comment_type() {
  * @param string $trackbacktxt The string to display for trackback type
  * @param string $pingbacktxt The string to display for pingback type
  */
-function comment_type($commenttxt = 'Comment', $trackbacktxt = 'Trackback', $pingbacktxt = 'Pingback') {
+function comment_type($commenttxt = false, $trackbacktxt = false, $pingbacktxt = false) {
+    if ( false === $commenttxt ) $commenttxt = _x( 'Comment', 'noun' );
+    if ( false === $trackbacktxt ) $trackbacktxt = __( 'Trackback' );
+    if ( false === $pingbacktxt ) $pingbacktxt = __( 'Pingback' );
 	$type = get_comment_type();
 	switch( $type ) {
 		case 'trackback' :
@@ -809,16 +820,36 @@ function comments_template( $file = '/comments.php', $separate_comments = false 
 		$file = '/comments.php';
 
 	$req = get_option('require_name_email');
+
+	/**
+	 * Comment author information fetched from the comment cookies.
+	 *
+	 * @uses wp_get_current_commenter()
+	 */
 	$commenter = wp_get_current_commenter();
-	extract($commenter, EXTR_SKIP);
+
+	/**
+	 * The name of the current comment author escaped for use in attributes.
+	 */
+	$comment_author = $commenter['comment_author']; // Escaped by sanitize_comment_cookies()
+
+	/**
+	 * The email address of the current comment author escaped for use in attributes.
+	 */	
+	$comment_author_email = $commenter['comment_author_email'];  // Escaped by sanitize_comment_cookies()
+
+	/**
+	 * The url of the current comment author escaped for use in attributes.
+	 */	
+	$comment_author_url = esc_url($commenter['comment_author_url']);
 
 	/** @todo Use API instead of SELECTs. */
 	if ( $user_ID) {
-		$comments = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->comments WHERE comment_post_ID = %d AND (comment_approved = '1' OR ( user_id = %d AND comment_approved = '0' ) )  ORDER BY comment_date", $post->ID, $user_ID));
+		$comments = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->comments WHERE comment_post_ID = %d AND (comment_approved = '1' OR ( user_id = %d AND comment_approved = '0' ) )  ORDER BY comment_date_gmt", $post->ID, $user_ID));
 	} else if ( empty($comment_author) ) {
-		$comments = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->comments WHERE comment_post_ID = %d AND comment_approved = '1' ORDER BY comment_date", $post->ID));
+		$comments = get_comments( array('post_id' => $post->ID, 'status' => 'approve', 'order' => 'ASC') );
 	} else {
-		$comments = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->comments WHERE comment_post_ID = %d AND ( comment_approved = '1' OR ( comment_author = %s AND comment_author_email = %s AND comment_approved = '0' ) ) ORDER BY comment_date", $post->ID, $comment_author, $comment_author_email));
+		$comments = $wpdb->get_results($wpdb->prepare("SELECT * FROM $wpdb->comments WHERE comment_post_ID = %d AND ( comment_approved = '1' OR ( comment_author = %s AND comment_author_email = %s AND comment_approved = '0' ) ) ORDER BY comment_date_gmt", $post->ID, wp_specialchars_decode($comment_author,ENT_QUOTES), $comment_author_email));
 	}
 
 	// keep $comments for legacy's sake
@@ -838,7 +869,8 @@ function comments_template( $file = '/comments.php', $separate_comments = false 
 		$overridden_cpage = TRUE;
 	}
 
-	define('COMMENTS_TEMPLATE', true);
+	if ( !defined('COMMENTS_TEMPLATE') || !COMMENTS_TEMPLATE)
+		define('COMMENTS_TEMPLATE', true);
 
 	$include = apply_filters('comments_template', STYLESHEETPATH . $file );
 	if ( file_exists( $include ) )
@@ -899,16 +931,18 @@ function comments_popup_script($width=400, $height=400, $file='') {
  * @param string $none The string to display when comments have been turned off
  * @return null Returns null on single posts and pages.
  */
-function comments_popup_link( $zero = 'No Comments', $one = '1 Comment', $more = '% Comments', $css_class = '', $none = 'Comments Off' ) {
+function comments_popup_link( $zero = false, $one = false, $more = false, $css_class = '', $none = false ) {
 	global $id, $wpcommentspopupfile, $wpcommentsjavascript, $post;
 
-	if ( is_single() || is_page() )
-		return;
+    if ( false === $zero ) $zero = __( 'No Comments' );
+    if ( false === $one ) $one = __( '1 Comment' );
+    if ( false === $more ) $more = __( '% Comments' );
+    if ( false === $none ) $none = __( 'Comments Off' );
 
 	$number = get_comments_number( $id );
 
-	if ( 0 == $number && 'closed' == $post->comment_status && 'closed' == $post->ping_status ) {
-		echo '<span' . ((!empty($css_class)) ? ' class="' . $css_class . '"' : '') . '>' . $none . '</span>';
+	if ( 0 == $number && !comments_open() && !pings_open() ) {
+		echo '<span' . ((!empty($css_class)) ? ' class="' . esc_attr( $css_class ) . '"' : '') . '>' . $none . '</span>';
 		return;
 	}
 
@@ -936,11 +970,11 @@ function comments_popup_link( $zero = 'No Comments', $one = '1 Comment', $more =
 	if ( !empty( $css_class ) ) {
 		echo ' class="'.$css_class.'" ';
 	}
-	$title = attribute_escape( get_the_title() );
+	$title = esc_attr( get_the_title() );
 
 	echo apply_filters( 'comments_popup_link_attributes', '' );
 
-	echo ' title="' . sprintf( __('Comment on %s'), $title ) . '">';
+	echo ' title="' . esc_attr( sprintf( __('Comment on %s'), $title ) ) . '">';
 	comments_number( $zero, $one, $more, $number );
 	echo '</a>';
 }
@@ -978,15 +1012,15 @@ function get_comment_reply_link($args = array(), $comment = null, $post = null) 
 	$comment = get_comment($comment);
 	$post = get_post($post);
 
-	if ( 'open' != $post->comment_status )
+	if ( !comments_open($post->ID) )
 		return false;
 
 	$link = '';
 
 	if ( get_option('comment_registration') && !$user_ID )
-		$link = '<a rel="nofollow" href="' . site_url('wp-login.php?redirect_to=' . get_permalink()) . '">' . $login_text . '</a>';
+		$link = '<a rel="nofollow" class="comment-reply-login" href="' . esc_url( wp_login_url( get_permalink() ) ) . '">' . $login_text . '</a>';
 	else
-		$link = "<a rel='nofollow' class='comment-reply-link' href='" . wp_specialchars( add_query_arg( 'replytocom', $comment->comment_ID ) ) . "#" . $respond_id . "' onclick='return addComment.moveForm(\"$add_below-$comment->comment_ID\", \"$comment->comment_ID\", \"$respond_id\", \"$post->ID\")'>$reply_text</a>";
+		$link = "<a rel='nofollow' class='comment-reply-link' href='" . esc_url( add_query_arg( 'replytocom', $comment->comment_ID ) ) . "#" . $respond_id . "' onclick='return addComment.moveForm(\"$add_below-$comment->comment_ID\", \"$comment->comment_ID\", \"$respond_id\", \"$post->ID\")'>$reply_text</a>";
 	return apply_filters('comment_reply_link', $before . $link . $after, $args, $comment, $post);
 }
 
@@ -1030,12 +1064,12 @@ function get_post_reply_link($args = array(), $post = null) {
 	$args = wp_parse_args($args, $defaults);
 	extract($args, EXTR_SKIP);
 	$post = get_post($post);
-	
+
 	if ( !comments_open($post->ID) )
 		return false;
 
 	if ( get_option('comment_registration') && !$user_ID ) {
-		$link = '<a rel="nofollow" href="' . site_url('wp-login.php?redirect_to=' . get_permalink()) . '">' . $login_text . '</a>';
+		$link = '<a rel="nofollow" href="' . wp_login_url( get_permalink() ) . '">' . $login_text . '</a>';
 	} else {
 		$link = "<a rel='nofollow' class='comment-reply-link' href='" . get_permalink($post->ID) . "#$respond_id' onclick='return addComment.moveForm(\"$add_below-$post->ID\", \"0\", \"$respond_id\", \"$post->ID\")'>$reply_text</a>";
 	}
@@ -1067,7 +1101,7 @@ function get_cancel_comment_reply_link($text = '') {
 		$text = __('Click here to cancel reply.');
 
 	$style = isset($_GET['replytocom']) ? '' : ' style="display:none;"';
-	$link = wp_specialchars( remove_query_arg('replytocom') ) . '#respond';
+	$link = esc_html( remove_query_arg('replytocom') ) . '#respond';
 	return apply_filters('cancel_comment_reply_link', '<a rel="nofollow" id="cancel-comment-reply-link" href="' . $link . '"' . $style . '>' . $text . '</a>', $link, $text);
 }
 
@@ -1104,8 +1138,11 @@ function comment_id_fields() {
  * @param string $replytext Optional. Text to display when replying to a comment. Accepts "%s" for the author of the comment being replied to.
  * @param string $linktoparent Optional. Boolean to control making the author's name a link to their comment.
  */
-function comment_form_title( $noreplytext = 'Leave a Reply', $replytext = 'Leave a Reply to %s', $linktoparent = TRUE ) {
+function comment_form_title( $noreplytext = false, $replytext = false, $linktoparent = TRUE ) {
 	global $comment;
+
+	if ( false === $noreplytext ) $noreplytext = __( 'Leave a Reply' );
+	if ( false === $replytext ) $replytext = __( 'Leave a Reply to %s' );
 
 	$replytoid = isset($_GET['replytocom']) ? (int) $_GET['replytocom'] : 0;
 
@@ -1219,7 +1256,7 @@ class Walker_Comment extends Walker {
 ?>
 		<<?php echo $tag ?> <?php comment_class(empty( $args['has_children'] ) ? '' : 'parent') ?> id="comment-<?php comment_ID() ?>">
 		<?php if ( 'ul' == $args['style'] ) : ?>
-		<div id="div-comment-<?php comment_ID() ?>">
+		<div id="div-comment-<?php comment_ID() ?>" class="comment-body">
 		<?php endif; ?>
 		<div class="comment-author vcard">
 		<?php if ($args['avatar_size'] != 0) echo get_avatar( $comment, $args['avatar_size'] ); ?>

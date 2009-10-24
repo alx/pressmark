@@ -534,9 +534,9 @@ class WP_User {
 		$this->allcaps = array();
 		foreach ( (array) $this->roles as $role ) {
 			$role =& $wp_roles->get_role( $role );
-			$this->allcaps = array_merge( $this->allcaps, $role->capabilities );
+			$this->allcaps = array_merge( (array) $this->allcaps, (array) $role->capabilities );
 		}
-		$this->allcaps = array_merge( $this->allcaps, $this->caps );
+		$this->allcaps = array_merge( (array) $this->allcaps, (array) $this->caps );
 	}
 
 	/**
@@ -900,12 +900,18 @@ function map_meta_cap( $cap, $user_id ) {
 		else
 			$caps[] = 'read_private_pages';
 		break;
+	case 'unfiltered_upload':
+		if ( defined('ALLOW_UNFILTERED_UPLOADS') && ALLOW_UNFILTERED_UPLOADS == true )
+			$caps[] = $cap;
+		else
+			$caps[] = 'do_not_allow';
+		break;
 	default:
 		// If no meta caps match, return the original cap.
 		$caps[] = $cap;
 	}
 
-	return $caps;
+	return apply_filters('map_meta_cap', $caps, $cap, $user_id, $args);
 }
 
 /**

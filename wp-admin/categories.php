@@ -25,11 +25,11 @@ case 'addcat':
 	if ( !current_user_can('manage_categories') )
 		wp_die(__('Cheatin&#8217; uh?'));
 
-	if( wp_insert_category($_POST ) ) {
-		wp_redirect('categories.php?message=1#addcat');
-	} else {
-		wp_redirect('categories.php?message=4#addcat');
-	}
+	if ( wp_insert_category($_POST ) )
+		wp_safe_redirect( add_query_arg( 'message', 1, wp_get_referer() ) . '#addcat' );
+	else
+		wp_safe_redirect( add_query_arg( 'message', 4, wp_get_referer() ) . '#addcat' );
+
 	exit;
 break;
 
@@ -40,15 +40,15 @@ case 'delete':
 	if ( !current_user_can('manage_categories') )
 		wp_die(__('Cheatin&#8217; uh?'));
 
-	$cat_name = get_catname($cat_ID);
+	$cat_name = get_cat_name($cat_ID);
 
 	// Don't delete the default cats.
-    if ( $cat_ID == get_option('default_category') )
+	if ( $cat_ID == get_option('default_category') )
 		wp_die(sprintf(__("Can&#8217;t delete the <strong>%s</strong> category: this is the default one"), $cat_name));
 
 	wp_delete_category($cat_ID);
 
-	wp_redirect('categories.php?message=2');
+	wp_safe_redirect( add_query_arg( 'message', 2, wp_get_referer() ) );
 	exit;
 
 break;
@@ -60,7 +60,7 @@ case 'bulk-delete':
 		wp_die( __('You are not allowed to delete categories.') );
 
 	foreach ( (array) $_GET['delete'] as $cat_ID ) {
-		$cat_name = get_catname($cat_ID);
+		$cat_name = get_cat_name($cat_ID);
 
 		// Don't delete the default cats.
 		if ( $cat_ID == get_option('default_category') )
@@ -69,9 +69,7 @@ case 'bulk-delete':
 		wp_delete_category($cat_ID);
 	}
 
-	$sendback = wp_get_referer();
-
-	wp_redirect($sendback);
+	wp_safe_redirect( wp_get_referer() );
 	exit();
 
 break;
@@ -131,9 +129,9 @@ $messages[5] = __('Category not updated.');
 
 <div class="wrap nosubsub">
 <?php screen_icon(); ?>
-<h2><?php echo wp_specialchars( $title );
+<h2><?php echo esc_html( $title );
 if ( isset($_GET['s']) && $_GET['s'] )
-	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', wp_specialchars( stripslashes($_GET['s']) ) ); ?>
+	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', esc_html( stripslashes($_GET['s']) ) ); ?>
 </h2>
 
 <?php
@@ -144,9 +142,9 @@ endif; ?>
 
 <form class="search-form topmargin" action="" method="get">
 <p class="search-box">
-	<label class="hidden" for="category-search-input"><?php _e('Search Categories'); ?>:</label>
-	<input type="text" class="search-input" id="category-search-input" name="s" value="<?php _admin_search_query(); ?>" />
-	<input type="submit" value="<?php _e( 'Search Categories' ); ?>" class="button" />
+	<label class="screen-reader-text" for="category-search-input"><?php _e('Search Categories'); ?>:</label>
+	<input type="text" id="category-search-input" name="s" value="<?php _admin_search_query(); ?>" />
+	<input type="submit" value="<?php esc_attr_e( 'Search Categories' ); ?>" class="button" />
 </p>
 </form>
 <br class="clear" />
@@ -162,15 +160,23 @@ endif; ?>
 $pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 0;
 if ( empty($pagenum) )
 	$pagenum = 1;
-if( ! isset( $catsperpage ) || $catsperpage < 0 )
-	$catsperpage = 20;
+
+$cats_per_page = get_user_option('categories_per_page');
+if ( empty($cats_per_page) )
+	$cats_per_page = 20;
+$cats_per_page = apply_filters('edit_categories_per_page', $cats_per_page);
+
+if ( !empty($_GET['s']) )
+	$num_cats = count(get_categories(array('hide_empty' => 0, 'search' => $_GET['s'])));
+else
+	$num_cats = wp_count_terms('category');
 
 $page_links = paginate_links( array(
 	'base' => add_query_arg( 'pagenum', '%#%' ),
 	'format' => '',
 	'prev_text' => __('&laquo;'),
 	'next_text' => __('&raquo;'),
-	'total' => ceil(wp_count_terms('category') / $catsperpage),
+	'total' => ceil($num_cats / $cats_per_page),
 	'current' => $pagenum
 ));
 
@@ -183,7 +189,7 @@ if ( $page_links )
 <option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
 <option value="delete"><?php _e('Delete'); ?></option>
 </select>
-<input type="submit" value="<?php _e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
+<input type="submit" value="<?php esc_attr_e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
 <?php wp_nonce_field('bulk-categories'); ?>
 </div>
 
@@ -207,7 +213,7 @@ if ( $page_links )
 
 	<tbody id="the-list" class="list:cat">
 <?php
-cat_rows(0, 0, 0, $pagenum, $catsperpage);
+cat_rows(0, 0, 0, $pagenum, $cats_per_page);
 ?>
 	</tbody>
 </table>
@@ -223,7 +229,7 @@ if ( $page_links )
 <option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
 <option value="delete"><?php _e('Delete'); ?></option>
 </select>
-<input type="submit" value="<?php _e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
+<input type="submit" value="<?php esc_attr_e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
 <?php wp_nonce_field('bulk-categories'); ?>
 </div>
 
@@ -233,7 +239,7 @@ if ( $page_links )
 </form>
 
 <div class="form-wrap">
-<p><?php printf(__('<strong>Note:</strong><br />Deleting a category does not delete the posts in that category. Instead, posts that were only assigned to the deleted category are set to the category <strong>%s</strong>.'), apply_filters('the_category', get_catname(get_option('default_category')))) ?></p>
+<p><?php printf(__('<strong>Note:</strong><br />Deleting a category does not delete the posts in that category. Instead, posts that were only assigned to the deleted category are set to the category <strong>%s</strong>.'), apply_filters('the_category', get_cat_name(get_option('default_category')))) ?></p>
 <p><?php printf(__('Categories can be selectively converted to tags using the <a href="%s">category to tag converter</a>.'), 'admin.php?import=wp-cat2tag') ?></p>
 </div>
 
@@ -277,7 +283,7 @@ if ( $page_links )
     <p><?php _e('The description is not prominent by default, however some themes may show it.'); ?></p>
 </div>
 
-<p class="submit"><input type="submit" class="button" name="submit" value="<?php _e('Add Category'); ?>" /></p>
+<p class="submit"><input type="submit" class="button" name="submit" value="<?php esc_attr_e('Add Category'); ?>" /></p>
 <?php do_action('edit_category_form', $category); ?>
 </form></div>
 
@@ -288,21 +294,6 @@ if ( $page_links )
 
 </div><!-- /col-container -->
 </div><!-- /wrap -->
-
-<script type="text/javascript">
-/* <![CDATA[ */
-(function($){
-	$(document).ready(function(){
-		$('#doaction, #doaction2').click(function(){
-			if ( $('select[name^="action"]').val() == 'delete' ) {
-				var m = '<?php echo js_escape(__("You are about to delete the selected categories.\n  'Cancel' to stop, 'OK' to delete.")); ?>';
-				return showNotice.warn(m);
-			}
-		});
-	});
-})(jQuery);
-/* ]]> */
-</script>
 
 <?php
 inline_edit_term_row('categories');

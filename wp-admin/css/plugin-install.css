@@ -68,7 +68,7 @@ div.star img {
 	border-top-left-radius: 3px;
 	-webkit-border-bottom-left-radius: 3px;
 	-khtml-border-bottom-left-radius: 3px;
-	border-top-bottom-radius: 3px;
+	border-bottom-left-radius: 3px;
 }
 
 #plugin-information .action-button a {
@@ -85,8 +85,7 @@ div.star img {
 }
 
 #plugin-information .fyi {
-	margin-left: 10px;
-	margin-bottom: 50px;
+	margin: 0 10px 50px;
 	width: 210px;
 }
 
@@ -111,7 +110,7 @@ div.star img {
 	-moz-border-radius-bottomleft: 3px;
 	-webkit-border-bottom-left-radius: 3px;
 	-khtml-border-bottom-left-radius: 3px;
-	border-top-bottom-radius: 3px;
+	border-bottom-left-radius: 3px;
 }
 
 #plugin-information .fyi li {

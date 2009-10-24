@@ -71,16 +71,16 @@ switch ($order_by) {
 
 <div class="wrap nosubsub">
 <?php screen_icon(); ?>
-<h2><?php echo wp_specialchars( $title );
+<h2><?php echo esc_html( $title );
 if ( isset($_GET['s']) && $_GET['s'] )
-	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', wp_specialchars( stripslashes($_GET['s']) ) ); ?>
+	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', esc_html( stripslashes($_GET['s']) ) ); ?>
 </h2>
 
 <?php
 if ( isset($_GET['deleted']) ) {
 	echo '<div id="message" class="updated fade"><p>';
 	$deleted = (int) $_GET['deleted'];
-	printf(__ngettext('%s link deleted.', '%s links deleted', $deleted), $deleted);
+	printf(_n('%s link deleted.', '%s links deleted', $deleted), $deleted);
 	echo '</p></div>';
 	$_SERVER['REQUEST_URI'] = remove_query_arg(array('deleted'), $_SERVER['REQUEST_URI']);
 }
@@ -88,9 +88,9 @@ if ( isset($_GET['deleted']) ) {
 
 <form class="search-form" action="" method="get">
 <p class="search-box">
-	<label class="hidden" for="link-search-input"><?php _e( 'Search Links' ); ?>:</label>
-	<input type="text" class="search-input" id="link-search-input" name="s" value="<?php _admin_search_query(); ?>" />
-	<input type="submit" value="<?php _e( 'Search Links' ); ?>" class="button" />
+	<label class="screen-reader-text" for="link-search-input"><?php _e( 'Search Links' ); ?>:</label>
+	<input type="text" id="link-search-input" name="s" value="<?php _admin_search_query(); ?>" />
+	<input type="submit" value="<?php esc_attr_e( 'Search Links' ); ?>" class="button" />
 </p>
 </form>
 <br class="clear" />
@@ -103,14 +103,14 @@ if ( isset($_GET['deleted']) ) {
 <option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
 <option value="delete"><?php _e('Delete'); ?></option>
 </select>
-<input type="submit" value="<?php _e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
+<input type="submit" value="<?php esc_attr_e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
 
 <?php
 $categories = get_terms('link_category', "hide_empty=1");
 $select_cat = "<select name=\"cat_id\">\n";
 $select_cat .= '<option value="all"'  . (($cat_id == 'all') ? " selected='selected'" : '') . '>' . __('View all Categories') . "</option>\n";
 foreach ((array) $categories as $cat)
-	$select_cat .= '<option value="' . $cat->term_id . '"' . (($cat->term_id == $cat_id) ? " selected='selected'" : '') . '>' . sanitize_term_field('name', $cat->name, $cat->term_id, 'link_category', 'display') . "</option>\n";
+	$select_cat .= '<option value="' . esc_attr($cat->term_id) . '"' . (($cat->term_id == $cat_id) ? " selected='selected'" : '') . '>' . sanitize_term_field('name', $cat->name, $cat->term_id, 'link_category', 'display') . "</option>\n";
 $select_cat .= "</select>\n";
 
 $select_order = "<select name=\"order_by\">\n";
@@ -124,7 +124,7 @@ echo $select_cat;
 echo $select_order;
 
 ?>
-<input type="submit" id="post-query-submit" value="<?php _e('Filter'); ?>" class="button-secondary" />
+<input type="submit" id="post-query-submit" value="<?php esc_attr_e('Filter'); ?>" class="button-secondary" />
 
 </div>
 
@@ -165,15 +165,16 @@ if ( $links ) {
 
 	foreach ($links as $link) {
 		$link = sanitize_bookmark($link);
-		$link->link_name = attribute_escape($link->link_name);
+		$link->link_name = esc_attr($link->link_name);
 		$link->link_category = wp_get_link_cats($link->link_id);
 		$short_url = str_replace('http://', '', $link->link_url);
-		$short_url = preg_replace('/^www./i', '', $short_url);
+		$short_url = preg_replace('/^www\./i', '', $short_url);
 		if ('/' == substr($short_url, -1))
 			$short_url = substr($short_url, 0, -1);
 		if (strlen($short_url) > 35)
 			$short_url = substr($short_url, 0, 32).'...';
 		$visible = ($link->link_visible == 'Y') ? __('Yes') : __('No');
+		$rating  = $link->link_rating;
 		$style = ($alt % 2) ? '' : ' class="alternate"';
 		++ $alt;
 		$edit_link = get_edit_bookmark_link();
@@ -184,20 +185,19 @@ if ( $links ) {
 			$style = '';
 			if ( in_array($column_name, $hidden) )
 				$style = ' style="display:none;"';
-			if ( 'visible' == $column_name )
-				$style = empty($style) ? ' style="text-align: center;"' : ' style="text-align: center; display: none;"';
+
 			$attributes = "$class$style";
 
 			switch($column_name) {
 				case 'cb':
-					echo '<th scope="row" class="check-column"><input type="checkbox" name="linkcheck[]" value="'.$link->link_id.'" /></th>';
+					echo '<th scope="row" class="check-column"><input type="checkbox" name="linkcheck[]" value="'. esc_attr($link->link_id) .'" /></th>';
 					break;
 				case 'name':
 
-					echo "<td $attributes><strong><a class='row-title' href='$edit_link' title='" . attribute_escape(sprintf(__('Edit "%s"'), $link->link_name)) . "'>$link->link_name</a></strong><br />";
+					echo "<td $attributes><strong><a class='row-title' href='$edit_link' title='" . esc_attr(sprintf(__('Edit &#8220;%s&#8221;'), $link->link_name)) . "'>$link->link_name</a></strong><br />";
 					$actions = array();
 					$actions['edit'] = '<a href="' . $edit_link . '">' . __('Edit') . '</a>';
-					$actions['delete'] = "<a class='submitdelete' href='" . wp_nonce_url("link.php?action=delete&amp;link_id=$link->link_id", 'delete-bookmark_' . $link->link_id) . "' onclick=\"if ( confirm('" . js_escape(sprintf( __("You are about to delete this link '%s'\n  'Cancel' to stop, 'OK' to delete."), $link->link_name )) . "') ) { return true;}return false;\">" . __('Delete') . "</a>";
+					$actions['delete'] = "<a class='submitdelete' href='" . wp_nonce_url("link.php?action=delete&amp;link_id=$link->link_id", 'delete-bookmark_' . $link->link_id) . "' onclick=\"if ( confirm('" . esc_js(sprintf( __("You are about to delete this link '%s'\n  'Cancel' to stop, 'OK' to delete."), $link->link_name )) . "') ) { return true;}return false;\">" . __('Delete') . "</a>";
 					$action_count = count($actions);
 					$i = 0;
 					echo '<div class="row-actions">';
@@ -228,10 +228,13 @@ if ( $links ) {
 					?></td><?php
 					break;
 				case 'rel':
-					?><td <?php echo $attributes ?>><?php echo $link->link_rel; ?></td><?php
+					?><td <?php echo $attributes ?>><?php echo empty($link->link_rel) ? '<br />' : $link->link_rel; ?></td><?php
 					break;
 				case 'visible':
 					?><td <?php echo $attributes ?>><?php echo $visible; ?></td><?php
+					break;
+				case 'rating':
+ 					?><td <?php echo $attributes ?>><?php echo $rating; ?></td><?php
 					break;
 				default:
 					?>
@@ -258,7 +261,7 @@ if ( $links ) {
 <option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
 <option value="delete"><?php _e('Delete'); ?></option>
 </select>
-<input type="submit" value="<?php _e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
+<input type="submit" value="<?php esc_attr_e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
 </div>
 
 <br class="clear" />
@@ -270,20 +273,5 @@ if ( $links ) {
 
 </div>
 
-<script type="text/javascript">
-/* <![CDATA[ */
-(function($){
-	$(document).ready(function(){
-		$('#doaction, #doaction2').click(function(){
-			if ( $('select[name^="action"]').val() == 'delete' ) {
-				var m = '<?php echo js_escape(__("You are about to delete the selected links.\n  'Cancel' to stop, 'OK' to delete.")); ?>';
-				return showNotice.warn(m);
-			}
-		});
-	});
-})(jQuery);
-columns.init('link-manager');
-/* ]]> */
-</script>
-
-<?php include('admin-footer.php'); ?>
+<?php
+include('admin-footer.php');

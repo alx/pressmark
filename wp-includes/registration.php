@@ -176,6 +176,18 @@ function wp_insert_user($userdata) {
 	if ( empty($user_registered) )
 		$user_registered = gmdate('Y-m-d H:i:s');
 
+	$user_nicename_check = $wpdb->get_var( $wpdb->prepare("SELECT ID FROM $wpdb->users WHERE user_nicename = %s AND user_login != %s LIMIT 1" , $user_nicename, $user_login));
+
+	if ($user_nicename_check) {
+		$suffix = 2;
+		while ($user_nicename_check) {
+			$alt_user_nicename = $user_nicename . "-$suffix";
+			$user_nicename_check = $wpdb->get_var( $wpdb->prepare("SELECT ID FROM $wpdb->users WHERE user_nicename = %s AND user_login != %s LIMIT 1" , $alt_user_nicename, $user_login));
+			$suffix++;
+		}
+		$user_nicename = $alt_user_nicename;
+	}
+
 	$data = compact( 'user_pass', 'user_email', 'user_url', 'user_nicename', 'display_name', 'user_registered' );
 	$data = stripslashes_deep( $data );
 
@@ -199,12 +211,10 @@ function wp_insert_user($userdata) {
 	update_usermeta( $user_id, 'admin_color', $admin_color);
 	update_usermeta( $user_id, 'use_ssl', $use_ssl);
 
-	if ( $update && isset($role) ) {
+	if ( isset($role) ) {
 		$user = new WP_User($user_id);
 		$user->set_role($role);
-	}
-
-	if ( !$update ) {
+	} elseif ( !$update ) {
 		$user = new WP_User($user_id);
 		$user->set_role(get_option('default_role'));
 	}

@@ -203,7 +203,7 @@ class WP_Import {
 <p><?php _e('To make it easier for you to edit and save the imported posts and drafts, you may want to change the name of the author of the posts. For example, you may want to import all the entries as <code>admin</code>s entries.'); ?></p>
 <?php
 	if ( $this->allow_create_users() ) {
-		echo '<p>'.__('If a new user is created by WordPress, a password will be randomly generated. Manually change the user\'s details if necessary.')."</p>\n";
+		echo '<p>'.__('If a new user is created by WordPress, a password will be randomly generated. Manually change the user&#8217;s details if necessary.')."</p>\n";
 	}
 
 
@@ -233,7 +233,7 @@ class WP_Import {
 		}
 
 		echo '<p class="submit">';
-		echo '<input type="submit" class="button" value="'.attribute_escape( __('Submit') ).'" />'.'<br />';
+		echo '<input type="submit" class="button" value="'. esc_attr__('Submit') .'" />'.'<br />';
 		echo '</p>';
 		echo '</form>';
 
@@ -242,14 +242,14 @@ class WP_Import {
 	function users_form($n, $author) {
 
 		if ( $this->allow_create_users() ) {
-			printf('<label>'.__('Create user %1$s or map to existing'), ' <input type="text" value="'.$author.'" name="'.'user_create['.intval($n).']'.'" maxlength="30" /></label> <br />');
+			printf('<label>'.__('Create user %1$s or map to existing'), ' <input type="text" value="'. esc_attr($author) .'" name="'.'user_create['.intval($n).']'.'" maxlength="30" /></label> <br />');
 		}
 		else {
 			echo __('Map to existing').'<br />';
 		}
 
 		// keep track of $n => $author name
-		echo '<input type="hidden" name="author_in['.intval($n).']" value="'.htmlspecialchars($author).'" />';
+		echo '<input type="hidden" name="author_in['.intval($n).']" value="' . esc_attr($author).'" />';
 
 		$users = get_users_of_blog();
 ?><select name="user_select[<?php echo $n; ?>]">
@@ -300,6 +300,7 @@ class WP_Import {
 				continue;
 
 			$category_nicename	= $this->get_tag( $c, 'wp:category_nicename' );
+			$category_description = $this->get_tag( $c, 'wp:category_description' );
 			$posts_private		= (int) $this->get_tag( $c, 'wp:posts_private' );
 			$links_private		= (int) $this->get_tag( $c, 'wp:links_private' );
 
@@ -310,7 +311,7 @@ class WP_Import {
 			else
 				$category_parent = category_exists($parent);
 
-			$catarr = compact('category_nicename', 'category_parent', 'posts_private', 'links_private', 'posts_private', 'cat_name');
+			$catarr = compact('category_nicename', 'category_parent', 'posts_private', 'links_private', 'posts_private', 'cat_name', 'category_description');
 
 			$cat_ID = wp_insert_category($catarr);
 		}
@@ -528,7 +529,7 @@ class WP_Import {
 		} }
 
 		if ( $num_comments )
-			printf(' '.__ngettext('(%s comment)', '(%s comments)', $num_comments), $num_comments);
+			printf(' '._n('(%s comment)', '(%s comments)', $num_comments), $num_comments);
 
 		// Now for post meta
 		preg_match_all('|<wp:postmeta>(.*?)</wp:postmeta>|is', $post, $postmeta);
@@ -683,8 +684,8 @@ class WP_Import {
 	}
 
 	function is_valid_meta_key($key) {
-		// skip _wp_attached_file metadata since we'll regenerate it from scratch
-		if ( $key == '_wp_attached_file' )
+		// skip attachment metadata since we'll regenerate it from scratch
+		if ( $key == '_wp_attached_file' || $key == '_wp_attachment_metadata' )
 			return false;
 		return $key;
 	}

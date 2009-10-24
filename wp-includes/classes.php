@@ -36,7 +36,7 @@ class WP {
 	 * @since 2.0.0
 	 * @var array
 	 */
-	var $private_query_vars = array('offset', 'posts_per_page', 'posts_per_archive_page', 'what_to_show', 'showposts', 'nopaging', 'post_type', 'post_status', 'category__in', 'category__not_in', 'category__and', 'tag__in', 'tag__not_in', 'tag__and', 'tag_slug__in', 'tag_slug__and', 'tag_id', 'post_mime_type', 'perm', 'comments_per_page');
+	var $private_query_vars = array('offset', 'posts_per_page', 'posts_per_archive_page', 'showposts', 'nopaging', 'post_type', 'post_status', 'category__in', 'category__not_in', 'category__and', 'tag__in', 'tag__not_in', 'tag__and', 'tag_slug__in', 'tag_slug__and', 'tag_id', 'post_mime_type', 'perm', 'comments_per_page');
 
 	/**
 	 * Extra query variables set by the user.
@@ -207,16 +207,16 @@ class WP {
 					$request_match = $req_uri . '/' . $request;
 				}
 
-				if (preg_match("!^$match!", $request_match, $matches) ||
-					preg_match("!^$match!", urldecode($request_match), $matches)) {
+				if (preg_match("#^$match#", $request_match, $matches) ||
+					preg_match("#^$match#", urldecode($request_match), $matches)) {
 					// Got a match.
 					$this->matched_rule = $match;
 
 					// Trim the query of everything up to the '?'.
 					$query = preg_replace("!^.+\?!", '', $query);
-
+										
 					// Substitute the substring matches into the query.
-					eval("@\$query = \"" . addslashes($query) . "\";");
+					$query = addslashes(WP_MatchesMapRegex::apply($query, $matches));
 
 					$this->matched_query = $query;
 
@@ -253,7 +253,7 @@ class WP {
 		$this->public_query_vars = apply_filters('query_vars', $this->public_query_vars);
 
 		foreach ( $GLOBALS['wp_taxonomies'] as $taxonomy => $t )
-			if ( isset($t->query_var) )
+			if ( $t->query_var )
 				$taxonomy_query_vars[$t->query_var] = $taxonomy;
 
 		for ($i=0; $i<count($this->public_query_vars); $i += 1) {
@@ -302,16 +302,19 @@ class WP {
 	 * @since 2.0.0
 	 */
 	function send_headers() {
-		@header('X-Pingback: '. get_bloginfo('pingback_url'));
+		$headers = array('X-Pingback' => get_bloginfo('pingback_url'));
+		$status = null;
+		$exit_required = false;
+
 		if ( is_user_logged_in() )
-			nocache_headers();
+			$headers = array_merge($headers, wp_get_nocache_headers());
 		if ( !empty($this->query_vars['error']) && '404' == $this->query_vars['error'] ) {
-			status_header( 404 );
+			$status = 404;
 			if ( !is_user_logged_in() )
-				nocache_headers();
-			@header('Content-Type: ' . get_option('html_type') . '; charset=' . get_option('blog_charset'));
+				$headers = array_merge($headers, wp_get_nocache_headers());
+			$headers['Content-Type'] = get_option('html_type') . '; charset=' . get_option('blog_charset');
 		} else if ( empty($this->query_vars['feed']) ) {
-			@header('Content-Type: ' . get_option('html_type') . '; charset=' . get_option('blog_charset'));
+			$headers['Content-Type'] = get_option('html_type') . '; charset=' . get_option('blog_charset');
 		} else {
 			// We're showing a feed, so WP is indeed the only thing that last changed
 			if ( !empty($this->query_vars['withcomments'])
@@ -329,8 +332,8 @@ class WP {
 			else
 				$wp_last_modified = mysql2date('D, d M Y H:i:s', get_lastpostmodified('GMT'), 0).' GMT';
 			$wp_etag = '"' . md5($wp_last_modified) . '"';
-			@header("Last-Modified: $wp_last_modified");
-			@header("ETag: $wp_etag");
+			$headers['Last-Modified'] = $wp_last_modified;
+			$headers['ETag'] = $wp_etag;
 
 			// Support for Conditional GET
 			if (isset($_SERVER['HTTP_IF_NONE_MATCH']))
@@ -347,10 +350,20 @@ class WP {
 			if ( ($client_last_modified && $client_etag) ?
 					 (($client_modified_timestamp >= $wp_modified_timestamp) && ($client_etag == $wp_etag)) :
 					 (($client_modified_timestamp >= $wp_modified_timestamp) || ($client_etag == $wp_etag)) ) {
-				status_header( 304 );
-				exit;
+				$status = 304;
+				$exit_required = true;
 			}
 		}
+
+		$headers = apply_filters('wp_headers', $headers, $this);
+
+		if ( ! empty( $status ) )
+			status_header( $status );
+		foreach( (array) $headers as $name => $field_value )
+			@header("{$name}: {$field_value}");
+
+		if ($exit_required)
+			exit();
 
 		do_action_ref_array('send_headers', array(&$this));
 	}
@@ -401,10 +414,10 @@ class WP {
 			$GLOBALS[$key] = $value;
 		}
 
-		$GLOBALS['query_string'] = & $this->query_string;
+		$GLOBALS['query_string'] = $this->query_string;
 		$GLOBALS['posts'] = & $wp_query->posts;
-		$GLOBALS['post'] = & $wp_query->post;
-		$GLOBALS['request'] = & $wp_query->request;
+		$GLOBALS['post'] = $wp_query->post;
+		$GLOBALS['request'] = $wp_query->request;
 
 		if ( is_single() || is_page() ) {
 			$GLOBALS['more'] = 1;
@@ -1159,20 +1172,22 @@ class Walker_Page extends Walker {
 			$indent = '';
 
 		extract($args, EXTR_SKIP);
-		$css_class = 'page_item page-item-'.$page->ID;
+		$css_class = array('page_item', 'page-item-'.$page->ID);
 		if ( !empty($current_page) ) {
 			$_current_page = get_page( $current_page );
 			if ( isset($_current_page->ancestors) && in_array($page->ID, (array) $_current_page->ancestors) )
-				$css_class .= ' current_page_ancestor';
+				$css_class[] = 'current_page_ancestor';
 			if ( $page->ID == $current_page )
-				$css_class .= ' current_page_item';
+				$css_class[] = 'current_page_item';
 			elseif ( $_current_page && $page->ID == $_current_page->post_parent )
-				$css_class .= ' current_page_parent';
+				$css_class[] = 'current_page_parent';
 		} elseif ( $page->ID == get_option('page_for_posts') ) {
-			$css_class .= ' current_page_parent';
+			$css_class[] = 'current_page_parent';
 		}
 
-		$output .= $indent . '<li class="' . $css_class . '"><a href="' . get_page_link($page->ID) . '" title="' . attribute_escape(apply_filters('the_title', $page->post_title)) . '">' . $link_before . apply_filters('the_title', $page->post_title) . $link_after . '</a>';
+		$css_class = implode(' ', apply_filters('page_css_class', $css_class, $page));
+
+		$output .= $indent . '<li class="' . $css_class . '"><a href="' . get_page_link($page->ID) . '" title="' . esc_attr(apply_filters('the_title', $page->post_title)) . '">' . $link_before . apply_filters('the_title', $page->post_title) . $link_after . '</a>';
 
 		if ( !empty($show_date) ) {
 			if ( 'modified' == $show_date )
@@ -1237,7 +1252,7 @@ class Walker_PageDropdown extends Walker {
 		if ( $page->ID == $args['selected'] )
 			$output .= ' selected="selected"';
 		$output .= '>';
-		$title = wp_specialchars($page->post_title);
+		$title = esc_html($page->post_title);
 		$output .= "$pad$title";
 		$output .= "</option>\n";
 	}
@@ -1310,13 +1325,13 @@ class Walker_Category extends Walker {
 	function start_el(&$output, $category, $depth, $args) {
 		extract($args);
 
-		$cat_name = attribute_escape( $category->name);
+		$cat_name = esc_attr( $category->name);
 		$cat_name = apply_filters( 'list_cats', $cat_name, $category );
 		$link = '<a href="' . get_category_link( $category->term_id ) . '" ';
 		if ( $use_desc_for_title == 0 || empty($category->description) )
 			$link .= 'title="' . sprintf(__( 'View all posts filed under %s' ), $cat_name) . '"';
 		else
-			$link .= 'title="' . attribute_escape( apply_filters( 'category_description', $category->description, $category )) . '"';
+			$link .= 'title="' . esc_attr( strip_tags( apply_filters( 'category_description', $category->description, $category ) ) ) . '"';
 		$link .= '>';
 		$link .= $cat_name . '</a>';
 
@@ -1575,6 +1590,96 @@ class WP_Ajax_Response {
 		echo '</wp_ajax>';
 		die();
 	}
+}
+
+/**
+ * Helper class to remove the need to use eval to replace $matches[] in query strings.
+ * 
+ * @since 2.9.0
+ */
+class WP_MatchesMapRegex {
+	/**
+	 * store for matches
+	 * 
+	 * @access private
+	 * @var array
+	 */
+	var $_matches;
+	
+	/**
+	 * store for mapping result
+	 * 
+	 * @access public
+	 * @var string
+	 */
+	var $output;
+	
+	/**
+	 * subject to perform mapping on (query string containing $matches[] references
+	 * 
+	 * @access private
+	 * @var string
+	 */
+	var $_subject;
+	
+	/**
+	 * regexp pattern to match $matches[] references 
+	 * 
+	 * @var string
+	 */
+	var $_pattern = '(\$matches\[[1-9]+[0-9]*\])'; // magic number
+	
+	/**
+	 * constructor
+	 * 
+	 * @param string $subject subject if regex
+	 * @param array  $matches data to use in map
+	 * @return self
+	 */						
+	function WP_MatchesMapRegex($subject, $matches) {
+		$this->_subject = $subject;
+		$this->_matches = $matches;
+		$this->output = $this->_map();				
+	}
+	
+	/**
+	 * Substitute substring matches in subject.
+	 * 
+	 * static helper function to ease use
+	 * 
+	 * @access public
+	 * @param string $subject subject
+	 * @param array  $matches data used for subsitution
+	 * @return string
+	 */
+	function apply($subject, $matches) {
+		$oSelf =& new WP_MatchesMapRegex($subject, $matches);
+		return $oSelf->output;																
+	}
+	
+	/**
+	 * do the actual mapping 
+	 * 
+	 * @access private
+	 * @return string
+	 */
+	function _map() {
+		$callback = array(&$this, 'callback');
+		return preg_replace_callback($this->_pattern, $callback, $this->_subject);
+	}
+	
+	/**
+	 * preg_replace_callback hook
+	 * 
+	 * @access public
+	 * @param  array $matches preg_replace regexp matches
+	 * @return string
+	 */
+	function callback($matches) {
+		$index = intval(substr($matches[0], 9, -1));
+		return ( isset( $this->_matches[$index] ) ? $this->_matches[$index] : '' );
+	}
+	
 }
 
 ?>

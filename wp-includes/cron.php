@@ -39,6 +39,9 @@ function wp_schedule_single_event( $timestamp, $hook, $args = array()) {
  * specific interval, specified by you. The action will trigger when someone
  * visits your WordPress site, if the scheduled time has passed.
  *
+ * Valid values for the recurrence are hourly, daily and twicedaily.  These can
+ * be extended using the cron_schedules filter in wp_get_schedules().
+ *
  * @since 2.1.0
  *
  * @param int $timestamp Timestamp for when to run the event.
@@ -85,8 +88,12 @@ function wp_reschedule_event( $timestamp, $recurrence, $hook, $args = array()) {
 	if ( 0 == $interval )
 		return false;
 
-	while ( $timestamp < time() + 1 )
-		$timestamp += $interval;
+	$now = time();
+
+    if ( $timestamp >= $now )
+        $timestamp = $now + $interval;
+    else
+        $timestamp = $now + ($interval - (($now - $timestamp) % $interval));
 
 	wp_schedule_event( $timestamp, $recurrence, $hook, $args );
 }
@@ -160,7 +167,13 @@ function wp_next_scheduled( $hook, $args = array() ) {
  *
  * @return null Cron could not be spawned, because it is not needed to run.
  */
-function spawn_cron( $local_time ) {
+function spawn_cron( $local_time = 0 ) {
+
+	if ( !$local_time )
+		$local_time = time();
+
+	if ( defined('DOING_CRON') || isset($_GET['doing_wp_cron']) )
+		return;
 
 	/*
 	 * do not even start the cron if local server timer has drifted
@@ -170,38 +183,50 @@ function spawn_cron( $local_time ) {
 	if ( !$timer_accurate )
 		return;
 
+	/*
+	* multiple processes on multiple web servers can run this code concurrently
+	* try to make this as atomic as possible by setting doing_cron switch
+	*/
+	$flag = get_transient('doing_cron');
+
+	if ( $flag > $local_time + 10*60 )
+		$flag = 0;
+
+	// don't run if another process is currently running it or more than once every 60 sec.
+	if ( $flag + 60 > $local_time )
+		return;
+
 	//sanity check
 	$crons = _get_cron_array();
 	if ( !is_array($crons) )
 		return;
 
 	$keys = array_keys( $crons );
-	$timestamp =  $keys[0];
-	if ( $timestamp > $local_time )
+	if ( isset($keys[0]) && $keys[0] > $local_time )
 		return;
 
-	$cron_url = get_option( 'siteurl' ) . '/wp-cron.php?check=' . wp_hash('187425');
-	/*
-	* multiple processes on multiple web servers can run this code concurrently
-	* try to make this as atomic as possible by setting doing_cron switch
-	*/
-	$flag = get_option('doing_cron');
+	if ( defined('ALTERNATE_WP_CRON') && ALTERNATE_WP_CRON ) {
+		if ( !empty($_POST) || defined('DOING_AJAX') )
+			return;
 
-	// clean up potential invalid value resulted from various system chaos
-	if ( $flag != 0 ) {
-		if ( $flag > $local_time + 10*60 || $flag < $local_time - 10*60 ) {
-			update_option('doing_cron', 0);
-			$flag = 0;
-		}
+		set_transient( 'doing_cron', $local_time );
+
+		ob_start();
+		wp_redirect( add_query_arg('doing_wp_cron', '', stripslashes($_SERVER['REQUEST_URI'])) );
+		echo ' ';
+
+		// flush any buffers and send the headers
+		while ( @ob_end_flush() );
+		flush();
+
+		@include_once(ABSPATH . 'wp-cron.php');
+		return;
 	}
 
-	//don't run if another process is currently running it
-	if ( $flag > $local_time )
-		return;
+	set_transient( 'doing_cron', $local_time );
 
-	update_option( 'doing_cron', $local_time + 30 );
-
-	wp_remote_post($cron_url, array('timeout' => 0.01, 'blocking' => false));
+	$cron_url = get_option( 'siteurl' ) . '/wp-cron.php?doing_wp_cron';
+	wp_remote_post( $cron_url, array('timeout' => 0.01, 'blocking' => false, 'sslverify' => apply_filters('https_local_ssl_verify', true)) );
 }
 
 /**
@@ -214,19 +239,17 @@ function spawn_cron( $local_time ) {
 function wp_cron() {
 
 	// Prevent infinite loops caused by lack of wp-cron.php
-	if ( strpos($_SERVER['REQUEST_URI'], '/wp-cron.php') !== false )
+	if ( strpos($_SERVER['REQUEST_URI'], '/wp-cron.php') !== false || ( defined('DISABLE_WP_CRON') && DISABLE_WP_CRON ) )
 		return;
 
-	$crons = _get_cron_array();
-
-	if ( !is_array($crons) )
-		return;
-
-	$keys = array_keys( $crons );
-	if ( isset($keys[0]) && $keys[0] > time() )
+	if ( false === $crons = _get_cron_array() )
 		return;
 
 	$local_time = time();
+	$keys = array_keys( $crons );
+	if ( isset($keys[0]) && $keys[0] > $local_time )
+		return;
+
 	$schedules = wp_get_schedules();
 	foreach ( $crons as $timestamp => $cronhooks ) {
 		if ( $timestamp > $local_time ) break;

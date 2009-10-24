@@ -170,7 +170,7 @@ class MagpieRSS {
 		{
 			// if tags are inlined, then flatten
 			$attrs_str = join(' ',
-					array_map('map_attrs',
+					array_map(array('MagpieRSS', 'map_attrs'),
 					array_keys($attrs),
 					array_values($attrs) ) );
 
@@ -712,16 +712,8 @@ class RSSCache {
 	function set ($url, $rss) {
 		global $wpdb;
 		$cache_option = 'rss_' . $this->file_name( $url );
-		$cache_timestamp = 'rss_' . $this->file_name( $url ) . '_ts';
 
-		// shouldn't these be using get_option() ?
-		if ( !$wpdb->get_var( $wpdb->prepare( "SELECT option_name FROM $wpdb->options WHERE option_name = %s", $cache_option ) ) )
-			add_option($cache_option, '', '', 'no');
-		if ( !$wpdb->get_var( $wpdb->prepare( "SELECT option_name FROM $wpdb->options WHERE option_name = %s", $cache_timestamp ) ) )
-			add_option($cache_timestamp, '', '', 'no');
-
-		update_option($cache_option, $rss);
-		update_option($cache_timestamp, time() );
+		set_transient($cache_option, $rss, $this->MAX_AGE);
 
 		return $cache_option;
 	}
@@ -736,14 +728,12 @@ class RSSCache {
 		$this->ERROR = "";
 		$cache_option = 'rss_' . $this->file_name( $url );
 
-		if ( ! get_option( $cache_option ) ) {
+		if ( ! $rss = get_transient( $cache_option ) ) {
 			$this->debug(
 				"Cache doesn't contain: $url (cache option: $cache_option)"
 			);
 			return 0;
 		}
-
-		$rss = get_option( $cache_option );
 
 		return $rss;
 	}
@@ -757,23 +747,12 @@ class RSSCache {
 \*=======================================================================*/
 	function check_cache ( $url ) {
 		$this->ERROR = "";
-		$cache_option = $this->file_name( $url );
-		$cache_timestamp = 'rss_' . $this->file_name( $url ) . '_ts';
+		$cache_option = 'rss_' . $this->file_name( $url );
 
-		if ( $mtime = get_option($cache_timestamp) ) {
-			// find how long ago the file was added to the cache
-			// and whether that is longer then MAX_AGE
-			$age = time() - $mtime;
-			if ( $this->MAX_AGE > $age ) {
-				// object exists and is current
+		if ( get_transient($cache_option) ) {
+			// object exists and is current
 				return 'HIT';
-			}
-			else {
-				// object exists but is old
-				return 'STALE';
-			}
-		}
-		else {
+		} else {
 			// object does not exist
 			return 'MISS';
 		}
@@ -893,8 +872,8 @@ function wp_rss( $url, $num_items = -1 ) {
 		foreach ( (array) $rss->items as $item ) {
 			printf(
 				'<li><a href="%1$s" title="%2$s">%3$s</a></li>',
-				clean_url( $item['link'] ),
-				attribute_escape( strip_tags( $item['description'] ) ),
+				esc_url( $item['link'] ),
+				esc_attr( strip_tags( $item['description'] ) ),
 				htmlentities( $item['title'] )
 			);
 		}

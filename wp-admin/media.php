@@ -61,7 +61,6 @@ case 'edit' :
 	add_filter('attachment_fields_to_edit', 'media_single_attachment_fields_to_edit', 10, 2);
 
 	wp_enqueue_script( 'wp-ajax-response' );
-//	wp_admin_css( 'media' );
 
 	require( 'admin-header.php' );
 
@@ -85,7 +84,7 @@ case 'edit' :
 <?php screen_icon(); ?>
 <h2><?php _e( 'Edit Media' ); ?></h2>
 
-<form method="post" action="<?php echo clean_url( remove_query_arg( 'message' ) ); ?>" class="media-upload-form" id="media-single-form">
+<form method="post" action="<?php echo esc_url( remove_query_arg( 'message' ) ); ?>" class="media-upload-form" id="media-single-form">
 <div class="media-single">
 <div id='media-item-<?php echo $att_id; ?>' class='media-item'>
 <?php echo get_media_item( $att_id, array( 'toggle' => false, 'send' => false, 'delete' => false, 'show_title' => false, 'errors' => $errors ) ); ?>
@@ -93,9 +92,9 @@ case 'edit' :
 </div>
 
 <p class="submit">
-<input type="submit" class="button-primary" name="save" value="<?php _e('Update Media'); ?>" />
-<input type="hidden" name="post_id" id="post_id" value="<?php echo $post_id; ?>" />
-<input type="hidden" name="attachment_id" id="attachment_id" value="<?php echo $att_id; ?>" />
+<input type="submit" class="button-primary" name="save" value="<?php esc_attr_e('Update Media'); ?>" />
+<input type="hidden" name="post_id" id="post_id" value="<?php echo isset($post_id) ? esc_attr($post_id) : ''; ?>" />
+<input type="hidden" name="attachment_id" id="attachment_id" value="<?php echo esc_attr($att_id); ?>" />
 <input type="hidden" name="action" value="editattachment" />
 <?php wp_original_referer_field(true, 'previous'); ?>
 <?php wp_nonce_field('media-form'); ?>

@@ -36,20 +36,20 @@ class MT_Import {
 		$this->header();
 ?>
 <div class="narrow">
-<p><?php _e('Howdy! We&#8217;re about to begin importing all of your Movable Type or Typepad entries into WordPress. To begin, either choose a file to upload and click "Upload file and import," or use FTP to upload your MT export file as <code>mt-export.txt</code> in your <code>/wp-content/</code> directory and then click "Import mt-export.txt"'); ?></p>
+<p><?php _e('Howdy! We&#8217;re about to begin importing all of your Movable Type or Typepad entries into WordPress. To begin, either choose a file to upload and click &#8220;Upload file and import&#8221;, or use FTP to upload your MT export file as <code>mt-export.txt</code> in your <code>/wp-content/</code> directory and then click "Import mt-export.txt"'); ?></p>
 
 <?php wp_import_upload_form( add_query_arg('step', 1) ); ?>
-<form method="post" action="<?php echo add_query_arg('step', 1); ?>" class="import-upload-form">
+<form method="post" action="<?php echo esc_attr(add_query_arg('step', 1)); ?>" class="import-upload-form">
 
 <?php wp_nonce_field('import-upload'); ?>
 <p>
 	<input type="hidden" name="upload_type" value="ftp" />
 <?php _e('Or use <code>mt-export.txt</code> in your <code>/wp-content/</code> directory'); ?></p>
 <p class="submit">
-<input type="submit" class="button" value="<?php echo attribute_escape(__('Import mt-export.txt')); ?>" />
+<input type="submit" class="button" value="<?php esc_attr_e('Import mt-export.txt'); ?>" />
 </p>
 </form>
-<p><?php _e('The importer is smart enough not to import duplicates, so you can run this multiple times without worry if&#8212;for whatever reason&#8212;it doesn\'t finish. If you get an <strong>out of memory</strong> error try splitting up the import file into pieces.'); ?> </p>
+<p><?php _e('The importer is smart enough not to import duplicates, so you can run this multiple times without worry if&#8212;for whatever reason&#8212;it doesn&#8217;t finish. If you get an <strong>out of memory</strong> error try splitting up the import file into pieces.'); ?> </p>
 </div>
 <?php
 		$this->footer();
@@ -194,9 +194,9 @@ class MT_Import {
 <div class="wrap">
 <?php screen_icon(); ?>
 <h2><?php _e('Assign Authors'); ?></h2>
-<p><?php _e('To make it easier for you to edit and save the imported posts and drafts, you may want to change the name of the author of the posts. For example, you may want to import all the entries as admin\'s entries.'); ?></p>
+<p><?php _e('To make it easier for you to edit and save the imported posts and drafts, you may want to change the name of the author of the posts. For example, you may want to import all the entries as admin&#8217;s entries.'); ?></p>
 <p><?php _e('Below, you can see the names of the authors of the MovableType posts in <em>italics</em>. For each of these names, you can either pick an author in your WordPress installation from the menu, or enter a name for the author in the textbox.'); ?></p>
-<p><?php _e('If a new user is created by WordPress, a password will be randomly generated. Manually change the user\'s details if necessary.'); ?></p>
+<p><?php _e('If a new user is created by WordPress, a password will be randomly generated. Manually change the user&#8217;s details if necessary.'); ?></p>
 	<?php
 
 
@@ -207,12 +207,12 @@ class MT_Import {
 		$j = -1;
 		foreach ($authors as $author) {
 			++ $j;
-			echo '<li><label>'.__('Current author:').' <strong>'.$author.'</strong><br />'.sprintf(__('Create user %1$s or map to existing'), ' <input type="text" value="'.$author.'" name="'.'user[]'.'" maxlength="30"> <br />');
+			echo '<li><label>'.__('Current author:').' <strong>'.$author.'</strong><br />'.sprintf(__('Create user %1$s or map to existing'), ' <input type="text" value="'. esc_attr($author) .'" name="'.'user[]'.'" maxlength="30"> <br />');
 			$this->users_form($j);
 			echo '</label></li>';
 		}
 
-		echo '<p class="submit"><input type="submit" class="button" value="'.__('Submit').'"></p>'.'<br />';
+		echo '<p class="submit"><input type="submit" class="button" value="'.esc_attr__('Submit').'"></p>'.'<br />';
 		echo '</form>';
 		echo '</ol></div>';
 
@@ -288,7 +288,7 @@ class MT_Import {
 		}
 
 		if ( $num_comments )
-			printf(' '.__ngettext('(%s comment)', '(%s comments)', $num_comments), $num_comments);
+			printf(' '._n('(%s comment)', '(%s comments)', $num_comments), $num_comments);
 
 		$num_pings = 0;
 		foreach ( $pings as $ping ) {
@@ -305,7 +305,7 @@ class MT_Import {
 		}
 
 		if ( $num_pings )
-			printf(' '.__ngettext('(%s ping)', '(%s pings)', $num_pings), $num_pings);
+			printf(' '._n('(%s ping)', '(%s pings)', $num_pings), $num_pings);
 
 		echo "</li>";
 		//ob_flush();flush();
@@ -438,10 +438,10 @@ class MT_Import {
 				$ping->comment_author = $blog;
 			} else {
 				// Processing multi-line field, check context.
-				
+
 				if( !empty($line) )
 					$line .= "\n";
-					
+
 				if ( 'body' == $context ) {
 					$post->post_content .= $line;
 				} else if ( 'extended' ==  $context ) {

@@ -32,27 +32,90 @@ function wp_signon( $credentials = '', $secure_cookie = '' ) {
 			$credentials['remember'] = $_POST['rememberme'];
 	}
 
-	if ( !empty($credentials['user_login']) )
-		$credentials['user_login'] = sanitize_user($credentials['user_login']);
-	if ( !empty($credentials['user_password']) )
-		$credentials['user_password'] = trim($credentials['user_password']);
 	if ( !empty($credentials['remember']) )
 		$credentials['remember'] = true;
 	else
 		$credentials['remember'] = false;
 
+	// TODO do we deprecate the wp_authentication action?
 	do_action_ref_array('wp_authenticate', array(&$credentials['user_login'], &$credentials['user_password']));
 
 	if ( '' === $secure_cookie )
 		$secure_cookie = is_ssl() ? true : false;
 
-	// If no credential info provided, check cookie.
-	if ( empty($credentials['user_login']) && empty($credentials['user_password']) ) {
-		$user = wp_validate_auth_cookie();
-		if ( $user )
-			return new WP_User($user);
+	global $auth_secure_cookie; // XXX ugly hack to pass this to wp_authenticate_cookie
+	$auth_secure_cookie = $secure_cookie;
 
-		if ( $secure_cookie )
+	add_filter('authenticate', 'wp_authenticate_cookie', 30, 3);
+
+	$user = wp_authenticate($credentials['user_login'], $credentials['user_password']);
+
+	if ( is_wp_error($user) ) {
+		if ( $user->get_error_codes() == array('empty_username', 'empty_password') ) {
+			$user = new WP_Error('', '');
+		}
+
+		return $user;
+	}
+
+	wp_set_auth_cookie($user->ID, $credentials['remember'], $secure_cookie);
+	do_action('wp_login', $credentials['user_login']);
+	return $user;
+}
+
+
+/**
+ * Authenticate the user using the username and password.
+ */
+add_filter('authenticate', 'wp_authenticate_username_password', 20, 3);
+function wp_authenticate_username_password($user, $username, $password) {
+	if ( is_a($user, 'WP_User') ) { return $user; }
+
+	if ( empty($username) || empty($password) ) {
+		$error = new WP_Error();
+
+		if ( empty($username) )
+			$error->add('empty_username', __('<strong>ERROR</strong>: The username field is empty.'));
+
+		if ( empty($password) )
+			$error->add('empty_password', __('<strong>ERROR</strong>: The password field is empty.'));
+
+		return $error;
+	}
+
+	$userdata = get_userdatabylogin($username);
+
+	if ( !$userdata ) {
+		return new WP_Error('invalid_username', sprintf(__('<strong>ERROR</strong>: Invalid username. <a href="%s" title="Password Lost and Found">Lost your password</a>?'), site_url('wp-login.php?action=lostpassword', 'login')));
+	}
+
+	$userdata = apply_filters('wp_authenticate_user', $userdata, $password);
+	if ( is_wp_error($userdata) ) {
+		return $userdata;
+	}
+
+	if ( !wp_check_password($password, $userdata->user_pass, $userdata->ID) ) {
+		return new WP_Error('incorrect_password', sprintf(__('<strong>ERROR</strong>: Incorrect password. <a href="%s" title="Password Lost and Found">Lost your password</a>?'), site_url('wp-login.php?action=lostpassword', 'login')));
+	}
+
+	$user =  new WP_User($userdata->ID);
+	return $user;
+}
+
+/**
+ * Authenticate the user using the WordPress auth cookie.
+ */
+function wp_authenticate_cookie($user, $username, $password) {
+	if ( is_a($user, 'WP_User') ) { return $user; }
+
+	if ( empty($username) && empty($password) ) {
+		$user_id = wp_validate_auth_cookie();
+		if ( $user_id )
+			return new WP_User($user_id);
+
+		global $auth_secure_cookie;
+
+		if ( $auth_secure_cookie )
 			$auth_cookie = SECURE_AUTH_COOKIE;
 		else
 			$auth_cookie = AUTH_COOKIE;
@@ -61,25 +124,8 @@ function wp_signon( $credentials = '', $secure_cookie = '' ) {
 			return new WP_Error('expired_session', __('Please log in again.'));
 
 		// If the cookie is not set, be silent.
-		return new WP_Error();
 	}
 
-	if ( empty($credentials['user_login']) || empty($credentials['user_password']) ) {
-		$error = new WP_Error();
-
-		if ( empty($credentials['user_login']) )
-			$error->add('empty_username', __('<strong>ERROR</strong>: The username field is empty.'));
-		if ( empty($credentials['user_password']) )
-			$error->add('empty_password', __('<strong>ERROR</strong>: The password field is empty.'));
-		return $error;
-	}
-
-	$user = wp_authenticate($credentials['user_login'], $credentials['user_password']);
-	if ( is_wp_error($user) )
-		return $user;
-
-	wp_set_auth_cookie($user->ID, $credentials['remember'], $secure_cookie);
-	do_action('wp_login', $credentials['user_login']);
 	return $user;
 }
 
@@ -196,7 +242,7 @@ function get_user_option( $option, $user = 0, $check_blog_options = true ) {
  * Update user option with global blog capability.
  *
  * User options are just like user metadata except that they have support for
- * global blog options. If the 'global' parameter is false, which it is by false
+ * global blog options. If the 'global' parameter is false, which it is by default
  * it will prepend the WordPress table prefix to the option name.
  *
  * @since 2.0.0
@@ -232,7 +278,7 @@ function get_users_of_blog( $id = '' ) {
 	global $wpdb, $blog_id;
 	if ( empty($id) )
 		$id = (int) $blog_id;
-	$users = $wpdb->get_results( "SELECT user_id, user_login, display_name, user_email, meta_value FROM $wpdb->users, $wpdb->usermeta WHERE " . $wpdb->users . ".ID = " . $wpdb->usermeta . ".user_id AND meta_key = '" . $wpdb->prefix . "capabilities' ORDER BY {$wpdb->usermeta}.user_id" );
+	$users = $wpdb->get_results( "SELECT user_id, user_id AS ID, user_login, display_name, user_email, meta_value FROM $wpdb->users, $wpdb->usermeta WHERE {$wpdb->users}.ID = {$wpdb->usermeta}.user_id AND meta_key = '{$wpdb->prefix}capabilities' ORDER BY {$wpdb->usermeta}.user_id" );
 	return $users;
 }
 
@@ -353,15 +399,12 @@ function update_usermeta( $user_id, $meta_key, $meta_value ) {
 	}
 
 	$cur = $wpdb->get_row( $wpdb->prepare("SELECT * FROM $wpdb->usermeta WHERE user_id = %d AND meta_key = %s", $user_id, $meta_key) );
-	if ( !$cur ) {
-		$wpdb->query( $wpdb->prepare("INSERT INTO $wpdb->usermeta ( user_id, meta_key, meta_value )
-		VALUES
-		( %d, %s, %s )", $user_id, $meta_key, $meta_value) );
-	} else if ( $cur->meta_value != $meta_value ) {
-		$wpdb->query( $wpdb->prepare("UPDATE $wpdb->usermeta SET meta_value = %s WHERE user_id = %d AND meta_key = %s", $meta_value, $user_id, $meta_key) );
-	} else {
+	if ( !$cur )
+		$wpdb->insert($wpdb->usermeta, compact('user_id', 'meta_key', 'meta_value') );
+	else if ( $cur->meta_value != $meta_value )
+		$wpdb->update($wpdb->usermeta, compact('meta_value'), compact('user_id', 'meta_key') );
+	else
 		return false;
-	}
 
 	wp_cache_delete($user_id, 'users');
 
@@ -497,7 +540,7 @@ function wp_dropdown_users( $args = '' ) {
 			$user->ID = (int) $user->ID;
 			$_selected = $user->ID == $selected ? " selected='selected'" : '';
 			$display = !empty($user->$show) ? $user->$show : '('. $user->user_login . ')';
-			$output .= "\t<option value='$user->ID'$_selected>" . wp_specialchars($display) . "</option>\n";
+			$output .= "\t<option value='$user->ID'$_selected>" . esc_html($display) . "</option>\n";
 		}
 
 		$output .= "</select>";
@@ -554,6 +597,7 @@ function _fill_user( &$user ) {
 	wp_cache_add($user->ID, $user, 'users');
 	wp_cache_add($user->user_login, $user->ID, 'userlogins');
 	wp_cache_add($user->user_email, $user->ID, 'useremail');
+	wp_cache_add($user->user_nicename, $user->ID, 'userslugs');
 }
 
 ?>

@@ -9,6 +9,9 @@
 /** WordPress Administration Bootstrap */
 require_once('admin.php');
 
+if ( ! current_user_can('manage_options') )
+	wp_die(__('You do not have sufficient permissions to manage options for this blog.'));
+
 $title = __('Miscellaneous Settings');
 $parent_file = 'options-general.php';
 
@@ -18,7 +21,7 @@ include('admin-header.php');
 
 <div class="wrap">
 <?php screen_icon(); ?>
-<h2><?php echo wp_specialchars( $title ); ?></h2>
+<h2><?php echo esc_html( $title ); ?></h2>
 
 <form method="post" action="options.php">
 <?php settings_fields('misc'); ?>
@@ -27,15 +30,15 @@ include('admin-header.php');
 <table class="form-table">
 <tr valign="top">
 <th scope="row"><label for="upload_path"><?php _e('Store uploads in this folder'); ?></label></th>
-<td><input name="upload_path" type="text" id="upload_path" value="<?php echo attribute_escape(str_replace(ABSPATH, '', get_option('upload_path'))); ?>" class="regular-text code" />
-<span class="setting-description"><?php _e('Default is <code>wp-content/uploads</code>'); ?></span>
+<td><input name="upload_path" type="text" id="upload_path" value="<?php echo esc_attr(str_replace(ABSPATH, '', get_option('upload_path'))); ?>" class="regular-text code" />
+<span class="description"><?php _e('Default is <code>wp-content/uploads</code>'); ?></span>
 </td>
 </tr>
 
 <tr valign="top">
 <th scope="row"><label for="upload_url_path"><?php _e('Full URL path to files'); ?></label></th>
-<td><input name="upload_url_path" type="text" id="upload_url_path" value="<?php echo attribute_escape( get_option('upload_url_path')); ?>" class="regular-text code" />
-<span class="setting-description"><?php _e('Configuring this is optional by default it should be blank'); ?></span>
+<td><input name="upload_url_path" type="text" id="upload_url_path" value="<?php echo esc_attr( get_option('upload_url_path')); ?>" class="regular-text code" />
+<span class="description"><?php _e('Configuring this is optional. By default, it should be blank.'); ?></span>
 </td>
 </tr>
 
@@ -62,20 +65,12 @@ include('admin-header.php');
 </tr>
 <tr>
 
-<th scope="row" class="th-full">
-<label for="hack_file">
-<input type="checkbox" id="hack_file" name="hack_file" value="1"<?php checked('1', get_option('hack_file')); ?> />
-<?php _e('Use legacy <code>my-hacks.php</code> file support') ?>
-</label>
-</th>
-</tr>
-
 </table>
 
 <?php do_settings_sections('misc'); ?>
 
 <p class="submit">
-	<input type="submit" name="Submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
+	<input type="submit" name="Submit" class="button-primary" value="<?php esc_attr_e('Save Changes') ?>" />
 </p>
 
 </form>

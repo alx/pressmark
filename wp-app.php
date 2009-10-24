@@ -26,6 +26,9 @@ require_once(ABSPATH . WPINC . '/atomlib.php');
 /** Feed Handling API */
 require_once(ABSPATH . WPINC . '/feed.php');
 
+/** Admin Image API for metadata updating */
+require_once(ABSPATH . '/wp-admin/includes/image.php');
+
 $_SERVER['PATH_INFO'] = preg_replace( '/.*\/wp-app\.php/', '', $_SERVER['REQUEST_URI'] );
 
 /**
@@ -349,9 +352,9 @@ class AtomServer {
 		if( !current_user_can( 'edit_posts' ) )
 			$this->auth_required( __( 'Sorry, you do not have the right to access this blog.' ) );
 
-		$entries_url = attribute_escape($this->get_entries_url());
-		$categories_url = attribute_escape($this->get_categories_url());
-		$media_url = attribute_escape($this->get_attachments_url());
+		$entries_url = esc_attr($this->get_entries_url());
+		$categories_url = esc_attr($this->get_categories_url());
+		$media_url = esc_attr($this->get_attachments_url());
 		foreach ($this->media_content_types as $med) {
 			$accepted_media_types = $accepted_media_types . "<accept>" . $med . "</accept>";
 		}
@@ -389,12 +392,12 @@ EOD;
 		if( !current_user_can( 'edit_posts' ) )
 			$this->auth_required( __( 'Sorry, you do not have the right to access this blog.' ) );
 
-		$home = attribute_escape(get_bloginfo_rss('home'));
+		$home = esc_attr(get_bloginfo_rss('home'));
 
 		$categories = "";
 		$cats = get_categories("hierarchical=0&hide_empty=0");
 		foreach ((array) $cats as $cat) {
-			$categories .= "    <category term=\"" . attribute_escape($cat->name) .  "\" />\n";
+			$categories .= "    <category term=\"" . esc_attr($cat->name) .  "\" />\n";
 }
 		$output = <<<EOD
 <app:categories xmlns:app="$this->ATOMPUB_NS"
@@ -475,6 +478,8 @@ EOD;
 		// this could affect our ability to send back the right headers
 		@wp_set_post_categories($postID, $post_category);
 
+		do_action( 'atompub_create_post', $postID, $entry );
+
 		$output = $this->get_entry($postID);
 
 		log_app('function',"create_post($postID)");
@@ -552,6 +557,8 @@ EOD;
 		if (!$result) {
 			$this->internal_error(__('For some strange yet very annoying reason, this post could not be edited.'));
 		}
+
+		do_action( 'atompub_put_post', $ID, $parsed );
 
 		log_app('function',"put_post($postID)");
 		$this->ok();
@@ -698,7 +705,7 @@ EOD;
 		extract($entry);
 
 		$post_title = $parsed->title[1];
-		$post_content = $parsed->content[1];
+		$post_content = $parsed->summary[1];
 		$pubtimes = $this->get_publish_time($parsed->updated);
 		$post_modified = $pubtimes[0];
 		$post_modified_gmt = $pubtimes[1];
@@ -773,6 +780,7 @@ EOD;
 		}
 
 		$location = get_post_meta($entry['ID'], '_wp_attached_file', true);
+		$location = get_option ('upload_path') . '/' . $location; 
 		$filetype = wp_check_filetype($location);
 
 		if(!isset($location) || 'attachment' != $entry['post_type'] || empty($filetype['ext']))
@@ -782,11 +790,19 @@ EOD;
 		header('Content-Type: ' . $entry['post_mime_type']);
 		header('Connection: close');
 
-		$fp = fopen($location, "rb");
-		while(!feof($fp)) {
-			echo fread($fp, 4096);
+		if ($fp = fopen($location, "rb")) { 
+			status_header('200'); 
+			header('Content-Type: ' . $entry['post_mime_type']); 
+			header('Connection: close');
+
+			while(!feof($fp)) {
+				echo fread($fp, 4096);
+			}
+
+			fclose($fp);
+		} else {
+			status_header ('404');
 		}
-		fclose($fp);
 
 		log_app('function',"get_file($postID)");
 		exit;
@@ -814,8 +830,11 @@ EOD;
 			$this->auth_required(__('Sorry, you do not have the right to edit this post.'));
 		}
 
+		$upload_dir = wp_upload_dir( );
 		$location = get_post_meta($entry['ID'], '_wp_attached_file', true);
 		$filetype = wp_check_filetype($location);
+
+		$location = "{$upload_dir['basedir']}/{$location}";
 
 		if(!isset($location) || 'attachment' != $entry['post_type'] || empty($filetype['ext']))
 			$this->internal_error(__('Error ocurred while accessing post metadata for file location.'));
@@ -842,6 +861,8 @@ EOD;
 		if (!$result) {
 			$this->internal_error(__('Sorry, your entry could not be posted. Something wrong happened.'));
 		}
+
+		wp_update_attachment_metadata( $postID, wp_generate_attachment_metadata( $postID, $location ) );
 
 		log_app('function',"put_file($postID)");
 		$this->ok();
@@ -1067,6 +1088,8 @@ EOD;
 		log_app('function',"get_feed($page, '$post_type')");
 		ob_start();
 
+		$this->ENTRY_PATH = $post_type;
+
 		if(!isset($page)) {
 			$page = 1;
 		}
@@ -1074,7 +1097,7 @@ EOD;
 
 		$count = get_option('posts_per_rss');
 
-		wp('what_to_show=posts&posts_per_page=' . $count . '&offset=' . ($count * ($page-1) . '&orderby=modified'));
+		wp('posts_per_page=' . $count . '&offset=' . ($count * ($page-1) . '&orderby=modified'));
 
 		$post = $GLOBALS['post'];
 		$posts = $GLOBALS['posts'];
@@ -1092,7 +1115,7 @@ EOD;
 		$self_page = $page > 1 ? $page : NULL;
 ?><feed xmlns="<?php echo $this->ATOM_NS ?>" xmlns:app="<?php echo $this->ATOMPUB_NS ?>" xml:lang="<?php echo get_option('rss_language'); ?>">
 <id><?php $this->the_entries_url() ?></id>
-<updated><?php echo mysql2date('Y-m-d\TH:i:s\Z', get_lastpostmodified('GMT')); ?></updated>
+<updated><?php echo mysql2date('Y-m-d\TH:i:s\Z', get_lastpostmodified('GMT'), false); ?></updated>
 <title type="text"><?php bloginfo_rss('name') ?></title>
 <subtitle type="text"><?php bloginfo_rss("description") ?></subtitle>
 <link rel="first" type="<?php echo $this->ATOM_CONTENT_TYPE ?>" href="<?php $this->the_entries_url() ?>" />
@@ -1104,7 +1127,7 @@ EOD;
 <?php endif; ?>
 <link rel="last" type="<?php echo $this->ATOM_CONTENT_TYPE ?>" href="<?php $this->the_entries_url($last_page) ?>" />
 <link rel="self" type="<?php echo $this->ATOM_CONTENT_TYPE ?>" href="<?php $this->the_entries_url($self_page) ?>" />
-<rights type="text">Copyright <?php echo mysql2date('Y', get_lastpostdate('blog')); ?></rights>
+<rights type="text">Copyright <?php echo date('Y'); ?></rights>
 <?php the_generator( 'atom' ); ?>
 <?php if ( have_posts() ) {
 			while ( have_posts() ) {
@@ -1136,6 +1159,7 @@ EOD;
 				$varname = 'p';
 				break;
 			case 'attachment':
+				$this->ENTRY_PATH = 'attachment';
 				$varname = 'attachment_id';
 				break;
 		}
@@ -1174,8 +1198,8 @@ EOD;
 	</app:control>
 	<author>
 		<name><?php the_author()?></name>
-<?php if (get_the_author_url() && get_the_author_url() != 'http://') { ?>
-		<uri><?php the_author_url()?></uri>
+<?php if ( get_the_author_meta('url') && get_the_author_meta('url') != 'http://' ) { ?>
+		<uri><?php the_author_meta('url') ?></uri>
 <?php } ?>
 	</author>
 <?php if($GLOBALS['post']->post_type == 'attachment') { ?>
@@ -1189,9 +1213,7 @@ list($content_type, $content) = prep_atom_text_construct(get_the_content()); ?>
 <?php endif; ?>
 <?php } ?>
 	<link rel="edit" href="<?php $this->the_entry_url() ?>" />
-<?php foreach(get_the_category() as $category) { ?>
-	<category scheme="<?php bloginfo_rss('home') ?>" term="<?php echo $category->name?>" />
-<?php } ?>
+	<?php the_category_rss( 'atom' ); ?>
 <?php list($content_type, $content) = prep_atom_text_construct(get_the_excerpt()); ?>
 	<summary type="<?php echo $content_type ?>"><?php echo $content ?></summary>
 </entry>
@@ -1319,7 +1341,7 @@ list($content_type, $content) = prep_atom_text_construct(get_the_content()); ?>
 	function redirect($url) {
 
 		log_app('Status','302: Redirect');
-		$escaped_url = attribute_escape($url);
+		$escaped_url = esc_attr($url);
 		$content = <<<EOD
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
 <html>
@@ -1479,12 +1501,13 @@ EOD;
 		// If Basic Auth is working...
 		if(isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
 			log_app("Basic Auth",$_SERVER['PHP_AUTH_USER']);
-			$user = wp_authenticate($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
-			if ( $user && !is_wp_error($user) ) {
-				wp_set_current_user($user->ID);
-				log_app("authenticate()", $_SERVER['PHP_AUTH_USER']);
-				return true;
-			}
+		}
+
+		$user = wp_authenticate($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
+		if ( $user && !is_wp_error($user) ) {
+			wp_set_current_user($user->ID);
+			log_app("authenticate()", $user->user_login);
+			return true;
 		}
 
 		return false;

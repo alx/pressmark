@@ -68,7 +68,7 @@ function wp_crop_image( $src_file, $src_x, $src_y, $src_w, $src_h, $dst_w, $dst_
 
 	$dst_file = preg_replace( '/\\.[^\\.]+$/', '.jpg', $dst_file );
 
-	if ( imagejpeg( $dst, $dst_file ) )
+	if ( imagejpeg( $dst, $dst_file, apply_filters( 'jpeg_quality', 90, 'wp_crop_image' ) ) )
 		return $dst_file;
 	else
 		return false;
@@ -137,7 +137,7 @@ function wp_load_image( $file ) {
 		$file = get_attached_file( $file );
 
 	if ( ! file_exists( $file ) )
-		return sprintf(__("File '%s' doesn't exist?"), $file);
+		return sprintf(__('File &#8220;%s&#8221; doesn&#8217;t exist?'), $file);
 
 	if ( ! function_exists('imagecreatefromstring') )
 		return __('The GD image library is not installed.');
@@ -147,7 +147,7 @@ function wp_load_image( $file ) {
 	$image = imagecreatefromstring( file_get_contents( $file ) );
 
 	if ( !is_resource( $image ) )
-		return sprintf(__("File '%s' is not an image."), $file);
+		return sprintf(__('File &#8220;%s&#8221; is not an image.'), $file);
 
 	return $image;
 }

@@ -47,6 +47,9 @@ wp_unregister_GLOBALS();
 
 unset( $wp_filter, $cache_lastcommentmodified, $cache_lastpostdate );
 
+// Force REQUEST to be GET + POST.  If SERVER, COOKIE, or ENV are needed, use those superglobals directly.
+$_REQUEST = array_merge($_GET, $_POST);
+
 /**
  * The $blog_id global, which you can change in the config allows you to create a simple
  * multiple blog installation using just one WordPress and changing $blog_id around.
@@ -57,8 +60,8 @@ unset( $wp_filter, $cache_lastcommentmodified, $cache_lastpostdate );
 if ( ! isset($blog_id) )
 	$blog_id = 1;
 
-// Fix for IIS, which doesn't set REQUEST_URI
-if ( empty( $_SERVER['REQUEST_URI'] ) ) {
+// Fix for IIS when running with PHP ISAPI
+if ( empty( $_SERVER['REQUEST_URI'] ) || ( php_sapi_name() != 'cgi-fcgi' && preg_match( '/^Microsoft-IIS\//', $_SERVER['SERVER_SOFTWARE'] ) ) ) {
 
 	// IIS Mod-Rewrite
 	if (isset($_SERVER['HTTP_X_ORIGINAL_URL'])) {
@@ -201,13 +204,10 @@ timer_start();
 if (defined('WP_DEBUG') and WP_DEBUG == true) {
 	error_reporting(E_ALL);
 } else {
-	// Unicode Extension is in PHP 6.0 only or do version check when this changes.
-	if ( function_exists('unicode_decode') ) 
-		error_reporting( E_ALL ^ E_DEPRECATED ^ E_NOTICE ^ E_USER_NOTICE ^ E_STRICT );
-	else if ( defined( 'E_DEPRECATED' ) ) // Introduced in PHP 5.3
-		error_reporting( E_ALL ^ E_DEPRECATED ^ E_NOTICE ^ E_USER_NOTICE );
+	if ( defined('E_RECOVERABLE_ERROR') )
+		error_reporting(E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING | E_RECOVERABLE_ERROR);
 	else
-		error_reporting(E_ALL ^ E_NOTICE ^ E_USER_NOTICE);
+		error_reporting(E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING);
 }
 
 // For an advanced caching plugin to use, static because you would only want one
@@ -252,15 +252,49 @@ require_wp_db();
 if ( !empty($wpdb->error) )
 	dead_db();
 
+/**
+ * Format specifiers for DB columns. Columns not listed here default to %s.
+ * @since 2.8.0
+ * @see wpdb:$field_types
+ * @see wpdb:prepare()
+ * @see wpdb:insert()
+ * @see wpdb:update()
+ */
+$wpdb->field_types = array( 'post_author' => '%d', 'post_parent' => '%d', 'menu_order' => '%d', 'term_id' => '%d', 'term_group' => '%d', 'term_taxonomy_id' => '%d',
+	'parent' => '%d', 'count' => '%d','object_id' => '%d', 'term_order' => '%d', 'ID' => '%d', 'commment_ID' => '%d', 'comment_post_ID' => '%d', 'comment_parent' => '%d',
+	'user_id' => '%d', 'link_id' => '%d', 'link_owner' => '%d', 'link_rating' => '%d', 'option_id' => '%d', 'blog_id' => '%d', 'meta_id' => '%d', 'post_id' => '%d',
+	'user_status' => '%d', 'umeta_id' => '%d', 'comment_karma' => '%d', 'comment_count' => '%d');
+
 $prefix = $wpdb->set_prefix($table_prefix);
 
 if ( is_wp_error($prefix) )
 	wp_die(/*WP_I18N_BAD_PREFIX*/'<strong>ERROR</strong>: <code>$table_prefix</code> in <code>wp-config.php</code> can only contain numbers, letters, and underscores.'/*/WP_I18N_BAD_PREFIX*/);
 
-if ( file_exists(WP_CONTENT_DIR . '/object-cache.php') )
+/**
+ * Copy an object.
+ *
+ * Returns a cloned copy of an object.
+ *
+ * @since 2.7.0
+ *
+ * @param object $object The object to clone
+ * @return object The cloned object
+ */
+function wp_clone( $object ) {
+	static $can_clone;
+	if ( !isset( $can_clone ) ) {
+		$can_clone = version_compare( phpversion(), '5.0', '>=' );
+	}
+	return $can_clone ? clone( $object ) : $object;
+}
+
+if ( file_exists(WP_CONTENT_DIR . '/object-cache.php') ) {
 	require_once (WP_CONTENT_DIR . '/object-cache.php');
-else
+	$_wp_using_ext_object_cache = true;
+} else {
 	require_once (ABSPATH . WPINC . '/cache.php');
+	$_wp_using_ext_object_cache = false;
+}
 
 wp_cache_init();
 if ( function_exists('wp_cache_add_global_groups') ) {
@@ -270,8 +304,7 @@ if ( function_exists('wp_cache_add_global_groups') ) {
 
 require (ABSPATH . WPINC . '/plugin.php');
 require (ABSPATH . WPINC . '/default-filters.php');
-include_once(ABSPATH . WPINC . '/streams.php');
-include_once(ABSPATH . WPINC . '/gettext.php');
+include_once(ABSPATH . WPINC . '/pomo/mo.php');
 require_once (ABSPATH . WPINC . '/l10n.php');
 
 if ( !is_blog_installed() && (strpos($_SERVER['PHP_SELF'], 'install.php') === false && !defined('WP_INSTALLING')) ) {
@@ -283,6 +316,7 @@ if ( !is_blog_installed() && (strpos($_SERVER['PHP_SELF'], 'install.php') === fa
 		$link = preg_replace('|/[^/]+?$|', '/', $_SERVER['PHP_SELF']) . 'wp-admin/install.php';
 	require_once(ABSPATH . WPINC . '/kses.php');
 	require_once(ABSPATH . WPINC . '/pluggable.php');
+	require_once(ABSPATH . WPINC . '/formatting.php');
 	wp_redirect($link);
 	die(); // have to die here ~ Mark
 }
@@ -316,6 +350,7 @@ require (ABSPATH . WPINC . '/canonical.php');
 require (ABSPATH . WPINC . '/shortcodes.php');
 require (ABSPATH . WPINC . '/media.php');
 require (ABSPATH . WPINC . '/http.php');
+require (ABSPATH . WPINC . '/widgets.php');
 
 if ( !defined('WP_CONTENT_URL') )
 	define( 'WP_CONTENT_URL', get_option('siteurl') . '/wp-content'); // full url - WP_CONTENT_DIR is defined further up
@@ -343,6 +378,41 @@ if ( !defined('WP_PLUGIN_URL') )
  */
 if ( !defined('PLUGINDIR') )
 	define( 'PLUGINDIR', 'wp-content/plugins' ); // Relative to ABSPATH.  For back compat.
+
+/**
+ * Allows for the mu-plugins directory to be moved from the default location.
+ *
+ * @since 2.8.0
+ */
+if ( !defined('WPMU_PLUGIN_DIR') )
+	define( 'WPMU_PLUGIN_DIR', WP_CONTENT_DIR . '/mu-plugins' ); // full path, no trailing slash
+
+/**
+ * Allows for the mu-plugins directory to be moved from the default location.
+ *
+ * @since 2.8.0
+ */
+if ( !defined('WPMU_PLUGIN_URL') )
+	define( 'WPMU_PLUGIN_URL', WP_CONTENT_URL . '/mu-plugins' ); // full url, no trailing slash
+
+/**
+ * Allows for the mu-plugins directory to be moved from the default location.
+ *
+ * @since 2.8.0
+ */
+if ( !defined( 'MUPLUGINDIR' ) )
+	define( 'MUPLUGINDIR', 'wp-content/mu-plugins' ); // Relative to ABSPATH.  For back compat.
+
+if ( is_dir( WPMU_PLUGIN_DIR ) ) {
+	if ( $dh = opendir( WPMU_PLUGIN_DIR ) ) {
+		while ( ( $plugin = readdir( $dh ) ) !== false ) {
+			if ( substr( $plugin, -4 ) == '.php' ) {
+				include_once( WPMU_PLUGIN_DIR . '/' . $plugin );
+			}
+		}
+	}
+}
+do_action('muplugins_loaded');
 
 /**
  * Used to guarantee unique hash cookies
@@ -459,21 +529,32 @@ if ( !defined( 'AUTOSAVE_INTERVAL' ) )
 
 require (ABSPATH . WPINC . '/vars.php');
 
+// make taxonomies available to plugins and themes
+// @plugin authors: warning: this gets registered again on the init hook
+create_initial_taxonomies();
+
 // Check for hacks file if the option is enabled
-if (get_option('hack_file')) {
-	if (file_exists(ABSPATH . 'my-hacks.php'))
+if ( get_option('hack_file') ) {
+	if ( file_exists(ABSPATH . 'my-hacks.php') )
 		require(ABSPATH . 'my-hacks.php');
 }
 
-if ( get_option('active_plugins') && !defined('WP_INSTALLING') ) {
-	$current_plugins = get_option('active_plugins');
-	if ( is_array($current_plugins) ) {
-		foreach ($current_plugins as $plugin) {
-			if ( '' != $plugin && 0 == validate_file($plugin) && file_exists(WP_PLUGIN_DIR . '/' . $plugin) )
-				include_once(WP_PLUGIN_DIR . '/' . $plugin);
-		}
+$current_plugins = get_option('active_plugins');
+if ( is_array($current_plugins) && !defined('WP_INSTALLING') ) {
+	foreach ( $current_plugins as $plugin ) {
+		// check the $plugin filename
+		// Validate plugin filename
+		if ( validate_file($plugin) // $plugin must validate as file
+			|| '.php' != substr($plugin, -4) // $plugin must end with '.php'
+			|| !file_exists(WP_PLUGIN_DIR . '/' . $plugin)	// $plugin must exist
+			)
+			continue;
+
+		include_once(WP_PLUGIN_DIR . '/' . $plugin);
 	}
+	unset($plugin);
 }
+unset($current_plugins);
 
 require (ABSPATH . WPINC . '/pluggable.php');
 
@@ -540,6 +621,13 @@ $wp_rewrite   =& new WP_Rewrite();
  * @since 2.0.0
  */
 $wp           =& new WP();
+
+/**
+ * WordPress Widget Factory Object
+ * @global object $wp_widget_factory
+ * @since 2.8.0
+ */
+$wp_widget_factory =& new WP_Widget_Factory();
 
 do_action('setup_theme');
 

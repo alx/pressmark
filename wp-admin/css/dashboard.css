@@ -56,18 +56,6 @@ form .textarea-wrap {
 	min-width: 0;
 }
 
-#dashboard-widgets-wrap .has-sidebar {
-	margin-right: -51%;
-}
-
-#dashboard-widgets-wrap .inner-sidebar {
-	width: 49%;
-}
-
-#dashboard-widgets-wrap .has-sidebar .has-sidebar-content {
-	margin-right: 51%;
-}
-
 div.postbox div.inside {
 	margin: 10px;
 	position: relative;
@@ -167,7 +155,7 @@ div.postbox div.inside {
 }
 
 #dashboard_right_now .waiting {
-	color: orange;
+	color: #e66f00;
 }
 
 #dashboard_right_now .approved {
@@ -210,7 +198,7 @@ div.postbox div.inside {
 }
 
 #the-comment-list .comment-item {
-	padding: 1em 10px 1em 70px;
+	padding: 1em 10px;
 	border-top: 1px solid;
 }
 
@@ -229,7 +217,7 @@ div.postbox div.inside {
 
 #the-comment-list .comment-item .avatar {
 	float: left;
-	margin-left: -60px;
+	margin: 0 10px 5px 0;
 }
 
 #the-comment-list .comment-item h4 {
@@ -394,3 +382,9 @@ a.rsswidget {
 	margin: 0 0 1.4em;
 	line-height: 1.4em;
 }
+
+.dashboard-comment-wrap {
+	overflow: hidden;
+	word-wrap: break-word;
+}
+

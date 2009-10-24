@@ -28,10 +28,10 @@ if ( empty($doaction) ) {
 }
 
 if ( empty($_REQUEST) ) {
-	$referer = '<input type="hidden" name="wp_http_referer" value="'. attribute_escape(stripslashes($_SERVER['REQUEST_URI'])) . '" />';
+	$referer = '<input type="hidden" name="wp_http_referer" value="'. esc_attr(stripslashes($_SERVER['REQUEST_URI'])) . '" />';
 } elseif ( isset($_REQUEST['wp_http_referer']) ) {
 	$redirect = remove_query_arg(array('wp_http_referer', 'updated', 'delete_count'), stripslashes($_REQUEST['wp_http_referer']));
-	$referer = '<input type="hidden" name="wp_http_referer" value="' . attribute_escape($redirect) . '" />';
+	$referer = '<input type="hidden" name="wp_http_referer" value="' . esc_attr($redirect) . '" />';
 } else {
 	$redirect = 'users.php';
 	$referer = '';
@@ -39,6 +39,7 @@ if ( empty($_REQUEST) ) {
 
 switch ($doaction) {
 
+/* Bulk Dropdown menu Role changes */
 case 'promote':
 	check_admin_referer('bulk-users');
 
@@ -47,8 +48,9 @@ case 'promote':
 		exit();
 	}
 
-	if ( !current_user_can('edit_users') )
-		wp_die(__('You can&#8217;t edit users.'));
+	$editable_roles = get_editable_roles();
+	if (!$editable_roles[$_REQUEST['new_role']])
+		wp_die(__('You can&#8217;t give users that role.'));
 
 	$userids = $_REQUEST['users'];
 	$update = 'promote';
@@ -147,7 +149,7 @@ case 'delete':
 		if ( $id == $current_user->ID ) {
 			echo "<li>" . sprintf(__('ID #%1s: %2s <strong>The current user will not be deleted.</strong>'), $id, $user->user_login) . "</li>\n";
 		} else {
-			echo "<li><input type=\"hidden\" name=\"users[]\" value=\"{$id}\" />" . sprintf(__('ID #%1s: %2s'), $id, $user->user_login) . "</li>\n";
+			echo "<li><input type=\"hidden\" name=\"users[]\" value=\"" . esc_attr($id) . "\" />" . sprintf(__('ID #%1s: %2s'), $id, $user->user_login) . "</li>\n";
 			$go_delete = true;
 		}
 	}
@@ -155,7 +157,7 @@ case 'delete':
 	$user_dropdown = '<select name="reassign_user">';
 	foreach ( (array) $all_logins as $login )
 		if ( $login->ID == $current_user->ID || !in_array($login->ID, $userids) )
-			$user_dropdown .= "<option value=\"{$login->ID}\">{$login->user_login}</option>";
+			$user_dropdown .= "<option value=\"" . esc_attr($login->ID) . "\">{$login->user_login}</option>";
 	$user_dropdown .= '</select>';
 	?>
 	</ul>
@@ -168,7 +170,7 @@ case 'delete':
 		<?php echo '<label for="delete_option1">'.__('Attribute all posts and links to:')."</label> $user_dropdown"; ?></li>
 	</ul></fieldset>
 	<input type="hidden" name="action" value="dodelete" />
-	<p class="submit"><input type="submit" name="submit" value="<?php _e('Confirm Deletion'); ?>" class="button-secondary" /></p>
+	<p class="submit"><input type="submit" name="submit" value="<?php esc_attr_e('Confirm Deletion'); ?>" class="button-secondary" /></p>
 <?php else : ?>
 	<p><?php _e('There are no valid users selected for deletion.'); ?></p>
 <?php endif; ?>
@@ -185,8 +187,6 @@ default:
 		exit;
 	}
 
-	wp_enqueue_script('admin-users');
-
 	include('admin-header.php');
 
 	$usersearch = isset($_GET['usersearch']) ? $_GET['usersearch'] : null;
@@ -202,7 +202,7 @@ default:
 		case 'del':
 		case 'del_many':
 			$delete_count = isset($_GET['delete_count']) ? (int) $_GET['delete_count'] : 0;
-			$messages[] = '<div id="message" class="updated fade"><p>' . sprintf(__ngettext('%s user deleted', '%s users deleted', $delete_count), $delete_count) . '</p></div>';
+			$messages[] = '<div id="message" class="updated fade"><p>' . sprintf(_n('%s user deleted', '%s users deleted', $delete_count), $delete_count) . '</p></div>';
 			break;
 		case 'add':
 			$messages[] = '<div id="message" class="updated fade"><p>' . __('New user created.') . '</p></div>';
@@ -211,11 +211,11 @@ default:
 			$messages[] = '<div id="message" class="updated fade"><p>' . __('Changed roles.') . '</p></div>';
 			break;
 		case 'err_admin_role':
-			$messages[] = '<div id="message" class="error"><p>' . __("The current user's role must have user editing capabilities.") . '</p></div>';
+			$messages[] = '<div id="message" class="error"><p>' . __('The current user&#8217;s role must have user editing capabilities.') . '</p></div>';
 			$messages[] = '<div id="message" class="updated fade"><p>' . __('Other user roles have been changed.') . '</p></div>';
 			break;
 		case 'err_admin_del':
-			$messages[] = '<div id="message" class="error"><p>' . __("You can't delete the current user.") . '</p></div>';
+			$messages[] = '<div id="message" class="error"><p>' . __('You can&#8217;t delete the current user.') . '</p></div>';
 			$messages[] = '<div id="message" class="updated fade"><p>' . __('Other users have been deleted.') . '</p></div>';
 			break;
 		}
@@ -239,9 +239,9 @@ if ( ! empty($messages) ) {
 
 <div class="wrap">
 <?php screen_icon(); ?>
-<h2><?php echo wp_specialchars( $title );
-if ( isset($_GET['s']) && $_GET['s'] )
-	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', wp_specialchars( get_search_query() ) ); ?>
+<h2><?php echo esc_html( $title );
+if ( isset($_GET['usersearch']) && $_GET['usersearch'] )
+	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', esc_html( $_GET['usersearch'] ) ); ?>
 </h2>
 
 <div class="filter">
@@ -264,7 +264,7 @@ unset($users_of_blog);
 
 $current_role = false;
 $class = empty($role) ? ' class="current"' : '';
-$role_links[] = "<li><a href='users.php'$class>" . sprintf( __ngettext( 'All <span class="count">(%s)</span>', 'All <span class="count">(%s)</span>', $total_users ), number_format_i18n( $total_users ) ) . '</a>';
+$role_links[] = "<li><a href='users.php'$class>" . sprintf( _nx( 'All <span class="count">(%s)</span>', 'All <span class="count">(%s)</span>', $total_users, 'users' ), number_format_i18n( $total_users ) ) . '</a>';
 foreach ( $wp_roles->get_names() as $this_role => $name ) {
 	if ( !isset($avail_roles[$this_role]) )
 		continue;
@@ -276,8 +276,9 @@ foreach ( $wp_roles->get_names() as $this_role => $name ) {
 		$class = ' class="current"';
 	}
 
-	$name = translate_with_context($name);
-	$name = sprintf( _c('%1$s <span class="count">(%2$s)</span>|user role with count'), $name, $avail_roles[$this_role] );
+	$name = translate_user_role( $name );
+	/* translators: User role name with count */
+	$name = sprintf( __('%1$s <span class="count">(%2$s)</span>'), $name, $avail_roles[$this_role] );
 	$role_links[] = "<li><a href='users.php?role=$this_role'$class>$name</a>";
 }
 echo implode( " |</li>\n", $role_links) . '</li>';
@@ -289,9 +290,9 @@ unset($role_links);
 
 <form class="search-form" action="" method="get">
 <p class="search-box">
-	<label class="hidden" for="user-search-input"><?php _e( 'Search Users' ); ?>:</label>
-	<input type="text" class="search-input" id="user-search-input" name="usersearch" value="<?php echo attribute_escape($wp_user_search->search_term); ?>" />
-	<input type="submit" value="<?php _e( 'Search Users' ); ?>" class="button" />
+	<label class="screen-reader-text" for="user-search-input"><?php _e( 'Search Users' ); ?>:</label>
+	<input type="text" id="user-search-input" name="usersearch" value="<?php echo esc_attr($wp_user_search->search_term); ?>" />
+	<input type="submit" value="<?php esc_attr_e( 'Search Users' ); ?>" class="button" />
 </p>
 </form>
 
@@ -307,9 +308,9 @@ unset($role_links);
 <option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
 <option value="delete"><?php _e('Delete'); ?></option>
 </select>
-<input type="submit" value="<?php _e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
-<label class="hidden" for="new_role"><?php _e('Change role to&hellip;') ?></label><select name="new_role" id="new_role"><option value=''><?php _e('Change role to&hellip;') ?></option><?php wp_dropdown_roles(); ?></select>
-<input type="submit" value="<?php _e('Change'); ?>" name="changeit" class="button-secondary" />
+<input type="submit" value="<?php esc_attr_e('Apply'); ?>" name="doaction" id="doaction" class="button-secondary action" />
+<label class="screen-reader-text" for="new_role"><?php _e('Change role to&hellip;') ?></label><select name="new_role" id="new_role"><option value=''><?php _e('Change role to&hellip;') ?></option><?php wp_dropdown_roles(); ?></select>
+<input type="submit" value="<?php esc_attr_e('Change'); ?>" name="changeit" class="button-secondary" />
 <?php wp_nonce_field('bulk-users'); ?>
 </div>
 
@@ -373,7 +374,7 @@ foreach ( $wp_user_search->get_results() as $userid ) {
 <option value="" selected="selected"><?php _e('Bulk Actions'); ?></option>
 <option value="delete"><?php _e('Delete'); ?></option>
 </select>
-<input type="submit" value="<?php _e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
+<input type="submit" value="<?php esc_attr_e('Apply'); ?>" name="doaction2" id="doaction2" class="button-secondary action" />
 </div>
 
 <br class="clear" />
@@ -387,7 +388,7 @@ foreach ( $wp_user_search->get_results() as $userid ) {
 <?php
 	foreach ( array('user_login' => 'user_login', 'first_name' => 'user_firstname', 'last_name' => 'user_lastname', 'email' => 'user_email', 'url' => 'user_uri', 'role' => 'user_role') as $formpost => $var ) {
 		$var = 'new_' . $var;
-		$$var = isset($_REQUEST[$formpost]) ? attribute_escape(stripslashes($_REQUEST[$formpost])) : '';
+		$$var = isset($_REQUEST[$formpost]) ? esc_attr(stripslashes($_REQUEST[$formpost])) : '';
 	}
 	unset($name);
 ?>

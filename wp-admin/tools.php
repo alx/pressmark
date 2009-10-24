@@ -17,7 +17,7 @@ require_once('admin-header.php');
 screen_icon();
 ?>
 <div class="wrap">
-<h2><?php echo wp_specialchars( $title ); ?></h2>
+<h2><?php echo esc_html( $title ); ?></h2>
 
 <div class="tool-box">
 <?php
@@ -45,7 +45,7 @@ if ( ! $is_opera ) {
 	<p><?php
 
 	if ( $is_chrome )
-		_e('Gears is installed and enabled on this computer. You can disable it from your browser&#8217;s Options, Under the Hood menu.');
+		_e('Gears is installed and enabled on this computer. You can disable it from the Under the Hood tab in Chrome&#8217;s Options menu.');
 	elseif ( $is_safari )
 		_e('Gears is installed and enabled on this computer. You can disable it from the Safari menu.');
 	else
@@ -77,16 +77,20 @@ if ( ! $is_opera ) {
 } ?>
 </div>
 
-<?php if ( current_user_can('publish_posts') ) : ?>
+<?php if ( current_user_can('edit_posts') ) : ?>
 <div class="tool-box">
 	<h3 class="title"><?php _e('Press This') ?></h3>
 	<p><?php _e('Press This is a bookmarklet: a little app that runs in your browser and lets you grab bits of the web.');?></p>
 
 	<p><?php _e('Use Press This to clip text, images and videos from any web page. Then edit and add more straight from Press This before you save or publish it in a post on your blog.'); ?></p>
 	<p><?php _e('Drag-and-drop the following link to your bookmarks bar or right click it and add it to your favorites for a posting shortcut.') ?></p>
-	<p class="pressthis"><a href="<?php echo htmlspecialchars( get_shortcut_link() ); ?>" title="<?php echo attribute_escape(__('Press This')) ?>"><?php _e('Press This') ?></a></p>
+	<p class="pressthis"><a href="<?php echo htmlspecialchars( get_shortcut_link() ); ?>" title="<?php echo esc_attr(__('Press This')) ?>"><?php _e('Press This') ?></a></p>
 </div>
-<?php endif; ?>
+<?php
+endif;
+
+do_action( 'tool_box' );
+?>
 </div>
 <?php
 include('admin-footer.php');

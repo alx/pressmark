@@ -112,23 +112,32 @@ table {
 }
 
 /* inner 2 column liquid layout */
-
 .inner-sidebar {
 	float: right;
 	clear: right;
-	width: 280px;
+	display: none;
+	width: 281px;
 	position: relative;
 }
 
-.has-sidebar {
+.inner-sidebar #side-sortables {
+	width: 280px;
+	min-height: 300px;
+}
+
+.has-right-sidebar .inner-sidebar {
+	display: block;
+}
+
+.has-right-sidebar #post-body {
 	float: left;
 	clear: left;
 	width: 100%;
 	margin-right: -340px;
 }
 
-.has-sidebar .has-sidebar-content {
-	margin-right: 305px;
+.has-right-sidebar #post-body-content {
+	margin-right: 300px;
 }
 
 /* 2 columns main area */
@@ -176,14 +185,26 @@ table {
 	clear: both;
 }
 
+/* Hide visually but not from screen readers */
+.screen-reader-text,
+.screen-reader-text span {
+	position: absolute;
+	left: -1000em;
+	height: 1px;
+	width: 1px;
+	overflow: hidden;
+}
+
 .hidden,
-.closed .inside,
-.hide-if-no-js {
+.js .closed .inside,
+.js .hide-if-js,
+.no-js .hide-if-no-js {
 	display: none;
 }
 
 /* include margin and padding in the width calculation of input and textarea */
 input[type="text"],
+input[type="password"],
 textarea {
 	-moz-box-sizing: border-box;
 	-webkit-box-sizing: border-box;
@@ -193,7 +214,7 @@ textarea {
 
 input[type="checkbox"],
 input[type="radio"] {
-	vertical-align: text-top;
+	vertical-align: middle;
 }
 
 /* styles for use by people extending the WordPress interface */
@@ -203,8 +224,22 @@ body {
 }
 
 body,
-td {
-	font: 13px "Lucida Grande", Verdana, Arial, "Bitstream Vera Sans", sans-serif;
+td,
+textarea,
+input,
+select {
+	font-family: "Lucida Grande", Verdana, Arial, "Bitstream Vera Sans", sans-serif;
+	font-size: 13px;
+}
+
+body,
+textarea {
+	line-height: 1.4em;
+}
+
+input,
+select {
+	line-height: 1em;
 }
 
 p {
@@ -235,7 +270,6 @@ dt {
 textarea,
 input,
 select {
-	font: 13px/19px "Lucida Grande", Verdana, Arial, "Bitstream Vera Sans", sans-serif;
 	margin: 1px;
 	padding: 3px;
 }
@@ -263,6 +297,7 @@ h3 {
 
 h4 {
   display: block;
+  font-size: 1em;
   font-weight: bold;
   margin: 1.33em 0;
 }
@@ -279,6 +314,30 @@ h6 {
   font-size: 0.67em;
   font-weight: bold;
   margin: 2.33em 0;
+}
+
+ul.ul-disc {
+	list-style: disc outside;
+}
+
+ul.ul-square {
+	list-style: square outside;
+}
+
+ol.ol-decimal {
+	list-style: decimal outside;
+}
+
+ul.ul-disc,
+ul.ul-square,
+ol.ol-decimal {
+	margin-left: 1.8em;
+}
+
+ul.ul-disc > li,
+ul.ul-square > li,
+ol.ol-decimal > li {
+	margin: 0 0 0.5em;
 }
 
 .subsubsub {
@@ -316,7 +375,6 @@ h6 {
 .widefat {
 	border-width: 1px;
 	border-style: solid;
-	border-collapse: separate;
 	border-spacing: 0;
 	width: 100%;
 	clear: both;
@@ -344,39 +402,13 @@ h6 {
 }
 
 .widefat td {
-	padding: 7px 7px 5px;
+	padding: 3px 7px;
 	vertical-align: top;
 }
 
-.widefat thead tr th:first {
-	-moz-border-radius-topleft: 4px;
-	-webkit-border-top-left-radius: 4px;
-	-khtml-border-top-left-radius: 4px;
-	border-top-left-radius: 4px;
-}
-
-.widefat thead tr th:last {
-	-moz-border-radius-topright: 4px;
-	-webkit-border-top-right-radius: 4px;
-	-khtml-border-top-right-radius: 4px;
-	border-top-right-radius: 4px;
-}
-
-.widefat tfoot tr th:first {
-	-moz-border-radius-bottomleft: 4px;
-	-webkit-border-bottom-left-radius: 4px;
-	-khtml-border-bottom-left-radius: 4px;
-	border-bottom-left-radius: 4px;
-}
-
-.widefat tfoot tr th:last {
-	-moz-border-radius-bottomright: 4px;
-	-webkit-border-bottom-right-radius: 4px;
-	-khtml-border-bottom-right-radius: 4px;
-	border-bottom-right-radius: 4px;
-}
-
-.widefat td p {
+.widefat td p,
+.widefat td ol,
+.widefat td ul {
 	font-size: 11px;
 }
 
@@ -439,7 +471,7 @@ h6 {
 
 .wrap .updated,
 .wrap .error {
-	margin: 5px 0;
+	margin: 5px 0 15px;
 }
 
 .wrap h2 {

@@ -86,7 +86,7 @@ function get_plugin_data( $plugin_file, $markup = true, $translate = true ) {
 
 	foreach ( array( 'name', 'uri', 'version', 'description', 'author_name', 'author_uri', 'text_domain', 'domain_path' ) as $field ) {
 		if ( !empty( ${$field} ) )
-			${$field} = trim(${$field}[1]);
+			${$field} = _cleanup_header_comment(${$field}[1]);
 		else
 			${$field} = '';
 	}
@@ -97,11 +97,12 @@ function get_plugin_data( $plugin_file, $markup = true, $translate = true ) {
 				'TextDomain' => $text_domain, 'DomainPath' => $domain_path
 				);
 	if ( $markup || $translate )
-		$plugin_data = _get_plugin_data_markup_translate($plugin_data, $markup, $translate);
+		$plugin_data = _get_plugin_data_markup_translate($plugin_file, $plugin_data, $markup, $translate);
+
 	return $plugin_data;
 }
 
-function _get_plugin_data_markup_translate($plugin_data, $markup = true, $translate = true) {
+function _get_plugin_data_markup_translate($plugin_file, $plugin_data, $markup = true, $translate = true) {
 
 	//Translate fields
 	if( $translate && ! empty($plugin_data['TextDomain']) ) {
@@ -141,6 +142,46 @@ function _get_plugin_data_markup_translate($plugin_data, $markup = true, $transl
 }
 
 /**
+ * Get a list of a plugin's files.
+ *
+ * @since 2.8.0
+ *
+ * @param string $plugin Plugin ID
+ * @return array List of files relative to the plugin root.
+ */
+function get_plugin_files($plugin) {
+	$plugin_file = WP_PLUGIN_DIR . '/' . $plugin;
+	$dir = dirname($plugin_file);
+	$plugin_files = array($plugin);
+	if ( is_dir($dir) && $dir != WP_PLUGIN_DIR ) {
+		$plugins_dir = @ opendir( $dir );
+		if ( $plugins_dir ) {
+			while (($file = readdir( $plugins_dir ) ) !== false ) {
+				if ( substr($file, 0, 1) == '.' )
+					continue;
+				if ( is_dir( $dir . '/' . $file ) ) {
+					$plugins_subdir = @ opendir( $dir . '/' . $file );
+					if ( $plugins_subdir ) {
+						while (($subfile = readdir( $plugins_subdir ) ) !== false ) {
+							if ( substr($subfile, 0, 1) == '.' )
+								continue;
+							$plugin_files[] = plugin_basename("$dir/$file/$subfile");
+						}
+						@closedir( $plugins_subdir );
+					}
+				} else {
+					if ( plugin_basename("$dir/$file") != $plugin )
+						$plugin_files[] = plugin_basename("$dir/$file");
+				}
+			}
+			@closedir( $plugins_dir );
+		}
+	}
+
+	return $plugin_files;
+}
+
+/**
  * Check the plugins directory and retrieve all plugin files with plugin data.
  *
  * WordPress only supports plugin files in the base plugins directory
@@ -175,6 +216,7 @@ function get_plugins($plugin_folder = '') {
 
 	// Files in wp-content/plugins directory
 	$plugins_dir = @ opendir( $plugin_root);
+	$plugin_files = array();
 	if ( $plugins_dir ) {
 		while (($file = readdir( $plugins_dir ) ) !== false ) {
 			if ( substr($file, 0, 1) == '.' )
@@ -198,7 +240,7 @@ function get_plugins($plugin_folder = '') {
 	@closedir( $plugins_dir );
 	@closedir( $plugins_subdir );
 
-	if ( !$plugins_dir || !$plugin_files )
+	if ( !$plugins_dir || empty($plugin_files) )
 		return $wp_plugins;
 
 	foreach ( $plugin_files as $plugin_file ) {
@@ -391,14 +433,10 @@ function delete_plugins($plugins, $redirect = '' ) {
 		return;
 	}
 
-	if ( $wp_filesystem->errors->get_error_code() ) {
-		return $wp_filesystem->errors;
-	}
-
 	if ( ! is_object($wp_filesystem) )
 		return new WP_Error('fs_unavailable', __('Could not access filesystem.'));
 
-	if ( $wp_filesystem->errors->get_error_code() )
+	if ( is_wp_error($wp_filesystem->errors) && $wp_filesystem->errors->get_error_code() )
 		return new WP_Error('fs_error', __('Filesystem error'), $wp_filesystem->errors);
 
 	//Get the base plugin folder
@@ -430,7 +468,10 @@ function delete_plugins($plugins, $redirect = '' ) {
 		return new WP_Error('could_not_remove_plugin', sprintf(__('Could not fully remove the plugin(s) %s'), implode(', ', $errors)) );
 
 	// Force refresh of plugin update information
-	delete_option('update_plugins');
+	if ( $current = get_transient('update_plugins') ) {
+		unset( $current->response[ $plugin_file ] );
+		set_transient('update_plugins', $current);
+	}
 
 	return true;
 }
@@ -476,6 +517,9 @@ function validate_plugin($plugin) {
 	if ( ! file_exists(WP_PLUGIN_DIR . '/' . $plugin) )
 		return new WP_Error('plugin_not_found', __('Plugin file does not exist.'));
 
+	$installed_plugins = get_plugins();
+	if ( ! isset($installed_plugins[$plugin]) )
+		return new WP_Error('no_plugin_header', __('The plugin does not have a valid header.'));
 	return 0;
 }
 
@@ -541,7 +585,7 @@ function uninstall_plugin($plugin) {
 //
 
 function add_menu_page( $page_title, $menu_title, $access_level, $file, $function = '', $icon_url = '' ) {
-	global $menu, $admin_page_hooks;
+	global $menu, $admin_page_hooks, $_registered_pages;
 
 	$file = plugin_basename( $file );
 
@@ -553,14 +597,18 @@ function add_menu_page( $page_title, $menu_title, $access_level, $file, $functio
 
 	if ( empty($icon_url) )
 		$icon_url = 'images/generic.png';
+	elseif ( is_ssl() && 0 === strpos($icon_url, 'http://') )
+		$icon_url = 'https://' . substr($icon_url, 7);
 
 	$menu[] = array ( $menu_title, $access_level, $file, $page_title, 'menu-top ' . $hookname, $hookname, $icon_url );
+
+	$_registered_pages[$hookname] = true;
 
 	return $hookname;
 }
 
 function add_object_page( $page_title, $menu_title, $access_level, $file, $function = '', $icon_url = '') {
-	global $menu, $admin_page_hooks, $_wp_last_object_menu;
+	global $menu, $admin_page_hooks, $_wp_last_object_menu, $_registered_pages;
 
 	$file = plugin_basename( $file );
 
@@ -577,11 +625,13 @@ function add_object_page( $page_title, $menu_title, $access_level, $file, $funct
 
 	$menu[$_wp_last_object_menu] = array ( $menu_title, $access_level, $file, $page_title, 'menu-top ' . $hookname, $hookname, $icon_url );
 
+	$_registered_pages[$hookname] = true;
+
 	return $hookname;
 }
 
 function add_utility_page( $page_title, $menu_title, $access_level, $file, $function = '', $icon_url = '') {
-	global $menu, $admin_page_hooks, $_wp_last_utility_menu;
+	global $menu, $admin_page_hooks, $_wp_last_utility_menu, $_registered_pages;
 
 	$file = plugin_basename( $file );
 
@@ -593,10 +643,14 @@ function add_utility_page( $page_title, $menu_title, $access_level, $file, $func
 
 	if ( empty($icon_url) )
 		$icon_url = 'images/generic.png';
+	elseif ( is_ssl() && 0 === strpos($icon_url, 'http://') )
+		$icon_url = 'https://' . substr($icon_url, 7);
 
 	$_wp_last_utility_menu++;
 
 	$menu[$_wp_last_utility_menu] = array ( $menu_title, $access_level, $file, $page_title, 'menu-top ' . $hookname, $hookname, $icon_url );
+
+	$_registered_pages[$hookname] = true;
 
 	return $hookname;
 }
@@ -606,6 +660,7 @@ function add_submenu_page( $parent, $page_title, $menu_title, $access_level, $fi
 	global $menu;
 	global $_wp_real_parent_file;
 	global $_wp_submenu_nopriv;
+	global $_registered_pages;
 
 	$file = plugin_basename( $file );
 
@@ -623,7 +678,7 @@ function add_submenu_page( $parent, $page_title, $menu_title, $access_level, $fi
 	// parent file someone is trying to link back to the parent manually.  In
 	// this case, don't automatically add a link back to avoid duplication.
 	if (!isset( $submenu[$parent] ) && $file != $parent  ) {
-		foreach ( $menu as $parent_menu ) {
+		foreach ( (array)$menu as $parent_menu ) {
 			if ( $parent_menu[2] == $parent && current_user_can( $parent_menu[1] ) )
 				$submenu[$parent][] = $parent_menu;
 		}
@@ -634,6 +689,11 @@ function add_submenu_page( $parent, $page_title, $menu_title, $access_level, $fi
 	$hookname = get_plugin_page_hookname( $file, $parent);
 	if (!empty ( $function ) && !empty ( $hookname ))
 		add_action( $hookname, $function );
+
+	$_registered_pages[$hookname] = true;
+	// backwards-compatibility for plugins using add_management page.  See wp-admin/admin.php for redirect from edit.php to tools.php
+	if ( 'tools.php' == $parent ) 
+		$_registered_pages[get_plugin_page_hookname( $file, 'edit.php')] = true;
 
 	return $hookname;
 }
@@ -721,7 +781,7 @@ function get_admin_page_parent( $parent = '' ) {
 */
 
 	if ( $pagenow == 'admin.php' && isset( $plugin_page ) ) {
-		foreach ( $menu as $parent_menu ) {
+		foreach ( (array)$menu as $parent_menu ) {
 			if ( $parent_menu[2] == $plugin_page ) {
 				$parent_file = $plugin_page;
 				if ( isset( $_wp_real_parent_file[$parent_file] ) )
@@ -744,7 +804,7 @@ function get_admin_page_parent( $parent = '' ) {
 		return $parent_file;
 	}
 
-	foreach (array_keys( $submenu ) as $parent) {
+	foreach (array_keys( (array)$submenu ) as $parent) {
 		foreach ( $submenu[$parent] as $submenu_array ) {
 			if ( isset( $_wp_real_parent_file[$parent] ) )
 				$parent = $_wp_real_parent_file[$parent];
@@ -780,7 +840,7 @@ function get_admin_page_title() {
 	$parent = $parent1 = get_admin_page_parent();
 
 	if ( empty ( $parent) ) {
-		foreach ( $menu as $menu_array ) {
+		foreach ( (array)$menu as $menu_array ) {
 			if ( isset( $menu_array[3] ) ) {
 				if ( $menu_array[2] == $pagenow ) {
 					$title = $menu_array[3];
@@ -816,6 +876,18 @@ function get_admin_page_title() {
 					$title = $submenu_array[0];
 					return $title;
 				}
+			}
+		}
+		if ( !isset($title) || empty ( $title ) ) {
+			foreach ( $menu as $menu_array ) {
+				if ( isset( $plugin_page ) &&
+					($plugin_page == $menu_array[2] ) &&
+					($pagenow == 'admin.php' ) &&
+					($parent1 == $menu_array[2] ) )
+					{
+						$title = $menu_array[3];
+						return $menu_array[3];
+					}
 			}
 		}
 	}
@@ -859,14 +931,21 @@ function user_can_access_admin_page() {
 	global $_wp_menu_nopriv;
 	global $_wp_submenu_nopriv;
 	global $plugin_page;
+	global $_registered_pages;
 
 	$parent = get_admin_page_parent();
 
 	if ( !isset( $plugin_page ) && isset( $_wp_submenu_nopriv[$parent][$pagenow] ) )
 		return false;
 
-	if ( isset( $plugin_page ) && isset( $_wp_submenu_nopriv[$parent][$plugin_page] ) )
-		return false;
+	if ( isset( $plugin_page ) ) {
+		if ( isset( $_wp_submenu_nopriv[$parent][$plugin_page] ) )
+			return false;
+
+		$hookname = get_plugin_page_hookname($plugin_page, $parent);
+		if ( !isset($_registered_pages[$hookname]) )
+			return false;
+	}
 
 	if ( empty( $parent) ) {
 		if ( isset( $_wp_menu_nopriv[$pagenow] ) )
@@ -874,6 +953,8 @@ function user_can_access_admin_page() {
 		if ( isset( $_wp_submenu_nopriv[$pagenow][$pagenow] ) )
 			return false;
 		if ( isset( $plugin_page ) && isset( $_wp_submenu_nopriv[$pagenow][$plugin_page] ) )
+			return false;
+		if ( isset( $plugin_page ) && isset( $_wp_menu_nopriv[$plugin_page] ) )
 			return false;
 		foreach (array_keys( $_wp_submenu_nopriv ) as $key ) {
 			if ( isset( $_wp_submenu_nopriv[$key][$pagenow] ) )
@@ -883,6 +964,9 @@ function user_can_access_admin_page() {
 		}
 		return true;
 	}
+
+	if ( isset( $plugin_page ) && ( $plugin_page == $parent ) && isset( $_wp_menu_nopriv[$plugin_page] ) )
+		return false;
 
 	if ( isset( $submenu[$parent] ) ) {
 		foreach ( $submenu[$parent] as $submenu_array ) {
@@ -969,7 +1053,7 @@ function add_option_update_handler($option_group, $option_name, $sanitize_callba
  */
 function remove_option_update_handler($option_group, $option_name, $sanitize_callback = '') {
 	global $new_whitelist_options;
-	$pos = array_search( $option_name, $new_whitelist_options );
+	$pos = array_search( $option_name, (array) $new_whitelist_options );
 	if ( $pos !== false )
 		unset( $new_whitelist_options[ $option_group ][ $pos ] );
 	if ( $sanitize_callback != '' )
@@ -1041,9 +1125,11 @@ function remove_option_whitelist( $del_options, $options = '' ) {
 	}
 	foreach( $del_options as $page => $keys ) {
 		foreach( $keys as $key ) {
-			$pos = array_search( $key, $whitelist_options[ $page ] );
-			if( $pos !== false )
-				unset( $whitelist_options[ $page ][ $pos ] );
+			if ( isset($whitelist_options[ $page ]) && is_array($whitelist_options[ $page ]) ) {
+				$pos = array_search( $key, $whitelist_options[ $page ] );
+				if( $pos !== false )
+					unset( $whitelist_options[ $page ][ $pos ] );
+			}
 		}
 	}
 	return $whitelist_options;
@@ -1057,7 +1143,7 @@ function remove_option_whitelist( $del_options, $options = '' ) {
  * @param string $option_group A settings group name.  This should match the group name used in register_setting().
  */
 function settings_fields($option_group) {
-	echo "<input type='hidden' name='option_page' value='$option_group' />";
+	echo "<input type='hidden' name='option_page' value='" . esc_attr($option_group) . "' />";
 	echo '<input type="hidden" name="action" value="update" />';
 	wp_nonce_field("$option_group-options");
 }

@@ -33,7 +33,7 @@ class UTW_Import {
 		echo '<p>'.__('To accommodate larger databases for those tag-crazy authors out there, we have made this into an easy 5-step program to help you kick that nasty UTW habit. Just keep clicking along and we will let you know when you are in the clear!').'</p>';
 		echo '<p><strong>'.__('Don&#8217;t be stupid - backup your database before proceeding!').'</strong></p>';
 		echo '<form action="admin.php?import=utw&amp;step=1" method="post">';
-		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.__('Step 1').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.esc_attr__('Step 1').'" /></p>';
 		echo '</form>';
 		echo '</div>';
 	}
@@ -98,7 +98,7 @@ class UTW_Import {
 
 			$count = count($tags);
 
-			echo '<p>' . sprintf( __ngettext('Done! <strong>%s</strong> tag were read.', 'Done! <strong>%s</strong> tags were read.', $count), $count ) . '<br /></p>';
+			echo '<p>' . sprintf( _n('Done! <strong>%s</strong> tag were read.', 'Done! <strong>%s</strong> tags were read.', $count), $count ) . '<br /></p>';
 			echo '<p>' . __('The following tags were found:') . '</p>';
 
 			echo '<ul>';
@@ -120,7 +120,7 @@ class UTW_Import {
 
 		echo '<form action="admin.php?import=utw&amp;step=2" method="post">';
 		wp_nonce_field('import-utw');
-		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.__('Step 2').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.esc_attr__('Step 2').'" /></p>';
 		echo '</form>';
 		echo '</div>';
 	}
@@ -150,13 +150,13 @@ class UTW_Import {
 
 			$count = count($posts);
 
-			echo '<p>' . sprintf( __ngettext('Done! <strong>%s</strong> tag to post relationships were read.', 'Done! <strong>%s</strong> tags to post relationships were read.', $count), $count ) . '<br /></p>';
+			echo '<p>' . sprintf( _n('Done! <strong>%s</strong> tag to post relationships were read.', 'Done! <strong>%s</strong> tags to post relationships were read.', $count), $count ) . '<br /></p>';
 
 		}
 
 		echo '<form action="admin.php?import=utw&amp;step=3" method="post">';
 		wp_nonce_field('import-utw');
-		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.__('Step 3').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.esc_attr__('Step 3').'" /></p>';
 		echo '</form>';
 		echo '</div>';
 
@@ -171,11 +171,11 @@ class UTW_Import {
 		// run that funky magic!
 		$tags_added = $this->tag2post();
 
-		echo '<p>' . sprintf( __ngettext( 'Done! <strong>%s</strong> tag were added!', 'Done! <strong>%s</strong> tags were added!', $tags_added ), $tags_added ) . '<br /></p>';
+		echo '<p>' . sprintf( _n( 'Done! <strong>%s</strong> tag were added!', 'Done! <strong>%s</strong> tags were added!', $tags_added ), $tags_added ) . '<br /></p>';
 
 		echo '<form action="admin.php?import=utw&amp;step=4" method="post">';
 		wp_nonce_field('import-utw');
-		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.__('Step 4').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" class="button" value="'.esc_attr__('Step 4').'" /></p>';
 		echo '</form>';
 		echo '</div>';
 
