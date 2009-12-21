@@ -222,7 +222,7 @@ function _get_page_link( $id = false, $leavename = false, $sample = false ) {
 
 	$pagestruct = $wp_rewrite->get_page_permastruct();
 
-	if ( '' != $pagestruct && ( ( isset($post->post_status) && 'draft' != $post->post_status ) || $sample ) ) {
+	if ( '' != $pagestruct && ( ( isset($post->post_status) && 'draft' != $post->post_status && 'pending' != $post->post_status ) || $sample ) ) {
 		$link = get_page_uri($id);
 		$link = ( $leavename ) ? $pagestruct : str_replace('%pagename%', $link, $pagestruct);
 		$link = trailingslashit(get_option('home')) . "$link";
@@ -619,9 +619,9 @@ function edit_tag_link( $link = '', $before = '', $after = '', $tag = null ) {
  */
 function get_search_feed_link($search_query = '', $feed = '') {
 	if ( empty($search_query) )
-		$search = esc_attr(get_search_query());
+		$search = esc_attr( urlencode(get_search_query()) );
 	else
-		$search = esc_attr(stripslashes($search_query));
+		$search = esc_attr( urlencode(stripslashes($search_query)) );
 
 	if ( empty($feed) )
 		$feed = get_default_feed();
@@ -644,9 +644,9 @@ function get_search_feed_link($search_query = '', $feed = '') {
  */
 function get_search_comments_feed_link($search_query = '', $feed = '') {
 	if ( empty($search_query) )
-		$search = esc_attr(get_search_query());
+		$search = esc_attr( urlencode(get_search_query()) );
 	else
-		$search = esc_attr(stripslashes($search_query));
+		$search = esc_attr( urlencode(stripslashes($search_query)) );
 
 	if ( empty($feed) )
 		$feed = get_default_feed();
@@ -701,7 +701,7 @@ function get_edit_post_link( $id = 0, $context = 'display' ) {
 		break;
 	default :
 		if ( !current_user_can( 'edit_post', $post->ID ) )
-			return;
+			return apply_filters( 'get_edit_post_link', '', $post->ID, $context );;
 		$file = 'post';
 		$var  = 'post';
 		break;
@@ -720,15 +720,70 @@ function get_edit_post_link( $id = 0, $context = 'display' ) {
  * @param string $after Optional. Display after edit link.
  * @param int $id Optional. Post ID.
  */
-function edit_post_link( $link = 'Edit This', $before = '', $after = '', $id = 0 ) {
+function edit_post_link( $link = null, $before = '', $after = '', $id = 0 ) {
 	if ( !$post = &get_post( $id ) )
 		return;
 
 	if ( !$url = get_edit_post_link( $post->ID ) )
 		return;
 
+	if ( null === $link )
+		$link = __('Edit This');
+
 	$link = '<a class="post-edit-link" href="' . $url . '" title="' . esc_attr( __( 'Edit post' ) ) . '">' . $link . '</a>';
 	echo $before . apply_filters( 'edit_post_link', $link, $post->ID ) . $after;
+}
+
+/**
+ * Retrieve delete posts link for post.
+ *
+ * Can be used within the WordPress loop or outside of it. Can be used with
+ * pages, posts, attachments, and revisions.
+ *
+ * @since 2.9.0
+ *
+ * @param int $id Optional. Post ID.
+ * @param string $context Optional, default to display. How to write the '&', defaults to '&amp;'.
+ * @return string
+ */
+function get_delete_post_link($id = 0, $context = 'display') {
+	if ( !$post = &get_post( $id ) )
+		return;
+
+	if ( 'display' == $context )
+		$action = 'action=trash&amp;';
+	else
+		$action = 'action=trash&';
+
+	switch ( $post->post_type ) :
+	case 'page' :
+		if ( !current_user_can( 'delete_page', $post->ID ) )
+			return;
+		$file = 'page';
+		$var  = 'post';
+		break;
+	case 'attachment' :
+		if ( !current_user_can( 'delete_post', $post->ID ) )
+			return;
+		$file = 'media';
+		$var  = 'attachment_id';
+		break;
+	case 'revision' :
+		if ( !current_user_can( 'delete_post', $post->ID ) )
+			return;
+		$file = 'revision';
+		$var  = 'revision';
+		$action = '';
+		break;
+	default :
+		if ( !current_user_can( 'edit_post', $post->ID ) )
+			return apply_filters( 'get_delete_post_link', '', $post->ID, $context );;
+		$file = 'post';
+		$var  = 'post';
+		break;
+	endswitch;
+
+	return apply_filters( 'get_delete_post_link', wp_nonce_url( admin_url("$file.php?{$action}$var=$post->ID"), "trash-{$file}_" . $post->ID ), $context );
 }
 
 /**
@@ -765,7 +820,7 @@ function get_edit_comment_link( $comment_id = 0 ) {
  * @param string $after Optional. Display after edit link.
  * @return string|null HTML content, if $echo is set to false.
  */
-function edit_comment_link( $link = 'Edit This', $before = '', $after = '' ) {
+function edit_comment_link( $link = null, $before = '', $after = '' ) {
 	global $comment, $post;
 
 	if ( $post->post_type == 'page' ) {
@@ -775,6 +830,9 @@ function edit_comment_link( $link = 'Edit This', $before = '', $after = '' ) {
 		if ( !current_user_can( 'edit_post', $post->ID ) )
 			return;
 	}
+
+	if ( null === $link )
+		$link = __('Edit This');
 
 	$link = '<a class="comment-edit-link" href="' . get_edit_comment_link( $comment->comment_ID ) . '" title="' . __( 'Edit comment' ) . '">' . $link . '</a>';
 	echo $before . apply_filters( 'edit_comment_link', $link, $comment->comment_ID ) . $after;
@@ -898,7 +956,7 @@ function get_adjacent_post($in_same_cat = false, $excluded_categories = '', $pre
 	$order = $previous ? 'DESC' : 'ASC';
 
 	$join  = apply_filters( "get_{$adjacent}_post_join", $join, $in_same_cat, $excluded_categories );
-	$where = apply_filters( "get_{$adjacent}_post_where", $wpdb->prepare("WHERE p.post_date $op %s AND p.post_type = 'post' AND p.post_status = 'publish' $posts_in_ex_cats_sql", $current_post_date), $in_same_cat, $excluded_categories );
+	$where = apply_filters( "get_{$adjacent}_post_where", $wpdb->prepare("WHERE p.post_date $op %s AND p.post_type = %s AND p.post_status = 'publish' $posts_in_ex_cats_sql", $current_post_date, $post->post_type), $in_same_cat, $excluded_categories );
 	$sort  = apply_filters( "get_{$adjacent}_post_sort", "ORDER BY p.post_date $order LIMIT 1" );
 
 	$query = "SELECT p.* FROM $wpdb->posts AS p $join $where $sort";
@@ -1206,8 +1264,9 @@ function adjacent_post_link($format, $link, $in_same_cat = false, $excluded_cate
 
 	$title = apply_filters('the_title', $title, $post);
 	$date = mysql2date(get_option('date_format'), $post->post_date);
+	$rel = $previous ? 'prev' : 'next';
 
-	$string = '<a href="'.get_permalink($post).'">';
+	$string = '<a href="'.get_permalink($post).'" rel="'.$rel.'">';
 	$link = str_replace('%title', $title, $link);
 	$link = str_replace('%date', $date, $link);
 	$link = $string . $link . '</a>';
@@ -1656,18 +1715,10 @@ function get_shortcut_link() {
 			f='" . admin_url('press-this.php') . "',
 			l=d.location,
 			e=encodeURIComponent,
-			g=f+'?u='+e(l.href)+'&t='+e(d.title)+'&s='+e(s)+'&v=2';
-			function a(){
-				if(!w.open(g,'t','toolbar=0,resizable=0,scrollbars=1,status=1,width=720,height=570')){
-					l.href=g;
-				}
-			}";
-			if (strpos($_SERVER['HTTP_USER_AGENT'], 'Firefox') !== false)
-				$link .= 'setTimeout(a,0);';
-			else
-				$link .= 'a();';
-
-			$link .= "void(0);";
+			u=f+'?u='+e(l.href)+'&t='+e(d.title)+'&s='+e(s)+'&v=4';
+			a=function(){if(!w.open(u,'t','toolbar=0,resizable=1,scrollbars=1,status=1,width=720,height=570'))l.href=u;};
+			if (/Firefox/.test(navigator.userAgent)) setTimeout(a, 0); else a();
+			void(0)";
 
 	$link = str_replace(array("\r", "\n", "\t"),  '', $link);
 
@@ -1804,6 +1855,24 @@ function plugins_url($path = '', $plugin = '') {
 		$url .= '/' . ltrim($path, '/');
 
 	return apply_filters('plugins_url', $url, $path, $plugin);
+}
+
+/**
+ * Output rel=canonical for singular queries
+ *
+ * @package WordPress
+ * @since 2.9.0
+*/
+function rel_canonical() {
+	if ( !is_singular() )
+		return;
+
+	global $wp_the_query;
+	if ( !$id = $wp_the_query->get_queried_object_id() )
+		return;
+
+	$link = get_permalink( $id );
+	echo "<link rel='canonical' href='$link' />\n";
 }
 
 ?>

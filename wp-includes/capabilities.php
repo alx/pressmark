@@ -123,12 +123,15 @@ class WP_Roles {
 	 *
 	 * Updates the list of roles, if the role doesn't already exist.
 	 *
+	 * The capabilities are defined in the following format `array( 'read' => true );`
+	 * To explicitly deny a role a capability you set the value for that capability to false.
+	 * 
 	 * @since 2.0.0
 	 * @access public
 	 *
 	 * @param string $role Role name.
 	 * @param string $display_name Role display name.
-	 * @param array $capabilities List of role capabilities.
+	 * @param array $capabilities List of role capabilities in the above format.
 	 * @return null|WP_Role WP_Role object if role is added, null if already exists.
 	 */
 	function add_role( $role, $display_name, $capabilities = array() ) {
@@ -174,7 +177,7 @@ class WP_Roles {
 	 *
 	 * @param string $role Role name.
 	 * @param string $cap Capability name.
-	 * @param bool $grant Optional, default is true. Whether role is capable of preforming capability.
+	 * @param bool $grant Optional, default is true. Whether role is capable of performing capability.
 	 */
 	function add_cap( $role, $cap, $grant = true ) {
 		$this->roles[$role]['capabilities'][$cap] = $grant;
@@ -449,6 +452,15 @@ class WP_User {
 	var $last_name = '';
 
 	/**
+	 * The filter context applied to user data fields.
+	 *
+	 * @since 2.9.0
+	 * @access private
+	 * @var string
+	 */
+	var $filter = null;
+
+	/**
 	 * PHP4 Constructor - Sets up the object properties.
 	 *
 	 * Retrieves the userdata and then assigns all of the data keys to direct
@@ -596,6 +608,7 @@ class WP_User {
 		update_usermeta( $this->ID, $this->cap_key, $this->caps );
 		$this->get_role_caps();
 		$this->update_user_level_from_caps();
+		do_action( 'set_user_role', $this->ID, $role );
 	}
 
 	/**
@@ -768,16 +781,26 @@ function map_meta_cap( $cap, $user_id ) {
 			$args = array_merge( array( 'delete_page', $user_id ), $args );
 			return call_user_func_array( 'map_meta_cap', $args );
 		}
-		$post_author_data = get_userdata( $post->post_author );
-		//echo "current user id : $user_id, post author id: " . $post_author_data->ID . "<br />";
+
+		if ('' != $post->post_author) {
+			$post_author_data = get_userdata( $post->post_author );
+		} else {
+			//No author set yet so default to current user for cap checks
+			$post_author_data = $author_data;
+		}
+
 		// If the user is the author...
 		if ( $user_id == $post_author_data->ID ) {
 			// If the post is published...
-			if ( 'publish' == $post->post_status )
+			if ( 'publish' == $post->post_status ) {
 				$caps[] = 'delete_published_posts';
-			else
+			} elseif ( 'trash' == $post->post_status ) {
+				if ('publish' == get_post_meta($post->ID, '_wp_trash_meta_status', true) )
+					$caps[] = 'delete_published_posts';
+			} else {
 				// If the post is draft...
 				$caps[] = 'delete_posts';
+			}
 		} else {
 			// The user is trying to edit someone else's post.
 			$caps[] = 'delete_others_posts';
@@ -795,13 +818,25 @@ function map_meta_cap( $cap, $user_id ) {
 		$page_author_data = get_userdata( $page->post_author );
 		//echo "current user id : $user_id, page author id: " . $page_author_data->ID . "<br />";
 		// If the user is the author...
+
+		if ('' != $page->post_author) {
+			$page_author_data = get_userdata( $page->post_author );
+		} else {
+			//No author set yet so default to current user for cap checks
+			$page_author_data = $author_data;
+		}
+
 		if ( $user_id == $page_author_data->ID ) {
 			// If the page is published...
-			if ( $page->post_status == 'publish' )
+			if ( $page->post_status == 'publish' ) {
 				$caps[] = 'delete_published_pages';
-			else
+			} elseif ( 'trash' == $page->post_status ) {
+				if ('publish' == get_post_meta($page->ID, '_wp_trash_meta_status', true) )
+					$caps[] = 'delete_published_pages';
+			} else {
 				// If the page is draft...
 				$caps[] = 'delete_pages';
+			}
 		} else {
 			// The user is trying to edit someone else's page.
 			$caps[] = 'delete_others_pages';
@@ -827,11 +862,15 @@ function map_meta_cap( $cap, $user_id ) {
 		// If the user is the author...
 		if ( $user_id == $post_author_data->ID ) {
 			// If the post is published...
-			if ( 'publish' == $post->post_status )
+			if ( 'publish' == $post->post_status ) {
 				$caps[] = 'edit_published_posts';
-			else
+			} elseif ( 'trash' == $post->post_status ) {
+				if ('publish' == get_post_meta($post->ID, '_wp_trash_meta_status', true) )
+					$caps[] = 'edit_published_posts';
+			} else {
 				// If the post is draft...
 				$caps[] = 'edit_posts';
+			}
 		} else {
 			// The user is trying to edit someone else's post.
 			$caps[] = 'edit_others_posts';
@@ -851,11 +890,15 @@ function map_meta_cap( $cap, $user_id ) {
 		// If the user is the author...
 		if ( $user_id == $page_author_data->ID ) {
 			// If the page is published...
-			if ( 'publish' == $page->post_status )
+			if ( 'publish' == $page->post_status ) {
 				$caps[] = 'edit_published_pages';
-			else
+			} elseif ( 'trash' == $page->post_status ) {
+				if ('publish' == get_post_meta($page->ID, '_wp_trash_meta_status', true) )
+					$caps[] = 'edit_published_pages';
+			} else {
 				// If the page is draft...
 				$caps[] = 'edit_pages';
+			}
 		} else {
 			// The user is trying to edit someone else's page.
 			$caps[] = 'edit_others_pages';
@@ -932,6 +975,30 @@ function current_user_can( $capability ) {
 	$args = array_merge( array( $capability ), $args );
 
 	return call_user_func_array( array( &$current_user, 'has_cap' ), $args );
+}
+
+/**
+ * Whether author of supplied post has capability or role.
+ *
+ * @since 2.9.0
+ *
+ * @param int|object $post Post ID or post object.
+ * @param string $capability Capability or role name.
+ * @return bool
+ */
+function author_can( $post, $capability ) {
+	if ( !$post = get_post($post) )
+		return false;
+
+	$author = new WP_User( $post->post_author );
+
+	if ( empty( $author ) )
+		return false;
+
+	$args = array_slice( func_get_args(), 2 );
+	$args = array_merge( array( $capability ), $args );
+
+	return call_user_func_array( array( &$author, 'has_cap' ), $args );
 }
 
 /**

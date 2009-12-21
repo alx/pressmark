@@ -22,7 +22,7 @@
  */
 function get_the_author($deprecated = '') {
 	global $authordata;
-	return apply_filters('the_author', $authordata->display_name);
+	return apply_filters('the_author', is_object($authordata) ? $authordata->display_name : null);
 }
 
 /**
@@ -104,7 +104,7 @@ function get_the_author_meta($field = '', $user_id = false) {
 	else
 		$value = isset($authordata->$field) ? $authordata->$field : '';
 
-	return apply_filters('get_the_author_' . $field, $value);
+	return apply_filters('get_the_author_' . $field, $value, $user_id);
 }
 
 /**
@@ -116,7 +116,7 @@ function get_the_author_meta($field = '', $user_id = false) {
  * @echo string The author's field from the current author's DB object.
  */
 function the_author_meta($field = '', $user_id = false) {
-	echo apply_filters('the_author_' . $field, get_the_author_meta($field, $user_id));
+	echo apply_filters('the_author_' . $field, get_the_author_meta($field, $user_id), $user_id);
 }
 
 /**
@@ -178,12 +178,13 @@ function the_author_posts() {
  */
 function the_author_posts_link($deprecated = '') {
 	global $authordata;
-	printf(
+	$link = sprintf(
 		'<a href="%1$s" title="%2$s">%3$s</a>',
 		get_author_posts_url( $authordata->ID, $authordata->user_nicename ),
 		esc_attr( sprintf( __( 'Posts by %s' ), get_the_author() ) ),
 		get_the_author()
 	);
+	echo apply_filters( 'the_author_posts_link', $link );
 }
 
 /**

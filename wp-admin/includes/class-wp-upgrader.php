@@ -81,20 +81,28 @@ class WP_Upgrader {
 			return new WP_Error('fs_error', $this->strings['fs_error'], $wp_filesystem->errors);
 
 		foreach ( (array)$directories as $dir ) {
-			if ( ABSPATH == $dir && ! $wp_filesystem->abspath() )
-				return new WP_Error('fs_no_root_dir', $this->strings['fs_no_root_dir']);
-
-			elseif ( WP_CONTENT_DIR == $dir && ! $wp_filesystem->wp_content_dir() )
-				return new WP_Error('fs_no_content_dir', $this->strings['fs_no_content_dir']);
-
-			elseif ( WP_PLUGIN_DIR == $dir && ! $wp_filesystem->wp_plugins_dir() )
-				return new WP_Error('fs_no_plugins_dir', $this->strings['fs_no_plugins_dir']);
-
-			elseif ( WP_CONTENT_DIR . '/themes' == $dir && ! $wp_filesystem->find_folder(WP_CONTENT_DIR . '/themes') )
-				return new WP_Error('fs_no_themes_dir', $this->strings['fs_no_themes_dir']);
-
-			elseif ( ! $wp_filesystem->find_folder($dir) )
-				return new WP_Error('fs_no_folder', sprintf($strings['fs_no_folder'], $dir));
+			switch ( $dir ) {
+				case ABSPATH:
+					if ( ! $wp_filesystem->abspath() )
+						return new WP_Error('fs_no_root_dir', $this->strings['fs_no_root_dir']);
+					break;
+				case WP_CONTENT_DIR:
+					if ( ! $wp_filesystem->wp_content_dir() )
+						return new WP_Error('fs_no_content_dir', $this->strings['fs_no_content_dir']);
+					break;
+				case WP_PLUGIN_DIR:
+					if ( ! $wp_filesystem->wp_plugins_dir() )
+						return new WP_Error('fs_no_plugins_dir', $this->strings['fs_no_plugins_dir']);
+					break;
+				case WP_CONTENT_DIR . '/themes':
+					if ( ! $wp_filesystem->find_folder(WP_CONTENT_DIR . '/themes') )
+						return new WP_Error('fs_no_themes_dir', $this->strings['fs_no_themes_dir']);
+					break;
+				default:
+					if ( ! $wp_filesystem->find_folder($dir) )
+						return new WP_Error('fs_no_folder', sprintf($this->strings['fs_no_folder'], $dir));
+					break;
+			}
 		}
 		return true;
 	} //end fs_connect();
@@ -202,24 +210,26 @@ class WP_Upgrader {
 			$destination = trailingslashit($destination) . trailingslashit(basename($source));
 		}
 
-		//If we're not clearing the destination folder, and something exists there allready, Bail.
-		if ( ! $clear_destination && $wp_filesystem->exists($remote_destination) ) {
-			$wp_filesystem->delete($remote_source, true); //Clear out the source files.
-			return new WP_Error('folder_exists', $this->strings['folder_exists'], $remote_destination );
-		} else if ( $clear_destination ) {
-			//We're going to clear the destination if theres something there
-			$this->skin->feedback('remove_old');
-
-			$removed = true;
-			if ( $wp_filesystem->exists($remote_destination) )
+		if ( $wp_filesystem->exists($remote_destination) ) {
+			if ( $clear_destination ) {
+				//We're going to clear the destination if theres something there
+				$this->skin->feedback('remove_old');
 				$removed = $wp_filesystem->delete($remote_destination, true);
+				$removed = apply_filters('upgrader_clear_destination', $removed, $local_destination, $remote_destination, $hook_extra);
 
-			$removed = apply_filters('upgrader_clear_destination', $removed, $local_destination, $remote_destination, $hook_extra);
-
-			if ( is_wp_error($removed) )
-				return $removed;
-			else if ( ! $removed )
-				return new WP_Error('remove_old_failed', $this->strings['remove_old_failed']);
+				if ( is_wp_error($removed) )
+					return $removed;
+				else if ( ! $removed )
+					return new WP_Error('remove_old_failed', $this->strings['remove_old_failed']);
+			} else {
+				//If we're not clearing the destination folder and something exists there allready, Bail.
+				//But first check to see if there are actually any files in the folder.
+				$_files = $wp_filesystem->dirlist($remote_destination);
+				if ( ! empty($_files) ) {
+					$wp_filesystem->delete($remote_source, true); //Clear out the source files.
+					return new WP_Error('folder_exists', $this->strings['folder_exists'], $remote_destination );
+				}
+			}
 		}
 
 		//Create destination if needed
@@ -261,6 +271,7 @@ class WP_Upgrader {
 							'destination' => '', //And this
 							'clear_destination' => false,
 							'clear_working' => true,
+							'is_multi' => false,
 							'hook_extra' => array() //Pass any extra $hook_extra args here, this will be passed to any hooked filters.
 						);
 
@@ -277,7 +288,9 @@ class WP_Upgrader {
 			return $res;
 		}
 
-		$this->skin->header();
+		if ( !$is_multi ) // call $this->header separately if running multiple times
+			$this->skin->header();
+
 		$this->skin->before();
 
 		//Download the package (Note, This just returns the filename of the file if the package is a local file)
@@ -311,7 +324,10 @@ class WP_Upgrader {
 			$this->skin->feedback('process_success');
 		}
 		$this->skin->after();
-		$this->skin->footer();
+
+		if ( !$is_multi )
+			$this->skin->footer();
+
 		return $result;
 	}
 
@@ -344,6 +360,8 @@ class WP_Upgrader {
 class Plugin_Upgrader extends WP_Upgrader {
 
 	var $result;
+	var $bulk = false;
+	var $show_before = '';
 
 	function upgrade_strings() {
 		$this->strings['up_to_date'] = __('The plugin is at the latest version.');
@@ -414,7 +432,7 @@ class Plugin_Upgrader extends WP_Upgrader {
 					)
 				));
 
-		//Cleanup our hooks, incase something else does a upgrade on this connection.
+		// Cleanup our hooks, incase something else does a upgrade on this connection.
 		remove_filter('upgrader_pre_install', array(&$this, 'deactivate_plugin_before_upgrade'));
 		remove_filter('upgrader_clear_destination', array(&$this, 'delete_old_plugin'));
 
@@ -423,6 +441,76 @@ class Plugin_Upgrader extends WP_Upgrader {
 
 		// Force refresh of plugin update information
 		delete_transient('update_plugins');
+	}
+
+	function bulk_upgrade($plugins) {
+
+		$this->init();
+		$this->bulk = true;
+		$this->upgrade_strings();
+
+		$current = get_transient( 'update_plugins' );
+
+		add_filter('upgrader_clear_destination', array(&$this, 'delete_old_plugin'), 10, 4);
+
+		$this->skin->header();
+
+		// Connect to the Filesystem first.
+		$res = $this->fs_connect( array(WP_CONTENT_DIR, WP_PLUGIN_DIR) );
+		if ( ! $res ) {
+			$this->skin->footer();
+			return false;
+		}
+
+		$this->maintenance_mode(true);
+
+		$all = count($plugins);
+		$i = 1;
+		foreach ( $plugins as $plugin ) {
+
+			$this->show_before = sprintf( '<h4>' . __('Updating plugin %1$d of %2$d...') . '</h4>', $i, $all );
+			$i++;
+
+			if ( !isset( $current->response[ $plugin ] ) ) {
+				$this->skin->set_result(false);
+				$this->skin->error('up_to_date');
+				$this->skin->after();
+				$results[$plugin] = false;
+				continue;
+			}
+
+			// Get the URL to the zip file
+			$r = $current->response[ $plugin ];
+
+			$this->skin->plugin_active = is_plugin_active($plugin);
+
+			$result = $this->run(array(
+						'package' => $r->package,
+						'destination' => WP_PLUGIN_DIR,
+						'clear_destination' => true,
+						'clear_working' => true,
+						'is_multi' => true,
+						'hook_extra' => array(
+									'plugin' => $plugin
+						)
+					));
+
+			$results[$plugin] = $this->result;
+
+			// Prevent credentials auth screen from displaying multiple times
+			if ( false === $result )
+				break;
+		}
+		$this->maintenance_mode(false);
+		$this->skin->footer();
+
+		// Cleanup our hooks, incase something else does a upgrade on this connection.
+		remove_filter('upgrader_clear_destination', array(&$this, 'delete_old_plugin'));
+
+		// Force refresh of plugin update information
+		delete_transient('update_plugins');
+
+		return $results;
 	}
 
 	//return plugin info.
@@ -560,7 +648,7 @@ class Theme_Upgrader extends WP_Upgrader {
 			$this->skin->after();
 			return false;
 		}
-		
+
 		$r = $current->response[ $theme ];
 
 		add_filter('upgrader_pre_install', array(&$this, 'current_before'), 10, 2);
@@ -820,11 +908,15 @@ class Plugin_Upgrader_Skin extends WP_Upgrader_Skin {
 	}
 
 	function after() {
+		if ( $this->upgrader->bulk )
+			return;
+
 		$this->plugin = $this->upgrader->plugin_info();
 		if( !empty($this->plugin) && !is_wp_error($this->result) && $this->plugin_active ){
 			show_message(__('Attempting reactivation of the plugin'));
 			echo '<iframe style="border:0;overflow:hidden" width="100%" height="170px" src="' . wp_nonce_url('update.php?action=activate-plugin&plugin=' . $this->plugin, 'activate-plugin_' . $this->plugin) .'"></iframe>';
 		}
+
 		$update_actions =  array(
 			'activate_plugin' => '<a href="' . wp_nonce_url('plugins.php?action=activate&amp;plugin=' . $this->plugin, 'activate-plugin_' . $this->plugin) . '" title="' . esc_attr__('Activate this plugin') . '" target="_parent">' . __('Activate Plugin') . '</a>',
 			'plugins_page' => '<a href="' . admin_url('plugins.php') . '" title="' . esc_attr__('Goto plugins page') . '" target="_parent">' . __('Return to Plugins page') . '</a>'
@@ -837,6 +929,13 @@ class Plugin_Upgrader_Skin extends WP_Upgrader_Skin {
 		$update_actions = apply_filters('update_plugin_complete_actions', $update_actions, $this->plugin);
 		if ( ! empty($update_actions) )
 			$this->feedback('<strong>' . __('Actions:') . '</strong> ' . implode(' | ', (array)$update_actions));
+	}
+
+	function before() {
+		if ( $this->upgrader->show_before ) {
+			echo $this->upgrader->show_before;
+			$this->upgrader->show_before = '';
+		}
 	}
 }
 
@@ -996,10 +1095,10 @@ class Theme_Upgrader_Skin extends WP_Upgrader_Skin {
 			$name = $theme_info['Name'];
 			$stylesheet = $this->upgrader->result['destination_name'];
 			$template = !empty($theme_info['Template']) ? $theme_info['Template'] : $stylesheet;
-	
+
 			$preview_link = htmlspecialchars( add_query_arg( array('preview' => 1, 'template' => $template, 'stylesheet' => $stylesheet, 'TB_iframe' => 'true' ), trailingslashit(esc_url(get_option('home'))) ) );
 			$activate_link = wp_nonce_url("themes.php?action=activate&amp;template=" . urlencode($template) . "&amp;stylesheet=" . urlencode($stylesheet), 'switch-theme_' . $template);
-	
+
 			$update_actions =  array(
 				'preview' => '<a href="' . $preview_link . '" class="thickbox thickbox-preview" title="' . esc_attr(sprintf(__('Preview &#8220;%s&#8221;'), $name)) . '">' . __('Preview') . '</a>',
 				'activate' => '<a href="' . $activate_link .  '" class="activatelink" title="' . esc_attr( sprintf( __('Activate &#8220;%s&#8221;'), $name ) ) . '">' . __('Activate') . '</a>',

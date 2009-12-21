@@ -95,12 +95,20 @@ function dismissed_updates() {
  * @return null
  */
 function core_upgrade_preamble() {
+	global $upgrade_error;
+
 	$updates = get_core_updates();
 ?>
 	<div class="wrap">
 	<?php screen_icon(); ?>
 	<h2><?php _e('Upgrade WordPress'); ?></h2>
 <?php
+	if ( $upgrade_error ) {
+		echo '<div class="error"><p>';
+		_e('Please select one or more plugins to upgrade.');
+		echo '</p></div>';
+	}
+
 	if ( !isset($updates[0]->response) || 'latest' == $updates[0]->response ) {
 		echo '<h3>';
 		_e('You have the latest version of WordPress. You do not need to upgrade');
@@ -126,9 +134,125 @@ function core_upgrade_preamble() {
 	}
 	echo '</ul>';
 	dismissed_updates();
+
+	list_plugin_updates();
+	//list_theme_updates();
+	do_action('core_upgrade_preamble');
 	echo '</div>';
 }
 
+function list_plugin_updates() {
+	global $wp_version;
+
+	$cur_wp_version = preg_replace('/-.*$/', '', $wp_version);
+
+	require_once(ABSPATH . 'wp-admin/includes/plugin-install.php');
+	$plugins = get_plugin_updates();
+	if ( empty($plugins) )
+		return;
+	$form_action = 'update-core.php?action=do-plugin-upgrade';
+
+	$core_updates = get_core_updates();
+	if ( !isset($core_updates[0]->response) || 'latest' == $core_updates[0]->response || 'development' == $core_updates[0]->response )
+		$core_update_version = false;
+	else
+		$core_update_version = $core_updates[0]->current;
+	?>
+<h3><?php _e('Plugins'); ?></h3>
+<p><?php _e('The following plugins have new versions available.  Check the ones you want to upgrade and then click "Upgrade Plugins".'); ?><p>
+<form method="post" action="<?php echo $form_action; ?>" name="upgrade-plugins" class="upgrade">
+<?php wp_nonce_field('upgrade-core'); ?>
+<p><input id="upgrade-plugins" class="button" type="submit" value="<?php esc_attr_e('Upgrade Plugins'); ?>" name="upgrade" /></p>
+<table class="widefat" cellspacing="0" id="update-plugins-table">
+	<thead>
+	<tr>
+		<th scope="col" class="manage-column check-column"><input type="checkbox" /></th>
+		<th scope="col" class="manage-column"><?php _e('Select All'); ?></th>
+	</tr>
+	</thead>
+
+	<tfoot>
+	<tr>
+		<th scope="col" class="manage-column check-column"><input type="checkbox" /></th>
+		<th scope="col" class="manage-column"><?php _e('Select All'); ?></th>
+	</tr>
+	</tfoot>
+	<tbody class="plugins">
+<?php
+	foreach ( (array) $plugins as $plugin_file => $plugin_data) {
+		$info = plugins_api('plugin_information', array('slug' => $plugin_data->update->slug ));
+		// Get plugin compat for running version of WordPress.
+		if ( isset($info->tested) && version_compare($info->tested, $cur_wp_version, '>=') ) {
+			$compat = '<br />' . sprintf(__('Compatibility with WordPress %1$s: 100%% (according to its author)'), $cur_wp_version);
+		} elseif ( isset($info->compatibility[$cur_wp_version][$plugin_data->update->new_version]) ) {
+			$compat = $info->compatibility[$cur_wp_version][$plugin_data->update->new_version];
+			$compat = '<br />' . sprintf(__('Compatibility with WordPress %1$s: %2$d%% (%3$d "works" votes out of %4$d total)'), $cur_wp_version, $compat[0], $compat[2], $compat[1]);
+		} else {
+			$compat = '<br />' . sprintf(__('Compatibility with WordPress %1$s: Unknown'), $cur_wp_version);
+		}
+		// Get plugin compat for updated version of WordPress.
+		if ( $core_update_version ) {
+			if ( isset($info->compatibility[$core_update_version][$plugin_data->update->new_version]) ) {
+				$update_compat = $info->compatibility[$core_update_version][$plugin_data->update->new_version];
+				$compat .= '<br />' . sprintf(__('Compatibility with WordPress %1$s: %2$d%% (%3$d "works" votes out of %4$d total)'), $core_update_version, $update_compat[0], $update_compat[2], $update_compat[1]);
+			} else {
+				$compat .= '<br />' . sprintf(__('Compatibility with WordPress %1$s: Unknown'), $core_update_version);
+			}
+		}
+		// Get the upgrade notice for the new plugin version.
+		if ( isset($plugin_data->update->upgrade_notice) ) {
+			$upgrade_notice = '<br />' . strip_tags($plugin_data->update->upgrade_notice);
+		} else {
+			$upgrade_notice = '';
+		}
+		echo "
+	<tr class='active'>
+		<th scope='row' class='check-column'><input type='checkbox' name='checked[]' value='" . esc_attr($plugin_file) . "' /></th>
+		<td class='plugin-title'><strong>{$plugin_data->Name}</strong>" . sprintf(__('You are running version %1$s. Upgrade to %2$s.'), $plugin_data->Version, $plugin_data->update->new_version) . $compat . $upgrade_notice . "</td>
+	</tr>";
+	}
+?>
+	</tbody>
+</table>
+<p><input id="upgrade-plugins-2" class="button" type="submit" value="<?php esc_attr_e('Upgrade Plugins'); ?>" name="upgrade" /></p>
+</form>
+<?php
+}
+
+function list_theme_updates() {
+	$themes = get_theme_updates();
+	if ( empty($themes) )
+		return;
+?>
+<h3><?php _e('Themes'); ?></h3>
+<table class="widefat" cellspacing="0" id="update-themes-table">
+	<thead>
+	<tr>
+		<th scope="col" class="manage-column check-column"><input type="checkbox" /></th>
+		<th scope="col" class="manage-column"><?php _e('Name'); ?></th>
+	</tr>
+	</thead>
+
+	<tfoot>
+	<tr>
+		<th scope="col" class="manage-column check-column"><input type="checkbox" /></th>
+		<th scope="col" class="manage-column"><?php _e('Name'); ?></th>
+	</tr>
+	</tfoot>
+	<tbody class="plugins">
+<?php
+	foreach ( (array) $themes as $stylesheet => $theme_data) {
+		echo "
+	<tr class='active'>
+		<th scope='row' class='check-column'><input type='checkbox' name='checked[]' value='" . esc_attr($stylesheet) . "' /></th>
+		<td class='plugin-title'><strong>{$theme_data->Name}</strong></td>
+	</tr>";
+	}
+?>
+	</tbody>
+</table>
+<?php
+}
 
 /**
  * Upgrade WordPress core display.
@@ -206,19 +330,45 @@ function do_undismiss_core_update() {
 	wp_redirect( wp_nonce_url('update-core.php?action=upgrade-core', 'upgrade-core') );
 }
 
+function no_update_actions($actions) {
+	return '';
+}
+
+function do_plugin_upgrade() {
+	include_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+
+	if ( isset($_GET['plugins']) ) {
+		$plugins = explode(',', $_GET['plugins']);
+	} elseif ( isset($_POST['checked']) ) {
+		$plugins = (array) $_POST['checked'];
+	} else {
+		// Nothing to do.
+		return;
+	}
+	$url = 'update-core.php?action=do-plugin-upgrade&amp;plugins=' . urlencode(join(',', $plugins));
+	$title = __('Upgrade Plugins');
+	$nonce = 'upgrade-core';
+	$upgrader = new Plugin_Upgrader( new Plugin_Upgrader_Skin( compact('title', 'nonce', 'url', 'plugin') ) );
+	$upgrader->bulk_upgrade($plugins);
+}
+
 $action = isset($_GET['action']) ? $_GET['action'] : 'upgrade-core';
+
+$upgrade_error = false;
+if ( 'do-plugin-upgrade' == $action && !isset($_GET['plugins']) && !isset($_POST['checked']) ) {
+	$upgrade_error = true;
+	$action = 'upgrade-core';
+}
+
+$title = __('Upgrade WordPress');
+$parent_file = 'tools.php';
 
 if ( 'upgrade-core' == $action ) {
 	wp_version_check();
-	$title = __('Upgrade WordPress');
-	$parent_file = 'tools.php';
 	require_once('admin-header.php');
 	core_upgrade_preamble();
-	include('admin-footer.php');
 } elseif ( 'do-core-upgrade' == $action || 'do-core-reinstall' == $action ) {
 	check_admin_referer('upgrade-core');
-	$title = __('Upgrade WordPress');
-	$parent_file = 'tools.php';
 	// do the (un)dismiss actions before headers,
 	// so that they can redirect
 	if ( isset( $_POST['dismiss'] ) )
@@ -232,6 +382,10 @@ if ( 'upgrade-core' == $action ) {
 		$reinstall = false;
 	if ( isset( $_POST['upgrade'] ) )
 		do_core_upgrade($reinstall);
-	include('admin-footer.php');
+} elseif ( 'do-plugin-upgrade' == $action ) {
+	check_admin_referer('upgrade-core');
+	require_once('admin-header.php');
+	do_plugin_upgrade();
+}
 
-}?>
+include('admin-footer.php');

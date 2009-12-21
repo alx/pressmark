@@ -153,7 +153,7 @@ function wp_authenticate_cookie($user, $username, $password) {
 function get_profile($field, $user = false) {
 	global $wpdb;
 	if ( !$user )
-		$user = $wpdb->escape($_COOKIE[USER_COOKIE]);
+		$user = esc_sql( $_COOKIE[USER_COOKIE] );
 	return $wpdb->get_var( $wpdb->prepare("SELECT $field FROM $wpdb->users WHERE user_login = %s", $user) );
 }
 
@@ -307,12 +307,20 @@ function delete_usermeta( $user_id, $meta_key, $meta_value = '' ) {
 		$meta_value = serialize($meta_value);
 	$meta_value = trim( $meta_value );
 
+	$cur = $wpdb->get_row( $wpdb->prepare("SELECT * FROM $wpdb->usermeta WHERE user_id = %d AND meta_key = %s", $user_id, $meta_key) );
+
+	if ( $cur && $cur->umeta_id )
+		do_action( 'delete_usermeta', $cur->umeta_id, $user_id, $meta_key, $meta_value );
+
 	if ( ! empty($meta_value) )
 		$wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->usermeta WHERE user_id = %d AND meta_key = %s AND meta_value = %s", $user_id, $meta_key, $meta_value) );
 	else
 		$wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->usermeta WHERE user_id = %d AND meta_key = %s", $user_id, $meta_key) );
 
 	wp_cache_delete($user_id, 'users');
+
+	if ( $cur && $cur->umeta_id )
+		do_action( 'deleted_usermeta', $cur->umeta_id, $user_id, $meta_key, $meta_value );
 
 	return true;
 }
@@ -399,6 +407,10 @@ function update_usermeta( $user_id, $meta_key, $meta_value ) {
 	}
 
 	$cur = $wpdb->get_row( $wpdb->prepare("SELECT * FROM $wpdb->usermeta WHERE user_id = %d AND meta_key = %s", $user_id, $meta_key) );
+
+	if ( $cur )
+		do_action( 'update_usermeta', $cur->umeta_id, $user_id, $meta_key, $meta_value );
+
 	if ( !$cur )
 		$wpdb->insert($wpdb->usermeta, compact('user_id', 'meta_key', 'meta_value') );
 	else if ( $cur->meta_value != $meta_value )
@@ -407,6 +419,11 @@ function update_usermeta( $user_id, $meta_key, $meta_value ) {
 		return false;
 
 	wp_cache_delete($user_id, 'users');
+
+	if ( !$cur )
+		do_action( 'added_usermeta', $wpdb->insert_id, $user_id, $meta_key, $meta_value );
+	else
+		do_action( 'updated_usermeta', $cur->umeta_id, $user_id, $meta_key, $meta_value );
 
 	return true;
 }
@@ -431,15 +448,15 @@ function update_usermeta( $user_id, $meta_key, $meta_value ) {
  * @global string $user_pass_md5 MD5 of the user's password
  * @global string $user_identity The display name of the user
  *
- * @param int $user_id Optional. User ID to setup global data.
+ * @param int $for_user_id Optional. User ID to setup global data.
  */
-function setup_userdata($user_id = '') {
+function setup_userdata($for_user_id = '') {
 	global $user_login, $userdata, $user_level, $user_ID, $user_email, $user_url, $user_pass_md5, $user_identity;
 
-	if ( '' == $user_id )
+	if ( '' == $for_user_id )
 		$user = wp_get_current_user();
 	else
-		$user = new WP_User($user_id);
+		$user = new WP_User($for_user_id);
 
 	if ( 0 == $user->ID )
 		return;
@@ -447,7 +464,7 @@ function setup_userdata($user_id = '') {
 	$userdata = $user->data;
 	$user_login	= $user->user_login;
 	$user_level	= (int) isset($user->user_level) ? $user->user_level : 0;
-	$user_ID	= (int) $user->ID;
+	$user_ID = (int) $user->ID;
 	$user_email	= $user->user_email;
 	$user_url	= $user->user_url;
 	$user_pass_md5	= md5($user->user_pass);
@@ -598,6 +615,123 @@ function _fill_user( &$user ) {
 	wp_cache_add($user->user_login, $user->ID, 'userlogins');
 	wp_cache_add($user->user_email, $user->ID, 'useremail');
 	wp_cache_add($user->user_nicename, $user->ID, 'userslugs');
+}
+
+/**
+ * Sanitize every user field.
+ *
+ * If the context is 'raw', then the user object or array will get minimal santization of the int fields.
+ *
+ * @since 2.3.0
+ * @uses sanitize_user_field() Used to sanitize the fields.
+ *
+ * @param object|array $user The User Object or Array
+ * @param string $context Optional, default is 'display'. How to sanitize user fields.
+ * @return object|array The now sanitized User Object or Array (will be the same type as $user)
+ */
+function sanitize_user_object($user, $context = 'display') {
+	if ( is_object($user) ) {
+		if ( !isset($user->ID) )
+			$user->ID = 0;
+		if ( isset($user->data) )
+			$vars = get_object_vars( $user->data );
+		else
+			$vars = get_object_vars($user);
+		foreach ( array_keys($vars) as $field ) {
+			if ( is_array($user->$field) )
+				continue;
+			$user->$field = sanitize_user_field($field, $user->$field, $user->ID, $context);
+		}
+		$user->filter = $context;
+	} else {
+		if ( !isset($user['ID']) )
+			$user['ID'] = 0;
+		foreach ( array_keys($user) as $field )
+			$user[$field] = sanitize_user_field($field, $user[$field], $user['ID'], $context);
+		$user['filter'] = $context;
+	}
+
+	return $user;
+}
+
+/**
+ * Sanitize user field based on context.
+ *
+ * Possible context values are:  'raw', 'edit', 'db', 'display', 'attribute' and 'js'. The
+ * 'display' context is used by default. 'attribute' and 'js' contexts are treated like 'display'
+ * when calling filters.
+ *
+ * @since 2.3.0
+ * @uses apply_filters() Calls 'edit_$field' and '${field_no_prefix}_edit_pre' passing $value and
+ *  $user_id if $context == 'edit' and field name prefix == 'user_'.
+ *
+ * @uses apply_filters() Calls 'edit_user_$field' passing $value and $user_id if $context == 'db'.
+ * @uses apply_filters() Calls 'pre_$field' passing $value if $context == 'db' and field name prefix == 'user_'.
+ * @uses apply_filters() Calls '${field}_pre' passing $value if $context == 'db' and field name prefix != 'user_'.
+ *
+ * @uses apply_filters() Calls '$field' passing $value, $user_id and $context if $context == anything
+ *  other than 'raw', 'edit' and 'db' and field name prefix == 'user_'.
+ * @uses apply_filters() Calls 'user_$field' passing $value if $context == anything other than 'raw',
+ *  'edit' and 'db' and field name prefix != 'user_'.
+ *
+ * @param string $field The user Object field name.
+ * @param mixed $value The user Object value.
+ * @param int $user_id user ID.
+ * @param string $context How to sanitize user fields. Looks for 'raw', 'edit', 'db', 'display',
+ *               'attribute' and 'js'.
+ * @return mixed Sanitized value.
+ */
+function sanitize_user_field($field, $value, $user_id, $context) {
+	$int_fields = array('ID');
+	if ( in_array($field, $int_fields) )
+		$value = (int) $value;
+
+	if ( 'raw' == $context )
+		return $value;
+
+	if ( is_array($value) )
+		return $value;
+
+	$prefixed = false;
+	if ( false !== strpos($field, 'user_') ) {
+		$prefixed = true;
+		$field_no_prefix = str_replace('user_', '', $field);
+	}
+
+	if ( 'edit' == $context ) {
+		if ( $prefixed ) {
+			$value = apply_filters("edit_$field", $value, $user_id);
+		} else {
+			$value = apply_filters("edit_user_$field", $value, $user_id);
+		}
+
+		if ( 'description' == $field )
+			$value = esc_html($value);
+		else
+			$value = esc_attr($value);
+	} else if ( 'db' == $context ) {
+		if ( $prefixed ) {
+			$value = apply_filters("pre_$field", $value);
+		} else {
+			$value = apply_filters("pre_user_$field", $value);
+		}
+	} else {
+		// Use display filters by default.
+		if ( $prefixed )
+			$value = apply_filters($field, $value, $user_id, $context);
+		else
+			$value = apply_filters("user_$field", $value, $user_id, $context);
+	}
+
+	if ( 'user_url' == $field )
+		$value = esc_url($value);
+
+	if ( 'attribute' == $context )
+		$value = esc_attr($value);
+	else if ( 'js' == $context )
+		$value = esc_js($value);
+
+	return $value;
 }
 
 ?>

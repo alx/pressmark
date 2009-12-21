@@ -17,14 +17,8 @@ define('APP_REQUEST', true);
 /** Set up WordPress environment */
 require_once('./wp-load.php');
 
-/** Post Template API */
-require_once(ABSPATH . WPINC . '/post-template.php');
-
 /** Atom Publishing Protocol Class */
 require_once(ABSPATH . WPINC . '/atomlib.php');
-
-/** Feed Handling API */
-require_once(ABSPATH . WPINC . '/feed.php');
 
 /** Admin Image API for metadata updating */
 require_once(ABSPATH . '/wp-admin/includes/image.php');
@@ -68,22 +62,6 @@ function log_app($label,$msg) {
 		fclose($fp);
 	}
 }
-
-if ( !function_exists('wp_set_current_user') ) :
-/**
- * @ignore
- */
-function wp_set_current_user($id, $name = '') {
-	global $current_user;
-
-	if ( isset($current_user) && ($id == $current_user->ID) )
-		return $current_user;
-
-	$current_user = new WP_User($id, $name);
-
-	return $current_user;
-}
-endif;
 
 /**
  * Filter to add more post statuses.
@@ -355,6 +333,7 @@ class AtomServer {
 		$entries_url = esc_attr($this->get_entries_url());
 		$categories_url = esc_attr($this->get_categories_url());
 		$media_url = esc_attr($this->get_attachments_url());
+		$accepted_media_types = '';
 		foreach ($this->media_content_types as $med) {
 			$accepted_media_types = $accepted_media_types . "<accept>" . $med . "</accept>";
 		}
@@ -780,7 +759,7 @@ EOD;
 		}
 
 		$location = get_post_meta($entry['ID'], '_wp_attached_file', true);
-		$location = get_option ('upload_path') . '/' . $location; 
+		$location = get_option ('upload_path') . '/' . $location;
 		$filetype = wp_check_filetype($location);
 
 		if(!isset($location) || 'attachment' != $entry['post_type'] || empty($filetype['ext']))
@@ -790,9 +769,9 @@ EOD;
 		header('Content-Type: ' . $entry['post_mime_type']);
 		header('Connection: close');
 
-		if ($fp = fopen($location, "rb")) { 
-			status_header('200'); 
-			header('Content-Type: ' . $entry['post_mime_type']); 
+		if ($fp = fopen($location, "rb")) {
+			status_header('200');
+			header('Content-Type: ' . $entry['post_mime_type']);
 			header('Connection: close');
 
 			while(!feof($fp)) {
@@ -877,7 +856,7 @@ EOD;
 	 * @return string
 	 */
 	function get_entries_url($page = null) {
-		if($GLOBALS['post_type'] == 'attachment') {
+		if ( isset($GLOBALS['post_type']) && ( $GLOBALS['post_type'] == 'attachment' ) ) {
 			$path = $this->MEDIA_PATH;
 		} else {
 			$path = $this->ENTRIES_PATH;
@@ -1240,7 +1219,7 @@ list($content_type, $content) = prep_atom_text_construct(get_the_content()); ?>
 		log_app('Status','204: No Content');
 		header('Content-Type: text/plain');
 		status_header('204');
-		echo "Deleted.";
+		echo "Moved to Trash.";
 		exit;
 	}
 
@@ -1501,13 +1480,13 @@ EOD;
 		// If Basic Auth is working...
 		if(isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
 			log_app("Basic Auth",$_SERVER['PHP_AUTH_USER']);
-		}
 
-		$user = wp_authenticate($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
-		if ( $user && !is_wp_error($user) ) {
-			wp_set_current_user($user->ID);
-			log_app("authenticate()", $user->user_login);
-			return true;
+			$user = wp_authenticate($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']);
+			if ( $user && !is_wp_error($user) ) {
+				wp_set_current_user($user->ID);
+				log_app("authenticate()", $user->user_login);
+				return true;
+			}
 		}
 
 		return false;

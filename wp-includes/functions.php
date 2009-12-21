@@ -497,7 +497,7 @@ function update_option( $option_name, $newvalue ) {
 
 	wp_protect_special_option( $option_name );
 
-	$safe_option_name = $wpdb->escape( $option_name );
+	$safe_option_name = esc_sql( $option_name );
 	$newvalue = sanitize_option( $option_name, $newvalue );
 
 	$oldvalue = get_option( $safe_option_name );
@@ -522,6 +522,7 @@ function update_option( $option_name, $newvalue ) {
 	$_newvalue = $newvalue;
 	$newvalue = maybe_serialize( $newvalue );
 
+	do_action( 'update_option', $option_name, $oldvalue, $newvalue );
 	$alloptions = wp_load_alloptions();
 	if ( isset( $alloptions[$option_name] ) ) {
 		$alloptions[$option_name] = $newvalue;
@@ -534,6 +535,7 @@ function update_option( $option_name, $newvalue ) {
 
 	if ( $wpdb->rows_affected == 1 ) {
 		do_action( "update_option_{$option_name}", $oldvalue, $_newvalue );
+		do_action( 'updated_option', $option_name, $oldvalue, $_newvalue );
 		return true;
 	}
 	return false;
@@ -571,7 +573,7 @@ function add_option( $name, $value = '', $deprecated = '', $autoload = 'yes' ) {
 	global $wpdb;
 
 	wp_protect_special_option( $name );
-	$safe_name = $wpdb->escape( $name );
+	$safe_name = esc_sql( $name );
 	$value = sanitize_option( $name, $value );
 
 	// Make sure the option doesn't already exist. We can check the 'notoptions' cache before we ask for a db query
@@ -582,7 +584,7 @@ function add_option( $name, $value = '', $deprecated = '', $autoload = 'yes' ) {
 
 	$value = maybe_serialize( $value );
 	$autoload = ( 'no' === $autoload ) ? 'no' : 'yes';
-
+	do_action( 'add_option', $name, $value );
 	if ( 'yes' == $autoload ) {
 		$alloptions = wp_load_alloptions();
 		$alloptions[$name] = $value;
@@ -598,9 +600,11 @@ function add_option( $name, $value = '', $deprecated = '', $autoload = 'yes' ) {
 		wp_cache_set( 'notoptions', $notoptions, 'options' );
 	}
 
-	$wpdb->insert($wpdb->options, array('option_name' => $name, 'option_value' => $value, 'autoload' => $autoload) );
+	$wpdb->query( $wpdb->prepare( "INSERT INTO `$wpdb->options` (`option_name`, `option_value`, `autoload`) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE `option_name` = VALUES(`option_name`), `option_value` = VALUES(`option_value`), `autoload` = VALUES(`autoload`)", $name, $value, $autoload ) );
 
 	do_action( "add_option_{$name}", $name, $value );
+	do_action( 'added_option', $name, $value );
+	
 	return;
 }
 
@@ -621,9 +625,10 @@ function delete_option( $name ) {
 
 	// Get the ID, if no ID then return
 	// expected_slashed ($name)
-	$option = $wpdb->get_row( "SELECT option_id, autoload FROM $wpdb->options WHERE option_name = '$name'" );
-	if ( is_null($option) || !$option->option_id )
+	$option = $wpdb->get_row( "SELECT autoload FROM $wpdb->options WHERE option_name = '$name'" );
+	if ( is_null($option) )
 		return false;
+	do_action( 'delete_option', $name );
 	// expected_slashed ($name)
 	$wpdb->query( "DELETE FROM $wpdb->options WHERE option_name = '$name'" );
 	if ( 'yes' == $option->autoload ) {
@@ -635,6 +640,7 @@ function delete_option( $name ) {
 	} else {
 		wp_cache_delete( $name, 'options' );
 	}
+	do_action( 'deleted_option', $name );
 	return true;
 }
 
@@ -654,7 +660,7 @@ function delete_transient($transient) {
 	if ( $_wp_using_ext_object_cache ) {
 		return wp_cache_delete($transient, 'transient');
 	} else {
-		$transient = '_transient_' . $wpdb->escape($transient);
+		$transient = '_transient_' . esc_sql($transient);
 		return delete_option($transient);
 	}
 }
@@ -682,11 +688,11 @@ function get_transient($transient) {
 	if ( $_wp_using_ext_object_cache ) {
 		$value = wp_cache_get($transient, 'transient');
 	} else {
-		$transient_option = '_transient_' . $wpdb->escape($transient);
+		$transient_option = '_transient_' . esc_sql($transient);
 		// If option is not in alloptions, it is not autoloaded and thus has a timeout
 		$alloptions = wp_load_alloptions();
 		if ( !isset( $alloptions[$transient_option] ) ) {
-			$transient_timeout = '_transient_timeout_' . $wpdb->escape($transient);
+			$transient_timeout = '_transient_timeout_' . esc_sql($transient);
 			if ( get_option($transient_timeout) < time() ) {
 				delete_option($transient_option);
 				delete_option($transient_timeout);
@@ -723,7 +729,7 @@ function set_transient($transient, $value, $expiration = 0) {
 	} else {
 		$transient_timeout = '_transient_timeout_' . $transient;
 		$transient = '_transient_' . $transient;
-		$safe_transient = $wpdb->escape($transient);
+		$safe_transient = esc_sql($transient);
 		if ( false === get_option( $safe_transient ) ) {
 			$autoload = 'yes';
 			if ( 0 != $expiration ) {
@@ -965,34 +971,6 @@ function maybe_serialize( $data ) {
 }
 
 /**
- * Strip HTML and put links at the bottom of stripped content.
- *
- * Searches for all of the links, strips them out of the content, and places
- * them at the bottom of the content with numbers.
- *
- * @since 0.71
- *
- * @param string $content Content to get links
- * @return string HTML stripped out of content with links at the bottom.
- */
-function make_url_footnote( $content ) {
-	preg_match_all( '/<a(.+?)href=\"(.+?)\"(.*?)>(.+?)<\/a>/', $content, $matches );
-	$links_summary = "\n";
-	for ( $i=0; $i<count($matches[0]); $i++ ) {
-		$link_match = $matches[0][$i];
-		$link_number = '['.($i+1).']';
-		$link_url = $matches[2][$i];
-		$link_text = $matches[4][$i];
-		$content = str_replace( $link_match, $link_text . ' ' . $link_number, $content );
-		$link_url = ( ( strtolower( substr( $link_url, 0, 7 ) ) != 'http://' ) && ( strtolower( substr( $link_url, 0, 8 ) ) != 'https://' ) ) ? get_option( 'home' ) . $link_url : $link_url;
-		$links_summary .= "\n" . $link_number . ' ' . $link_url;
-	}
-	$content  = strip_tags( $content );
-	$content .= $links_summary;
-	return $content;
-}
-
-/**
  * Retrieve post title from XMLRPC XML.
  *
  * If the title element is not part of the XML, then the default post title from
@@ -1163,7 +1141,10 @@ function do_enclose( $content, $post_ID ) {
 
 	foreach ( $pung as $link_test ) {
 		if ( !in_array( $link_test, $post_links_temp[0] ) ) { // link no longer in post
-			$wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = 'enclosure' AND meta_value LIKE (%s)", $post_ID, $link_test . '%') );
+			$mid = $wpdb->get_col( $wpdb->prepare("SELECT meta_id FROM $wpdb->postmeta WHERE post_id = %d AND meta_key = 'enclosure' AND meta_value LIKE (%s)", $post_ID, $link_test . '%') );
+			do_action( 'delete_postmeta', $mid );
+			$wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->postmeta WHERE post_id IN(%s)", implode( ',', $mid ) ) );
+			do_action( 'deleted_postmeta', $mid );
 		}
 	}
 
@@ -1186,6 +1167,7 @@ function do_enclose( $content, $post_ID ) {
 				if ( in_array( substr( $type, 0, strpos( $type, "/" ) ), $allowed_types ) ) {
 					$meta_value = "$url\n$len\n$type\n";
 					$wpdb->insert($wpdb->postmeta, array('post_id' => $post_ID, 'meta_key' => 'enclosure', 'meta_value' => $meta_value) );
+					do_action( 'added_postmeta', $wpdb->insert_id, $post_ID, 'enclosure', $meta_value );
 				}
 			}
 		}
@@ -1408,7 +1390,7 @@ function add_magic_quotes( $array ) {
 		if ( is_array( $v ) ) {
 			$array[$k] = add_magic_quotes( $v );
 		} else {
-			$array[$k] = $wpdb->escape( $v );
+			$array[$k] = esc_sql( $v );
 		}
 	}
 	return $array;
@@ -1771,7 +1753,31 @@ function is_blog_installed() {
 	$installed = !empty( $installed );
 	wp_cache_set( 'is_blog_installed', $installed );
 
-	return $installed;
+	if ( $installed )
+		return true;
+
+	$suppress = $wpdb->suppress_errors();
+	$tables = $wpdb->get_col('SHOW TABLES');
+	$wpdb->suppress_errors( $suppress );
+
+	// Loop over the WP tables.  If none exist, then scratch install is allowed.
+	// If one or more exist, suggest table repair since we got here because the options
+	// table could not be accessed.
+	foreach ($wpdb->tables as $table) {
+		// If one of the WP tables exist, then we are in an insane state.
+		if ( in_array($wpdb->prefix . $table, $tables) ) {
+			// If visiting repair.php, return true and let it take over.
+			if ( defined('WP_REPAIRING') )
+				return true;
+			// Die with a DB error.
+			$wpdb->error = __('One or more database tables are unavailable.  The database may need to be <a href="maint/repair.php?referrer=is_blog_installed">repaired</a>.');
+			dead_db();
+		}
+	}
+
+	wp_cache_set( 'is_blog_installed', false );
+
+	return false;
 }
 
 /**
@@ -2029,16 +2035,20 @@ function wp_upload_dir( $time = null ) {
 	$siteurl = get_option( 'siteurl' );
 	$upload_path = get_option( 'upload_path' );
 	$upload_path = trim($upload_path);
-	if ( empty($upload_path) )
+	if ( empty($upload_path) ) {
 		$dir = WP_CONTENT_DIR . '/uploads';
-	else
+	} else {
 		$dir = $upload_path;
-
-	// $dir is absolute, $path is (maybe) relative to ABSPATH
-	$dir = path_join( ABSPATH, $dir );
+		if ( 'wp-content/uploads' == $upload_path ) {
+			$dir = WP_CONTENT_DIR . '/uploads';
+		} elseif ( 0 !== strpos($dir, ABSPATH) ) {
+			// $dir is absolute, $upload_path is (maybe) relative to ABSPATH
+			$dir = path_join( ABSPATH, $dir );
+		}
+	}
 
 	if ( !$url = get_option( 'upload_url_path' ) ) {
-		if ( empty($upload_path) or ( $upload_path == $dir ) )
+		if ( empty($upload_path) || ( 'wp-content/uploads' == $upload_path ) || ( $upload_path == $dir ) )
 			$url = WP_CONTENT_URL . '/uploads';
 		else
 			$url = trailingslashit( $siteurl ) . $upload_path;
@@ -2099,11 +2109,11 @@ function wp_unique_filename( $dir, $filename, $unique_filename_callback = null )
 
 	// separate the filename into a name and extension
 	$info = pathinfo($filename);
-	$ext = !empty($info['extension']) ? $info['extension'] : '';
-	$name = basename($filename, ".{$ext}");
+	$ext = !empty($info['extension']) ? '.' . $info['extension'] : '';
+	$name = basename($filename, $ext);
 
 	// edge case: if file is named '.ext', treat as an empty name
-	if( $name === ".$ext" )
+	if( $name === $ext )
 		$name = '';
 
 	// Increment the file number until we have a unique file to save in $dir. Use $override['unique_filename_callback'] if supplied.
@@ -2112,8 +2122,20 @@ function wp_unique_filename( $dir, $filename, $unique_filename_callback = null )
 	} else {
 		$number = '';
 
-		if ( !empty( $ext ) )
-			$ext = ".$ext";
+		// change '.ext' to lower case
+		if ( $ext && strtolower($ext) != $ext ) {
+			$ext2 = strtolower($ext);
+			$filename2 = preg_replace( '|' . preg_quote($ext) . '$|', $ext2, $filename );
+
+			// check for both lower and upper case extension or image sub-sizes may be overwritten
+			while ( file_exists($dir . "/$filename") || file_exists($dir . "/$filename2") ) {
+				$new_number = $number + 1;
+				$filename = str_replace( "$number$ext", "$new_number$ext", $filename );
+				$filename2 = str_replace( "$number$ext2", "$new_number$ext2", $filename2 );
+				$number = $new_number;
+			}
+			return $filename2;
+		}
 
 		while ( file_exists( $dir . "/$filename" ) ) {
 			if ( '' == "$number$ext" )
@@ -2226,8 +2248,36 @@ function wp_ext2type( $ext ) {
  * @return array Values with extension first and mime type.
  */
 function wp_check_filetype( $filename, $mimes = null ) {
-	// Accepted MIME types are set here as PCRE unless provided.
-	$mimes = ( is_array( $mimes ) ) ? $mimes : apply_filters( 'upload_mimes', array(
+	if ( empty($mimes) )
+		$mimes = get_allowed_mime_types();
+	$type = false;
+	$ext = false;
+
+	foreach ( $mimes as $ext_preg => $mime_match ) {
+		$ext_preg = '!\.(' . $ext_preg . ')$!i';
+		if ( preg_match( $ext_preg, $filename, $ext_matches ) ) {
+			$type = $mime_match;
+			$ext = $ext_matches[1];
+			break;
+		}
+	}
+
+	return compact( 'ext', 'type' );
+}
+
+/**
+ * Retrieve list of allowed mime types and file extensions.
+ *
+ * @since 2.8.6
+ *
+ * @return array Array of mime types keyed by the file extension regex corresponding to those types.
+ */
+function get_allowed_mime_types() {
+	static $mimes = false;
+
+	if ( !$mimes ) {
+		// Accepted MIME types are set here as PCRE unless provided.
+		$mimes = apply_filters( 'upload_mimes', array(
 		'jpg|jpeg|jpe' => 'image/jpeg',
 		'gif' => 'image/gif',
 		'png' => 'image/png',
@@ -2237,6 +2287,7 @@ function wp_check_filetype( $filename, $mimes = null ) {
 		'asf|asx|wax|wmv|wmx' => 'video/asf',
 		'avi' => 'video/avi',
 		'divx' => 'video/divx',
+		'flv' => 'video/x-flv',
 		'mov|qt' => 'video/quicktime',
 		'mpeg|mpg|mpe' => 'video/mpeg',
 		'txt|c|cc|h' => 'text/plain',
@@ -2273,22 +2324,10 @@ function wp_check_filetype( $filename, $mimes = null ) {
 		'odc' => 'application/vnd.oasis.opendocument.chart',
 		'odb' => 'application/vnd.oasis.opendocument.database',
 		'odf' => 'application/vnd.oasis.opendocument.formula',
-		)
-	);
-
-	$type = false;
-	$ext = false;
-
-	foreach ( $mimes as $ext_preg => $mime_match ) {
-		$ext_preg = '!\.(' . $ext_preg . ')$!i';
-		if ( preg_match( $ext_preg, $filename, $ext_matches ) ) {
-			$type = $mime_match;
-			$ext = $ext_matches[1];
-			break;
-		}
+		) );
 	}
 
-	return compact( 'ext', 'type' );
+	return $mimes;
 }
 
 /**
@@ -2383,7 +2422,7 @@ function wp_explain_nonce( $action ) {
 			}
 		}
 
-		return apply_filters( 'explain_nonce_' . $verb . '-' . $noun, __( 'Are you sure you want to do this?' ), $matches[4] );
+		return apply_filters( 'explain_nonce_' . $verb . '-' . $noun, __( 'Are you sure you want to do this?' ), isset($matches[4]) ? $matches[4] : '' );
 	} else {
 		return apply_filters( 'explain_nonce_' . $action, __( 'Are you sure you want to do this?' ) );
 	}
@@ -2404,12 +2443,12 @@ function wp_explain_nonce( $action ) {
 function wp_nonce_ays( $action ) {
 	$title = __( 'WordPress Failure Notice' );
 	$html = esc_html( wp_explain_nonce( $action ) );
-	if ( wp_get_referer() )
-		$html .= "</p><p><a href='" . esc_url( remove_query_arg( 'updated', wp_get_referer() ) ) . "'>" . __( 'Please try again.' ) . "</a>";
-	elseif ( 'log-out' == $action )
+	if ( 'log-out' == $action )
 		$html .= "</p><p>" . sprintf( __( "Do you really want to <a href='%s'>log out</a>?"), wp_logout_url() );
+	elseif ( wp_get_referer() )
+		$html .= "</p><p><a href='" . esc_url( remove_query_arg( 'updated', wp_get_referer() ) ) . "'>" . __( 'Please try again.' ) . "</a>";
 
-	wp_die( $html, $title);
+	wp_die( $html, $title, array('response' => 403) );
 }
 
 /**
@@ -2487,6 +2526,7 @@ function wp_die( $message, $title = '', $args = array() ) {
 	if ( ( $wp_locale ) && ( 'rtl' == $wp_locale->text_direction ) ) $text_direction = 'rtl';
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- Ticket #11289, IE bug fix: always pad the error page with enough characters such that it is greater than 512 bytes, even after gzip compression abcdefghijklmnopqrstuvwxyz1234567890aabbccddeeffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz11223344556677889900abacbcbdcdcededfefegfgfhghgihihjijikjkjlklkmlmlnmnmononpopoqpqprqrqsrsrtstsubcbcdcdedefefgfabcadefbghicjkldmnoepqrfstugvwxhyz1i234j567k890laabmbccnddeoeffpgghqhiirjjksklltmmnunoovppqwqrrxsstytuuzvvw0wxx1yyz2z113223434455666777889890091abc2def3ghi4jkl5mno6pqr7stu8vwx9yz11aab2bcc3dd4ee5ff6gg7hh8ii9j0jk1kl2lmm3nnoo4p5pq6qrr7ss8tt9uuvv0wwx1x2yyzz13aba4cbcb5dcdc6dedfef8egf9gfh0ghg1ihi2hji3jik4jkj5lkl6kml7mln8mnm9ono -->
 <html xmlns="http://www.w3.org/1999/xhtml" <?php if ( function_exists( 'language_attributes' ) ) language_attributes(); ?>>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -2501,7 +2541,6 @@ if ( 'rtl' == $text_direction ) : ?>
 <?php endif; ?>
 	<?php echo $message; ?>
 </body>
-<!-- Ticket #8942, IE bug fix: always pad the error page with enough characters such that it is greater than 512 bytes, even after gzip compression abcdefghijklmnopqrstuvwxyz1234567890aabbccddeeffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz11223344556677889900abacbcbdcdcededfefegfgfhghgihihjijikjkjlklkmlmlnmnmononpopoqpqprqrqsrsrtstsubcbcdcdedefefgfabcadefbghicjkldmnoepqrfstugvwxhyz1i234j567k890laabmbccnddeoeffpgghqhiirjjksklltmmnunoovppqwqrrxsstytuuzvvw0wxx1yyz2z113223434455666777889890091abc2def3ghi4jkl5mno6pqr7stu8vwx9yz11aab2bcc3dd4ee5ff6gg7hh8ii9j0jk1kl2lmm3nnoo4p5pq6qrr7ss8tt9uuvv0wwx1x2yyzz13aba4cbcb5dcdc6dedfef8egf9gfh0ghg1ihi2hji3jik4jkj5lkl6kml7mln8mnm9ono -->
 </html>
 <?php
 	die();
@@ -2714,6 +2753,20 @@ function wp_parse_args( $args, $defaults = '' ) {
 }
 
 /**
+ * Determines if default embed handlers should be loaded.
+ *
+ * Checks to make sure that the embeds library hasn't already been loaded. If
+ * it hasn't, then it will load the embeds library.
+ *
+ * @since 2.9
+ */
+function wp_maybe_load_embeds() {
+	if ( ! apply_filters('load_default_embeds', true) )
+		return;
+	require_once( ABSPATH . WPINC . '/default-embeds.php' );
+}
+
+/**
  * Determines if Widgets library should be loaded.
  *
  * Checks to make sure that the widgets library hasn't already been loaded. If
@@ -2891,8 +2944,7 @@ function atom_service_url_filter($url)
  * to get the backtrace up to what file and function called the deprecated
  * function.
  *
- * The current behavior is to trigger an user error if WP_DEBUG is defined and
- * is true.
+ * The current behavior is to trigger an user error if WP_DEBUG is true.
  *
  * This function is to be used in every function in depreceated.php
  *
@@ -2913,7 +2965,7 @@ function _deprecated_function($function, $version, $replacement=null) {
 	do_action('deprecated_function_run', $function, $replacement);
 
 	// Allow plugin to filter the output error trigger
-	if( defined('WP_DEBUG') && ( true === WP_DEBUG ) && apply_filters( 'deprecated_function_trigger_error', true )) {
+	if( WP_DEBUG && apply_filters( 'deprecated_function_trigger_error', true )) {
 		if( !is_null($replacement) )
 			trigger_error( sprintf( __('%1$s is <strong>deprecated</strong> since version %2$s! Use %3$s instead.'), $function, $version, $replacement ) );
 		else
@@ -2928,8 +2980,7 @@ function _deprecated_function($function, $version, $replacement=null) {
  * to get the backtrace up to what file and function included the deprecated
  * file.
  *
- * The current behavior is to trigger an user error if WP_DEBUG is defined and
- * is true.
+ * The current behavior is to trigger an user error if WP_DEBUG is true.
  *
  * This function is to be used in every file that is depreceated
  *
@@ -2950,7 +3001,7 @@ function _deprecated_file($file, $version, $replacement=null) {
 	do_action('deprecated_file_included', $file, $replacement);
 
 	// Allow plugin to filter the output error trigger
-	if( defined('WP_DEBUG') && ( true === WP_DEBUG ) && apply_filters( 'deprecated_file_trigger_error', true )) {
+	if( WP_DEBUG && apply_filters( 'deprecated_file_trigger_error', true ) ) {
 		if( !is_null($replacement) )
 			trigger_error( sprintf( __('%1$s is <strong>deprecated</strong> since version %2$s! Use %3$s instead.'), $file, $version, $replacement ) );
 		else
@@ -3021,11 +3072,11 @@ function validate_file( $file, $allowed_files = '' ) {
 	if ( false !== strpos( $file, './' ))
 		return 1;
 
-	if (':' == substr( $file, 1, 1 ))
-		return 2;
-
 	if (!empty ( $allowed_files ) && (!in_array( $file, $allowed_files ) ) )
 		return 3;
+
+	if (':' == substr( $file, 1, 1 ))
+		return 2;
 
 	return 0;
 }
@@ -3057,10 +3108,10 @@ function is_ssl() {
  * @param string|bool $force Optional.
  * @return bool True if forced, false if not forced.
  */
-function force_ssl_login($force = '') {
-	static $forced;
+function force_ssl_login( $force = null ) {
+	static $forced = false;
 
-	if ( '' != $force ) {
+	if ( !is_null( $force ) ) {
 		$old_forced = $forced;
 		$forced = $force;
 		return $old_forced;
@@ -3077,10 +3128,10 @@ function force_ssl_login($force = '') {
  * @param string|bool $force
  * @return bool True if forced, false if not forced.
  */
-function force_ssl_admin($force = '') {
-	static $forced;
+function force_ssl_admin( $force = null ) {
+	static $forced = false;
 
-	if ( '' != $force ) {
+	if ( !is_null( $force ) ) {
 		$old_forced = $forced;
 		$forced = $force;
 		return $old_forced;
@@ -3130,17 +3181,131 @@ function wp_suspend_cache_invalidation($suspend = true) {
 }
 
 function get_site_option( $key, $default = false, $use_cache = true ) {
-	return get_option($key, $default);
+	// Allow plugins to short-circuit site options.
+ 	$pre = apply_filters( 'pre_site_option_' . $key, false );
+ 	if ( false !== $pre )
+ 		return $pre;
+
+ 	$value = get_option($key, $default);
+
+ 	return apply_filters( 'site_option_' . $key, $value );
 }
 
 // expects $key, $value not to be SQL escaped
 function add_site_option( $key, $value ) {
-	return add_option($key, $value);
+	$value = apply_filters( 'pre_add_site_option_' . $key, $value );
+	$result =  add_option($key, $value);
+	do_action( "add_site_option_{$key}", $key, $value );
+	return $result;
+}
+
+function delete_site_option( $key ) {
+	$result = delete_option($key);
+	do_action( "delete_site_option_{$key}", $key );
+	return $result;
 }
 
 // expects $key, $value not to be SQL escaped
 function update_site_option( $key, $value ) {
-	return update_option($key, $value);
+	$oldvalue = get_site_option( $key );
+	$value = apply_filters( 'pre_update_site_option_' . $key, $value, $oldvalue );
+	$result = update_option($key, $value);
+	do_action( "update_site_option_{$key}", $key, $value );
+	return $result;
+}
+
+/**
+ * Delete a site transient
+ *
+ * @since 2.890
+ * @package WordPress
+ * @subpackage Transient
+ *
+ * @param string $transient Transient name. Expected to not be SQL-escaped
+ * @return bool true if successful, false otherwise
+ */
+function delete_site_transient($transient) {
+	global $_wp_using_ext_object_cache, $wpdb;
+
+	if ( $_wp_using_ext_object_cache ) {
+		return wp_cache_delete($transient, 'site-transient');
+	} else {
+		$transient = '_site_transient_' . esc_sql($transient);
+		return delete_site_option($transient);
+	}
+}
+
+/**
+ * Get the value of a site transient
+ *
+ * If the transient does not exist or does not have a value, then the return value
+ * will be false.
+ * 
+ * @since 2.9.0
+ * @package WordPress
+ * @subpackage Transient
+ *
+ * @param string $transient Transient name. Expected to not be SQL-escaped
+ * @return mixed Value of transient
+ */
+function get_site_transient($transient) {
+	global $_wp_using_ext_object_cache, $wpdb;
+
+	$pre = apply_filters( 'pre_site_transient_' . $transient, false );
+	if ( false !== $pre )
+		return $pre;
+
+	if ( $_wp_using_ext_object_cache ) {
+		$value = wp_cache_get($transient, 'site-transient');
+	} else {
+		$transient_option = '_site_transient_' . esc_sql($transient);
+		$transient_timeout = '_site_transient_timeout_' . esc_sql($transient);
+		if ( get_site_option($transient_timeout) < time() ) {
+			delete_site_option($transient_option);
+			delete_site_option($transient_timeout);
+			return false;
+		}
+
+		$value = get_site_option($transient_option);
+	}
+
+	return apply_filters('site_transient_' . $transient, $value);
+}
+
+/**
+ * Set/update the value of a site transient
+ *
+ * You do not need to serialize values, if the value needs to be serialize, then
+ * it will be serialized before it is set.
+ *
+ * @since 2.9.0
+ * @package WordPress
+ * @subpackage Transient
+ *
+ * @param string $transient Transient name. Expected to not be SQL-escaped
+ * @param mixed $value Transient value.
+ * @param int $expiration Time until expiration in seconds, default 0
+ * @return bool False if value was not set and true if value was set.
+ */
+function set_site_transient($transient, $value, $expiration = 0) {
+	global $_wp_using_ext_object_cache, $wpdb;
+
+	if ( $_wp_using_ext_object_cache ) {
+		return wp_cache_set($transient, $value, 'site-transient', $expiration);
+	} else {
+		$transient_timeout = '_site_transient_timeout_' . $transient;
+		$transient = '_site_transient_' . $transient;
+		$safe_transient = esc_sql($transient);
+		if ( false === get_site_option( $safe_transient ) ) {
+			if ( 0 != $expiration )
+				add_site_option($transient_timeout, time() + $expiration);
+			return add_site_option($transient, $value);
+		} else {
+			if ( 0 != $expiration )
+				update_site_option($transient_timeout, time() + $expiration);
+			return update_site_option($transient, $value);
+		}
+	}
 }
 
 /**
@@ -3284,13 +3449,13 @@ function wp_timezone_choice( $selected_zone ) {
 			$display = $zone['t_continent'];
 		} else {
 			// It's inside a continent group
-			
+
 			// Continent optgroup
 			if ( !isset( $zonen[$key - 1] ) || $zonen[$key - 1]['continent'] !== $zone['continent'] ) {
 				$label = ( 'Etc' === $zone['continent'] ) ? __( 'Manual offsets' ) : $zone['t_continent'];
 				$structure[] = '<optgroup label="'. esc_attr( $label ) .'">';
 			}
-			
+
 			// Add the city to the value
 			$value[] = $zone['city'];
 			if ( 'Etc' === $zone['continent'] ) {
@@ -3318,7 +3483,7 @@ function wp_timezone_choice( $selected_zone ) {
 			$selected = 'selected="selected" ';
 		}
 		$structure[] = '<option ' . $selected . 'value="' . esc_attr( $value ) . '">' . esc_html( $display ) . "</option>";
-		
+
 		// Close continent optgroup
 		if ( !empty( $zone['city'] ) && ( !isset($zonen[$key + 1]) || (isset( $zonen[$key + 1] ) && $zonen[$key + 1]['continent'] !== $zone['continent']) ) ) {
 			$structure[] = '</optgroup>';
@@ -3328,8 +3493,6 @@ function wp_timezone_choice( $selected_zone ) {
 	return join( "\n", $structure );
 }
 
-
-
 /**
  * Strip close comment and close php tags from file headers used by WP
  * See http://core.trac.wordpress.org/ticket/8497
@@ -3338,5 +3501,122 @@ function wp_timezone_choice( $selected_zone ) {
 **/
 function _cleanup_header_comment($str) {
 	return trim(preg_replace("/\s*(?:\*\/|\?>).*/", '', $str));
+}
+
+/**
+ * Permanently deletes posts, pages, attachments, and comments which have been in the trash for EMPTY_TRASH_DAYS.
+ *
+ * @since 2.9.0
+ *
+ * @return void
+ */
+function wp_scheduled_delete() {
+	global $wpdb;
+
+	$delete_timestamp = time() - (60*60*24*EMPTY_TRASH_DAYS);
+
+	$posts_to_delete = $wpdb->get_results($wpdb->prepare("SELECT post_id FROM $wpdb->postmeta WHERE meta_key = '_wp_trash_meta_time' AND meta_value < '%d'", $delete_timestamp), ARRAY_A);
+
+	foreach ( (array) $posts_to_delete as $post ) {
+		$post_id = (int) $post['post_id'];
+		if ( !$post_id )
+			continue;
+
+		$del_post = get_post($post_id);
+
+		if ( !$del_post || 'trash' != $del_post->post_status ) {
+			delete_post_meta($post_id, '_wp_trash_meta_status');
+			delete_post_meta($post_id, '_wp_trash_meta_time');
+		} else {
+			wp_delete_post($post_id);
+		}
+	}
+
+	$comments_to_delete = $wpdb->get_results($wpdb->prepare("SELECT comment_id FROM $wpdb->commentmeta WHERE meta_key = '_wp_trash_meta_time' AND meta_value < '%d'", $delete_timestamp), ARRAY_A);
+
+	foreach ( (array) $comments_to_delete as $comment ) {
+		$comment_id = (int) $comment['comment_id'];
+		if ( !$comment_id )
+			continue;
+
+		$del_comment = get_comment($comment_id);
+
+		if ( !$del_comment || 'trash' != $del_comment->comment_approved ) {
+			delete_comment_meta($comment_id, '_wp_trash_meta_time');
+			delete_comment_meta($comment_id, '_wp_trash_meta_status');
+		} else {
+			wp_delete_comment($comment_id);
+		}
+	}
+}
+
+/**
+ * Parse the file contents to retrieve its metadata.
+ *
+ * Searches for metadata for a file, such as a plugin or theme.  Each piece of 
+ * metadata must be on its own line. For a field spanning multple lines, it
+ * must not have any newlines or only parts of it will be displayed.
+ *
+ * Some users have issues with opening large files and manipulating the contents
+ * for want is usually the first 1kiB or 2kiB. This function stops pulling in
+ * the file contents when it has all of the required data.
+ *
+ * The first 8kiB of the file will be pulled in and if the file data is not
+ * within that first 8kiB, then the author should correct their plugin file
+ * and move the data headers to the top.
+ *
+ * The file is assumed to have permissions to allow for scripts to read
+ * the file. This is not checked however and the file is only opened for
+ * reading.
+ *
+ * @since 2.9.0
+ *
+ * @param string $file Path to the file
+ * @param bool $markup If the returned data should have HTML markup applied
+ * @param string $context If specified adds filter hook "extra_<$context>_headers" 
+ */
+function get_file_data( $file, $default_headers, $context = '' ) {
+	// We don't need to write to the file, so just open for reading.
+	$fp = fopen( $file, 'r' );
+
+	// Pull only the first 8kiB of the file in.
+	$file_data = fread( $fp, 8192 );
+
+	// PHP will close file handle, but we are good citizens.
+	fclose( $fp );
+
+	if( $context != '' ) {
+		$extra_headers = apply_filters( "extra_$context".'_headers', array() );
+
+		$extra_headers = array_flip( $extra_headers );
+		foreach( $extra_headers as $key=>$value ) {
+			$extra_headers[$key] = $key;
+		}
+		$all_headers = array_merge($extra_headers, $default_headers);
+	} else {
+		$all_headers = $default_headers;
+	}
+
+	
+	foreach ( $all_headers as $field => $regex ) {
+		preg_match( '/' . preg_quote( $regex, '/' ) . ':(.*)$/mi', $file_data, ${$field});
+		if ( !empty( ${$field} ) )
+			${$field} = _cleanup_header_comment( ${$field}[1] );
+		else
+			${$field} = '';
+	}
+
+	$file_data = compact( array_keys( $all_headers ) );
+	
+	return $file_data;
+}
+/*
+ * Used internally to tidy up the search terms
+ * 
+ * @private
+ * @since 2.9.0
+ */
+function _search_terms_tidy($t) {
+	return trim($t, "\"\'\n\r ");
 }
 ?>

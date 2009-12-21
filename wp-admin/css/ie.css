@@ -21,6 +21,14 @@ input.button-highlighted {
 	margin-bottom: -1px;
 }
 
+* html .meta-box-sortables .postbox .handlediv {
+	background: transparent url(../images/menu-bits-vs.gif) no-repeat scroll left -111px;
+}
+
+* html .edit-box {
+	display: inline;
+}
+
 * html .inner-sidebar #side-sortables,
 * html .postbox-container .meta-box-sortables {
 	height: 300px;
@@ -317,6 +325,10 @@ div#dashboard-widgets {
 	margin-top: 2px;
 }
 
+.tablenav .actions select {
+	width: 155px;
+}
+
 table.ie-fixed {
 	table-layout: fixed;
 }
@@ -399,3 +411,34 @@ table.ie-fixed {
 	position: relative;
 }
 
+* html .media-item .pinkynail {
+	height: 32px;
+	width: 40px;
+}
+
+#wpcontent .button-primary-disabled {
+	color: #9FD0D5;
+	background: #298CBA;
+}
+
+#wpcontent #ajax-loading {
+	vertical-align: baseline;
+}
+
+* html .describe .field input.text,
+* html .describe .field textarea {
+	width: 440px;
+}
+
+#the-comment-list .unapproved tr,
+#the-comment-list .unapproved td {
+	background-color: #ffffe0;
+}
+
+.imgedit-submit {
+	width: 300px;
+}
+
+* html input {
+	border: 1px solid #dfdfdf;
+}

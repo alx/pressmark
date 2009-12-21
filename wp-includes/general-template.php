@@ -166,7 +166,7 @@ function wp_loginout($redirect = '') {
 function wp_logout_url($redirect = '') {
 	$args = array( 'action' => 'logout' );
 	if ( !empty($redirect) ) {
-		$args['redirect_to'] = $redirect;
+		$args['redirect_to'] = urlencode( $redirect );
 	}
 
 	$logout_url = add_query_arg($args, site_url('wp-login.php', 'login'));
@@ -817,6 +817,7 @@ function wp_get_archives($args = '') {
 			$afterafter = $after;
 			foreach ( (array) $arcresults as $arcresult ) {
 				$url = get_month_link( $arcresult->year, $arcresult->month );
+				/* translators: 1: month name, 2: 4-digit year */
 				$text = sprintf(__('%1$s %2$d'), $wp_locale->get_month($arcresult->month), $arcresult->year);
 				if ( $show_post_count )
 					$after = '&nbsp;('.$arcresult->posts.')' . $afterafter;
@@ -1166,7 +1167,6 @@ add_action( 'save_post', 'delete_get_calendar_cache' );
 add_action( 'delete_post', 'delete_get_calendar_cache' );
 add_action( 'update_option_start_of_week', 'delete_get_calendar_cache' );
 add_action( 'update_option_gmt_offset', 'delete_get_calendar_cache' );
-add_action( 'update_option_start_of_week', 'delete_get_calendar_cache' );
 
 /**
  * Display all of the allowed tags in HTML format with attributes.
@@ -1705,7 +1705,7 @@ function the_editor($content, $id = 'content', $prev_id = 'title', $media_button
  * @return string
  */
 function get_search_query() {
-	return apply_filters( 'get_search_query', stripslashes( get_query_var( 's' ) ) );
+	return apply_filters( 'get_search_query', get_query_var( 's' ) );
 }
 
 /**

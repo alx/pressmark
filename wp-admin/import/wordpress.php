@@ -27,6 +27,7 @@ class WP_Import {
 	var $author_ids = array ();
 	var $tags = array ();
 	var $categories = array ();
+	var $terms = array ();
 
 	var $j = -1;
 	var $fetch_attachments = false;
@@ -122,6 +123,11 @@ class WP_Import {
 					$this->tags[] = $tag[1];
 					continue;
 				}
+				if ( false !== strpos($importline, '<wp:term>') ) {
+					preg_match('|<wp:term>(.*?)</wp:term>|is', $importline, $term);
+					$this->terms[] = $term[1];
+					continue;
+				}
 				if ( false !== strpos($importline, '<item>') ) {
 					$this->post = '';
 					$doing_entry = true;
@@ -198,7 +204,6 @@ class WP_Import {
 
 	function wp_authors_form() {
 ?>
-<?php screen_icon(); ?>
 <h2><?php _e('Assign Authors'); ?></h2>
 <p><?php _e('To make it easier for you to edit and save the imported posts and drafts, you may want to change the name of the author of the posts. For example, you may want to import all the entries as <code>admin</code>s entries.'); ?></p>
 <?php
@@ -210,7 +215,9 @@ class WP_Import {
 		$authors = $this->get_wp_authors();
 		echo '<form action="?import=wordpress&amp;step=2&amp;id=' . $this->id . '" method="post">';
 		wp_nonce_field('import-wordpress');
-		echo '<ol id="authors">';
+?>
+<ol id="authors">
+<?php
 		$j = -1;
 		foreach ($authors as $author) {
 			++ $j;
@@ -222,7 +229,6 @@ class WP_Import {
 		if ( $this->allow_fetch_attachments() ) {
 ?>
 </ol>
-<?php screen_icon(); ?>
 <h2><?php _e('Import Attachments'); ?></h2>
 <p>
 	<input type="checkbox" value="1" name="attachments" id="import-attachments" />
@@ -337,6 +343,43 @@ class WP_Import {
 			$tag_ID = wp_insert_term($tag_name, 'post_tag', $tagarr);
 		}
 	}
+	
+	function process_terms() {
+		global $wpdb, $wp_taxonomies;
+		
+		$custom_taxonomies = $wp_taxonomies;
+		// get rid of the standard taxonomies
+		unset( $custom_taxonomies['category'] );
+		unset( $custom_taxonomies['post_tag'] );
+		unset( $custom_taxonomies['link_category'] );
+		
+		$custom_taxonomies = array_keys( $custom_taxonomies );
+		$current_terms = (array) get_terms( $custom_taxonomies, 'get=all' );
+		$taxonomies = array();
+		foreach ( $current_terms as $term ) {
+			if ( isset( $_terms[$term->taxonomy] ) ) {
+				$taxonomies[$term->taxonomy] = array_merge( $taxonomies[$term->taxonomy], array($term->name) );
+			} else {
+				$taxonomies[$term->taxonomy] = array($term->name);
+			}
+		}
+
+		while ( $c = array_shift($this->terms) ) {
+			$term_name = trim($this->get_tag( $c, 'wp:term_name' ));
+			$term_taxonomy = trim($this->get_tag( $c, 'wp:term_taxonomy' ));
+
+			// If the term exists in the taxonomy we leave it alone
+			if ( isset($taxonomies[$term_taxonomy] ) && in_array( $term_name, $taxonomies[$term_taxonomy] ) )
+				continue;
+
+			$slug = $this->get_tag( $c, 'wp:term_slug' );
+			$description = $this->get_tag( $c, 'wp:term_description' );
+
+			$termarr = compact('slug', 'description');
+
+			$term_ID = wp_insert_term($term_name, $this->get_tag( $c, 'wp:term_taxonomy' ), $termarr);
+		}
+	}
 
 	function process_author($post) {
 		$author = $this->get_tag( $post, 'dc:creator' );
@@ -355,6 +398,10 @@ class WP_Import {
 		do_action('import_done', 'wordpress');
 
 		echo '<h3>'.sprintf(__('All done.').' <a href="%s">'.__('Have fun!').'</a>', get_option('home')).'</h3>';
+	}
+
+	function _normalize_tag( $matches ) {
+		return '<' . strtolower( $matches[1] );
 	}
 
 	function process_post($post) {
@@ -378,16 +425,17 @@ class WP_Import {
 		$menu_order     = $this->get_tag( $post, 'wp:menu_order' );
 		$post_type      = $this->get_tag( $post, 'wp:post_type' );
 		$post_password  = $this->get_tag( $post, 'wp:post_password' );
+		$is_sticky		= $this->get_tag( $post, 'wp:is_sticky' );
 		$guid           = $this->get_tag( $post, 'guid' );
 		$post_author    = $this->get_tag( $post, 'dc:creator' );
 
 		$post_excerpt = $this->get_tag( $post, 'excerpt:encoded' );
-		$post_excerpt = preg_replace_callback('|<(/?[A-Z]+)|', create_function('$match', 'return "<" . strtolower($match[1]);'), $post_excerpt);
+		$post_excerpt = preg_replace_callback('|<(/?[A-Z]+)|', array( &$this, '_normalize_tag' ), $post_excerpt);
 		$post_excerpt = str_replace('<br>', '<br />', $post_excerpt);
 		$post_excerpt = str_replace('<hr>', '<hr />', $post_excerpt);
 
 		$post_content = $this->get_tag( $post, 'content:encoded' );
-		$post_content = preg_replace_callback('|<(/?[A-Z]+)|', create_function('$match', 'return "<" . strtolower($match[1]);'), $post_content);
+		$post_content = preg_replace_callback('|<(/?[A-Z]+)|', array( &$this, '_normalize_tag' ), $post_content);
 		$post_content = str_replace('<br>', '<br />', $post_content);
 		$post_content = str_replace('<hr>', '<hr />', $post_content);
 
@@ -448,6 +496,9 @@ class WP_Import {
 			else {
 				printf(__('Importing post <em>%s</em>...'), stripslashes($post_title));
 				$comment_post_ID = $post_id = wp_insert_post($postdata);
+				if ( $post_id && $is_sticky == 1 )
+					stick_post( $post_id );
+
 			}
 
 			if ( is_wp_error( $post_id ) )
@@ -508,25 +559,35 @@ class WP_Import {
 		preg_match_all('|<wp:comment>(.*?)</wp:comment>|is', $post, $comments);
 		$comments = $comments[1];
 		$num_comments = 0;
-		if ( $comments) { foreach ($comments as $comment) {
-			$comment_author       = $this->get_tag( $comment, 'wp:comment_author');
-			$comment_author_email = $this->get_tag( $comment, 'wp:comment_author_email');
-			$comment_author_IP    = $this->get_tag( $comment, 'wp:comment_author_IP');
-			$comment_author_url   = $this->get_tag( $comment, 'wp:comment_author_url');
-			$comment_date         = $this->get_tag( $comment, 'wp:comment_date');
-			$comment_date_gmt     = $this->get_tag( $comment, 'wp:comment_date_gmt');
-			$comment_content      = $this->get_tag( $comment, 'wp:comment_content');
-			$comment_approved     = $this->get_tag( $comment, 'wp:comment_approved');
-			$comment_type         = $this->get_tag( $comment, 'wp:comment_type');
-			$comment_parent       = $this->get_tag( $comment, 'wp:comment_parent');
-
-			// if this is a new post we can skip the comment_exists() check
-			if ( !$post_exists || !comment_exists($comment_author, $comment_date) ) {
-				$commentdata = compact('comment_post_ID', 'comment_author', 'comment_author_url', 'comment_author_email', 'comment_author_IP', 'comment_date', 'comment_date_gmt', 'comment_content', 'comment_approved', 'comment_type', 'comment_parent');
-				wp_insert_comment($commentdata);
-				$num_comments++;
+		$inserted_comments = array();
+		if ( $comments) { 
+			foreach ($comments as $comment) {
+				$comment_id	= $this->get_tag( $comment, 'wp:comment_id');
+				$newcomments[$comment_id]['comment_post_ID']      = $comment_post_ID;
+				$newcomments[$comment_id]['comment_author']       = $this->get_tag( $comment, 'wp:comment_author');
+				$newcomments[$comment_id]['comment_author_email'] = $this->get_tag( $comment, 'wp:comment_author_email');
+				$newcomments[$comment_id]['comment_author_IP']    = $this->get_tag( $comment, 'wp:comment_author_IP');
+				$newcomments[$comment_id]['comment_author_url']   = $this->get_tag( $comment, 'wp:comment_author_url');
+				$newcomments[$comment_id]['comment_date']         = $this->get_tag( $comment, 'wp:comment_date');
+				$newcomments[$comment_id]['comment_date_gmt']     = $this->get_tag( $comment, 'wp:comment_date_gmt');
+				$newcomments[$comment_id]['comment_content']      = $this->get_tag( $comment, 'wp:comment_content');
+				$newcomments[$comment_id]['comment_approved']     = $this->get_tag( $comment, 'wp:comment_approved');
+				$newcomments[$comment_id]['comment_type']         = $this->get_tag( $comment, 'wp:comment_type');
+				$newcomments[$comment_id]['comment_parent'] 	  = $this->get_tag( $comment, 'wp:comment_parent');
 			}
-		} }
+			// Sort by comment ID, to make sure comment parents exist (if there at all)
+			ksort($newcomments);
+			foreach ($newcomments as $key => $comment) {
+				// if this is a new post we can skip the comment_exists() check
+				if ( !$post_exists || !comment_exists($comment['comment_author'], $comment['comment_date']) ) {
+					if (isset($inserted_comments[$comment['comment_parent']]))
+						$comment['comment_parent'] = $inserted_comments[$comment['comment_parent']];
+					$comment = wp_filter_comment($comment);
+					$inserted_comments[$key] = wp_insert_comment($comment);
+					$num_comments++;
+				}
+			}
+		}
 
 		if ( $num_comments )
 			printf(' '._n('(%s comment)', '(%s comments)', $num_comments), $num_comments);
@@ -740,6 +801,7 @@ class WP_Import {
 		$this->get_entries();
 		$this->process_categories();
 		$this->process_tags();
+		$this->process_terms();
 		$result = $this->process_posts();
 		wp_suspend_cache_invalidation(false);
 		$this->backfill_parents();

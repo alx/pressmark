@@ -27,14 +27,14 @@ if ( isset( $_GET['action'] ) && isset($_GET['delete_tags']) && ( 'delete' == $_
 
 switch($action) {
 
-case 'addtag':
+case 'add-tag':
 
 	check_admin_referer('add-tag');
 
 	if ( !current_user_can('manage_categories') )
 		wp_die(__('Cheatin&#8217; uh?'));
 
-	$ret = wp_insert_term($_POST['name'], $taxonomy, $_POST);
+	$ret = wp_insert_term($_POST['tag-name'], $taxonomy, $_POST);
 	if ( $ret && !is_wp_error( $ret ) ) {
 		wp_redirect('edit-tags.php?message=1#addtag');
 	} else {
@@ -44,6 +44,11 @@ case 'addtag':
 break;
 
 case 'delete':
+	if ( !isset( $_GET['tag_ID'] ) ) {
+		wp_redirect("edit-tags.php?taxonomy=$taxonomy");
+		exit;
+	}
+
 	$tag_ID = (int) $_GET['tag_ID'];
 	check_admin_referer('delete-tag_' .  $tag_ID);
 
@@ -70,8 +75,8 @@ case 'bulk-delete':
 	if ( !current_user_can('manage_categories') )
 		wp_die(__('Cheatin&#8217; uh?'));
 
-	$tags = $_GET['delete_tags'];
-	foreach( (array) $tags as $tag_ID ) {
+	$tags = (array) $_GET['delete_tags'];
+	foreach( $tags as $tag_ID ) {
 		wp_delete_term( $tag_ID, $taxonomy);
 	}
 
@@ -155,6 +160,7 @@ if ( isset($_GET['s']) && $_GET['s'] )
 <div id="message" class="updated fade"><p><?php echo $messages[$msg]; ?></p></div>
 <?php $_SERVER['REQUEST_URI'] = remove_query_arg(array('message'), $_SERVER['REQUEST_URI']);
 endif; ?>
+<div id="ajax-response"></div>
 
 <form class="search-form" action="" method="get">
 <input type="hidden" name="taxonomy" value="<?php echo esc_attr($taxonomy); ?>" />
@@ -178,11 +184,11 @@ $pagenum = isset( $_GET['pagenum'] ) ? absint( $_GET['pagenum'] ) : 0;
 if ( empty($pagenum) )
 	$pagenum = 1;
 
-$tags_per_page = get_user_option('edit_tags_per_page');
-if ( empty($tags_per_page) )
+$tags_per_page = (int) get_user_option( 'edit_tags_per_page', 0, false );
+if ( empty($tags_per_page) || $tags_per_page < 1 )
 	$tags_per_page = 20;
-$tags_per_page = apply_filters('edit_tags_per_page', $tags_per_page);
-$tags_per_page = apply_filters('tagsperpage', $tags_per_page); // Old filter
+$tags_per_page = apply_filters( 'edit_tags_per_page', $tags_per_page );
+$tags_per_page = apply_filters( 'tagsperpage', $tags_per_page ); // Old filter
 
 $page_links = paginate_links( array(
 	'base' => add_query_arg( 'pagenum', '%#%' ),
@@ -274,15 +280,14 @@ else
 
 <div class="form-wrap">
 <h3><?php _e('Add a New Tag'); ?></h3>
-<div id="ajax-response"></div>
-<form name="addtag" id="addtag" method="post" action="edit-tags.php" class="add:the-list: validate">
-<input type="hidden" name="action" value="addtag" />
+<form id="addtag" method="post" action="edit-tags.php" class="validate">
+<input type="hidden" name="action" value="add-tag" />
 <input type="hidden" name="taxonomy" value="<?php echo esc_attr($taxonomy); ?>" />
-<?php wp_original_referer_field(true, 'previous'); wp_nonce_field('add-tag'); ?>
+<?php wp_nonce_field('add-tag'); ?>
 
 <div class="form-field form-required">
-	<label for="name"><?php _e('Tag name') ?></label>
-	<input name="name" id="name" type="text" value="" size="40" aria-required="true" />
+	<label for="tag-name"><?php _e('Tag name') ?></label>
+	<input name="tag-name" id="tag-name" type="text" value="" size="40" aria-required="true" />
 	<p><?php _e('The name is how the tag appears on your site.'); ?></p>
 </div>
 
@@ -295,10 +300,10 @@ else
 <div class="form-field">
 	<label for="description"><?php _e('Description') ?></label>
 	<textarea name="description" id="description" rows="5" cols="40"></textarea>
-    <p><?php _e('The description is not prominent by default, however some themes may show it.'); ?></p>
+    <p><?php _e('The description is not prominent by default; however, some themes may show it.'); ?></p>
 </div>
 
-<p class="submit"><input type="submit" class="button" name="submit" value="<?php esc_attr_e('Add Tag'); ?>" /></p>
+<p class="submit"><input type="submit" class="button" name="submit" id="submit" value="<?php esc_attr_e('Add Tag'); ?>" /></p>
 <?php do_action('add_tag_form'); ?>
 </form></div>
 <?php } ?>

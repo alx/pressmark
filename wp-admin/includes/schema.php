@@ -19,12 +19,10 @@ $charset_collate = '';
 // Declare these as global in case schema.php is included from a function.
 global $wpdb, $wp_queries;
 
-if ( $wpdb->has_cap( 'collation' ) ) {
-	if ( ! empty($wpdb->charset) )
-		$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
-	if ( ! empty($wpdb->collate) )
-		$charset_collate .= " COLLATE $wpdb->collate";
-}
+if ( ! empty($wpdb->charset) )
+	$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
+if ( ! empty($wpdb->collate) )
+	$charset_collate .= " COLLATE $wpdb->collate";
 
 /** Create WordPress database tables SQL */
 $wp_queries = "CREATE TABLE $wpdb->terms (
@@ -53,6 +51,15 @@ CREATE TABLE $wpdb->term_relationships (
  term_order int(11) NOT NULL default 0,
  PRIMARY KEY  (object_id,term_taxonomy_id),
  KEY term_taxonomy_id (term_taxonomy_id)
+) $charset_collate;
+CREATE TABLE $wpdb->commentmeta (
+  meta_id bigint(20) unsigned NOT NULL auto_increment,
+  comment_id bigint(20) unsigned NOT NULL default '0',
+  meta_key varchar(255) default NULL,
+  meta_value longtext,
+  PRIMARY KEY  (meta_id),
+  KEY comment_id (comment_id),
+  KEY meta_key (meta_key)
 ) $charset_collate;
 CREATE TABLE $wpdb->comments (
   comment_ID bigint(20) unsigned NOT NULL auto_increment,
@@ -99,8 +106,8 @@ CREATE TABLE $wpdb->options (
   option_name varchar(64) NOT NULL default '',
   option_value longtext NOT NULL,
   autoload varchar(20) NOT NULL default 'yes',
-  PRIMARY KEY  (option_id,blog_id,option_name),
-  KEY option_name (option_name)
+  PRIMARY KEY  (option_id),
+  UNIQUE KEY option_name (option_name)
 ) $charset_collate;
 CREATE TABLE $wpdb->postmeta (
   meta_id bigint(20) unsigned NOT NULL auto_increment,
@@ -180,12 +187,10 @@ function populate_options() {
 	do_action('populate_options');
 
 	if ( ini_get('safe_mode') ) {
-		// Safe mode screws up mkdir(), so we must use a flat structure.
+		// Safe mode can break mkdir() so use a flat structure by default.
 		$uploads_use_yearmonth_folders = 0;
-		$upload_path = WP_CONTENT_DIR;
 	} else {
 		$uploads_use_yearmonth_folders = 1;
-		$upload_path = WP_CONTENT_DIR . '/uploads';
 	}
 
 	$options = array(
@@ -200,7 +205,6 @@ function populate_options() {
 	'require_name_email' => 1,
 	'comments_notify' => 1,
 	'posts_per_rss' => 10,
-	'rss_excerpt_length' => 50,
 	'rss_use_excerpt' => 0,
 	'mailserver_url' => 'mail.example.com',
 	'mailserver_login' => 'login@example.com',
@@ -257,7 +261,7 @@ function populate_options() {
 
 	// 2.0.1
 	'uploads_use_yearmonth_folders' => $uploads_use_yearmonth_folders,
-	'upload_path' => $upload_path,
+	'upload_path' => '',
 
 	// 2.0.3
 	'secret' => wp_generate_password(64),
@@ -305,7 +309,12 @@ function populate_options() {
 	'widget_rss' => array(),
 
 	// 2.8
-	'timezone_string' => ''
+	'timezone_string' => '',
+
+	// 2.9
+	'embed_autourls' => 1,
+	'embed_size_w' => '',
+	'embed_size_h' => 600,
 	);
 
 	// Set autoload to no for these options
@@ -339,9 +348,12 @@ function populate_options() {
 
 	// Delete unused options
 	$unusedoptions = array ('blodotgsping_url', 'bodyterminator', 'emailtestonly', 'phoneemail_separator', 'smilies_directory', 'subjectprefix', 'use_bbcode', 'use_blodotgsping', 'use_phoneemail', 'use_quicktags', 'use_weblogsping', 'weblogs_cache_file', 'use_preview', 'use_htmltrans', 'smilies_directory', 'fileupload_allowedusers', 'use_phoneemail', 'default_post_status', 'default_post_category', 'archive_mode', 'time_difference', 'links_minadminlevel', 'links_use_adminlevels', 'links_rating_type', 'links_rating_char', 'links_rating_ignore_zero', 'links_rating_single_image', 'links_rating_image0', 'links_rating_image1', 'links_rating_image2', 'links_rating_image3', 'links_rating_image4', 'links_rating_image5', 'links_rating_image6', 'links_rating_image7', 'links_rating_image8', 'links_rating_image9', 'weblogs_cacheminutes', 'comment_allowed_tags', 'search_engine_friendly_urls', 'default_geourl_lat', 'default_geourl_lon', 'use_default_geourl', 'weblogs_xml_url', 'new_users_can_blog', '_wpnonce', '_wp_http_referer', 'Update', 'action', 'rich_editing', 'autosave_interval', 'deactivated_plugins', 'can_compress_scripts',
-		'page_uris', 'rewrite_rules', 'update_core', 'update_plugins', 'update_themes', 'doing_cron', 'random_seed');
+		'page_uris', 'update_core', 'update_plugins', 'update_themes', 'doing_cron', 'random_seed', 'rss_excerpt_length');
 	foreach ($unusedoptions as $option)
 		delete_option($option);
+	
+	// delete obsolete magpie stuff
+	$wpdb->query("DELETE FROM $wpdb->options WHERE option_name REGEXP '^rss_[0-9a-f]{32}(_ts)?$'");
 }
 
 /**

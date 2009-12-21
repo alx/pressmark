@@ -34,11 +34,12 @@ function wp_dashboard_setup() {
 	// Incoming Links Widget
 	if ( !isset( $widget_options['dashboard_incoming_links'] ) || !isset( $widget_options['dashboard_incoming_links']['home'] ) || $widget_options['dashboard_incoming_links']['home'] != get_option('home') ) {
 		$update = true;
+		$num_items = isset($widget_options['dashboard_incoming_links']['items']) ? $widget_options['dashboard_incoming_links']['items'] : 10;
 		$widget_options['dashboard_incoming_links'] = array(
 			'home' => get_option('home'),
-			'link' => apply_filters( 'dashboard_incoming_links_link', 'http://blogsearch.google.com/blogsearch?hl=en&scoring=d&partner=wordpress&q=link:' . trailingslashit( get_option('home') ) ),
-			'url' => isset($widget_options['dashboard_incoming_links']['url']) ? apply_filters( 'dashboard_incoming_links_feed', $widget_options['dashboard_incoming_links']['url'] ) : apply_filters( 'dashboard_incoming_links_feed', 'http://blogsearch.google.com/blogsearch_feeds?hl=en&scoring=d&ie=utf-8&num=20&output=rss&partner=wordpress&q=link:' . trailingslashit( get_option('home') ) ),
-			'items' => isset($widget_options['dashboard_incoming_links']['items']) ? $widget_options['dashboard_incoming_links']['items'] : 10,
+			'link' => apply_filters( 'dashboard_incoming_links_link', 'http://blogsearch.google.com/blogsearch?scoring=d&partner=wordpress&q=link:' . trailingslashit( get_option('home') ) ),
+			'url' => isset($widget_options['dashboard_incoming_links']['url']) ? apply_filters( 'dashboard_incoming_links_feed', $widget_options['dashboard_incoming_links']['url'] ) : apply_filters( 'dashboard_incoming_links_feed', 'http://blogsearch.google.com/blogsearch_feeds?scoring=d&ie=utf-8&num=' . $num_items . '&output=rss&partner=wordpress&q=link:' . trailingslashit( get_option('home') ) ),
+			'items' => $num_items,
 			'show_date' => isset($widget_options['dashboard_incoming_links']['show_date']) ? $widget_options['dashboard_incoming_links']['show_date'] : false
 		);
 	}
@@ -132,7 +133,7 @@ function wp_add_dashboard_widget( $widget_id, $widget_name, $callback, $control_
 function _wp_dashboard_control_callback( $dashboard, $meta_box ) {
 	echo '<form action="" method="post" class="dashboard-widget-control-form">';
 	wp_dashboard_trigger_widget_control( $meta_box['id'] );
-	echo "<p class='submit'><input type='hidden' name='widget_id' value='" . esc_attr($meta_box['id']) . "' /><input type='submit' value='" . esc_attr__( 'Submit' ) . "' /></p>";
+	echo '<p class="submit"><input type="hidden" name="widget_id" value="' . esc_attr($meta_box['id']) . '" /><input type="submit" value="' . esc_attr__( 'Submit' ) . '" /></p>';
 
 	echo '</form>';
 }
@@ -163,7 +164,7 @@ function wp_dashboard() {
 			$hide2 = $hide3 = $hide4 = 'display:none;';
 	}
 ?>
-<div id='dashboard-widgets' class='metabox-holder'>
+<div id="dashboard-widgets" class="metabox-holder">
 <?php
 	echo "\t<div class='postbox-container' style='$width'>\n";
 	do_meta_boxes( 'dashboard', 'normal', '' );
@@ -179,7 +180,7 @@ function wp_dashboard() {
 ?>
 </div></div>
 
-<form style='display: none' method='get' action=''>
+<form style="display:none" method="get" action="">
 	<p>
 <?php
 	wp_nonce_field( 'closedpostboxes', 'closedpostboxesnonce', false );
@@ -236,7 +237,7 @@ function wp_dashboard_right_now() {
 	*/
 
 	// Total Comments
-	$num = number_format_i18n($num_comm->total_comments);
+	$num = '<span class="total-count">' . number_format_i18n($num_comm->total_comments) . '</span>';
 	$text = _n( 'Comment', 'Comments', $num_comm->total_comments );
 	if ( current_user_can( 'moderate_comments' ) ) {
 		$num = "<a href='edit-comments.php'>$num</a>";
@@ -258,7 +259,7 @@ function wp_dashboard_right_now() {
 	echo '<td class="t pages">' . $text . '</td>';
 
 	// Approved Comments
-	$num = number_format_i18n($num_comm->approved);
+	$num = '<span class="approved-count">' . number_format_i18n($num_comm->approved) . '</span>';
 	$text = _nc( 'Approved|Right Now', 'Approved', $num_comm->approved );
 	if ( current_user_can( 'moderate_comments' ) ) {
 		$num = "<a href='edit-comments.php?comment_status=approved'>$num</a>";
@@ -280,10 +281,10 @@ function wp_dashboard_right_now() {
 	echo '<td class="t cats">' . $text . '</td>';
 
 	// Pending Comments
-	$num = number_format_i18n($num_comm->moderated);
+	$num = '<span class="pending-count">' . number_format_i18n($num_comm->moderated) . '</span>';
 	$text = _n( 'Pending', 'Pending', $num_comm->moderated );
 	if ( current_user_can( 'moderate_comments' ) ) {
-		$num = "<a href='edit-comments.php?comment_status=moderated'><span class='pending-count'>$num</span></a>";
+		$num = "<a href='edit-comments.php?comment_status=moderated'>$num</a>";
 		$text = "<a class='waiting' href='edit-comments.php?comment_status=moderated'>$text</a>";
 	}
 	echo '<td class="b b-waiting">' . $num . '</td>';
@@ -339,9 +340,9 @@ function wp_dashboard_right_now() {
 	} else {
 		if ( current_user_can( 'switch_themes' ) ) {
 			echo '<a href="themes.php" class="button rbutton">' . __('Change Theme') . '</a>';
-			printf('Theme <span class="b"><a href="themes.php">%1$s</a></span>', $ct->title);
+			printf( __('Theme <span class="b"><a href="themes.php">%1$s</a></span>'), $ct->title );
 		} else {
-			printf('Theme <span class="b">%1$s</span>', $ct->title);
+			printf( __('Theme <span class="b">%1$s</span>'), $ct->title );
 		}
 	}
 	echo '</p>';
@@ -447,7 +448,7 @@ function wp_dashboard_recent_drafts( $drafts = false ) {
 		foreach ( $drafts as $draft ) {
 			$url = get_edit_post_link( $draft->ID );
 			$title = _draft_or_post_title( $draft->ID );
-			$item = "<h4><a href='$url' title='" . sprintf( __( 'Edit &#8220;%s&#8221;' ), esc_attr( $title ) ) . "'>$title</a> <abbr title='" . get_the_time(__('Y/m/d g:i:s A'), $draft) . "'>" . get_the_time( get_option( 'date_format' ), $draft ) . '</abbr></h4>';
+			$item = "<h4><a href='$url' title='" . sprintf( __( 'Edit &#8220;%s&#8221;' ), esc_attr( $title ) ) . "'>" . esc_html($title) . "</a> <abbr title='" . get_the_time(__('Y/m/d g:i:s A'), $draft) . "'>" . get_the_time( get_option( 'date_format' ), $draft ) . '</abbr></h4>';
 			if ( $the_content = preg_split( '#\s#', strip_tags( $draft->post_content ), 11, PREG_SPLIT_NO_EMPTY ) )
 				$item .= '<p>' . join( ' ', array_slice( $the_content, 0, 10 ) ) . ( 10 < count( $the_content ) ? '&hellip;' : '' ) . '</p>';
 			$list[] = $item;
@@ -480,7 +481,7 @@ function wp_dashboard_recent_comments() {
 	$comments = array();
 	$start = 0;
 
-	while ( count( $comments ) < 5 && $possible = $wpdb->get_results( "SELECT * FROM $wpdb->comments ORDER BY comment_date_gmt DESC LIMIT $start, 50" ) ) {
+	while ( count( $comments ) < 5 && $possible = $wpdb->get_results( "SELECT * FROM $wpdb->comments c LEFT JOIN $wpdb->posts p ON c.comment_post_ID = p.ID WHERE p.post_status != 'trash' ORDER BY c.comment_date_gmt DESC LIMIT $start, 50" ) ) {
 
 		foreach ( $possible as $comment ) {
 			if ( count( $comments ) >= 5 )
@@ -509,6 +510,7 @@ function wp_dashboard_recent_comments() {
 <?php	}
 
 		wp_comment_reply( -1, false, 'dashboard', false );
+		wp_comment_trashnotice();
 
 	else :
 ?>
@@ -527,24 +529,37 @@ function _wp_dashboard_recent_comments_row( &$comment, $show_date = true ) {
 	$comment_post_link = "<a href='$comment_post_url'>$comment_post_title</a>";
 	$comment_link = '<a class="comment-link" href="' . esc_url(get_comment_link()) . '">#</a>';
 
-	$delete_url = esc_url( wp_nonce_url( "comment.php?action=deletecomment&p=$comment->comment_post_ID&c=$comment->comment_ID", "delete-comment_$comment->comment_ID" ) );
-	$approve_url = esc_url( wp_nonce_url( "comment.php?action=approvecomment&p=$comment->comment_post_ID&c=$comment->comment_ID", "approve-comment_$comment->comment_ID" ) );
-	$unapprove_url = esc_url( wp_nonce_url( "comment.php?action=unapprovecomment&p=$comment->comment_post_ID&c=$comment->comment_ID", "unapprove-comment_$comment->comment_ID" ) );
-	$spam_url = esc_url( wp_nonce_url( "comment.php?action=deletecomment&dt=spam&p=$comment->comment_post_ID&c=$comment->comment_ID", "delete-comment_$comment->comment_ID" ) );
-
-	$actions = array();
-
 	$actions_string = '';
 	if ( current_user_can('edit_post', $comment->comment_post_ID) ) {
+		// preorder it: Approve | Reply | Edit | Spam | Trash
+		$actions = array(
+			'approve' => '', 'unapprove' => '',
+			'reply' => '',
+			'edit' => '',
+			'spam' => '',
+			'trash' => '', 'delete' => ''
+		);
+
+		$del_nonce = esc_html( '_wpnonce=' . wp_create_nonce( "delete-comment_$comment->comment_ID" ) );
+		$approve_nonce = esc_html( '_wpnonce=' . wp_create_nonce( "approve-comment_$comment->comment_ID" ) );
+
+		$approve_url = esc_url( "comment.php?action=approvecomment&p=$comment->comment_post_ID&c=$comment->comment_ID&$approve_nonce" );
+		$unapprove_url = esc_url( "comment.php?action=unapprovecomment&p=$comment->comment_post_ID&c=$comment->comment_ID&$approve_nonce" );
+		$spam_url = esc_url( "comment.php?action=spamcomment&p=$comment->comment_post_ID&c=$comment->comment_ID&$del_nonce" );
+		$trash_url = esc_url( "comment.php?action=trashcomment&p=$comment->comment_post_ID&c=$comment->comment_ID&$del_nonce" );
+		$delete_url = esc_url( "comment.php?action=deletecomment&p=$comment->comment_post_ID&c=$comment->comment_ID&$del_nonce" );
+
 		$actions['approve'] = "<a href='$approve_url' class='dim:the-comment-list:comment-$comment->comment_ID:unapproved:e7e7d3:e7e7d3:new=approved vim-a' title='" . __( 'Approve this comment' ) . "'>" . __( 'Approve' ) . '</a>';
 		$actions['unapprove'] = "<a href='$unapprove_url' class='dim:the-comment-list:comment-$comment->comment_ID:unapproved:e7e7d3:e7e7d3:new=unapproved vim-u' title='" . __( 'Unapprove this comment' ) . "'>" . __( 'Unapprove' ) . '</a>';
 		$actions['edit'] = "<a href='comment.php?action=editcomment&amp;c={$comment->comment_ID}' title='" . __('Edit comment') . "'>". __('Edit') . '</a>';
-		//$actions['quickedit'] = '<a onclick="commentReply.open(\''.$comment->comment_ID.'\',\''.$comment->comment_post_ID.'\',\'edit\');return false;" class="vim-q" title="'.__('Quick Edit').'" href="#">' . __('Quick&nbsp;Edit') . '</a>';
 		$actions['reply'] = '<a onclick="commentReply.open(\''.$comment->comment_ID.'\',\''.$comment->comment_post_ID.'\');return false;" class="vim-r hide-if-no-js" title="'.__('Reply to this comment').'" href="#">' . __('Reply') . '</a>';
 		$actions['spam'] = "<a href='$spam_url' class='delete:the-comment-list:comment-$comment->comment_ID::spam=1 vim-s vim-destructive' title='" . __( 'Mark this comment as spam' ) . "'>" . /* translators: mark as spam link */  _x( 'Spam', 'verb' ) . '</a>';
-		$actions['delete'] = "<a href='$delete_url' class='delete:the-comment-list:comment-$comment->comment_ID delete vim-d vim-destructive'>" . __('Delete') . '</a>';
+		if ( !EMPTY_TRASH_DAYS )
+			$actions['delete'] = "<a href='$delete_url' class='delete:the-comment-list:comment-$comment->comment_ID::trash=1 delete vim-d vim-destructive'>" . __('Delete Permanently') . '</a>';
+		else
+			$actions['trash'] = "<a href='$trash_url' class='delete:the-comment-list:comment-$comment->comment_ID::trash=1 delete vim-d vim-destructive' title='" . __( 'Move this comment to the trash' ) . "'>" . _x('Trash', 'verb') . '</a>';
 
-		$actions = apply_filters( 'comment_row_actions', $actions, $comment );
+		$actions = apply_filters( 'comment_row_actions', array_filter($actions), $comment );
 
 		$i = 0;
 		foreach ( $actions as $action => $link ) {
@@ -567,7 +582,7 @@ function _wp_dashboard_recent_comments_row( &$comment, $show_date = true ) {
 			<?php echo get_avatar( $comment, 50 ); ?>
 
 			<div class="dashboard-comment-wrap">
-			<h4 class="comment-meta"><?php printf( __( 'From %1$s on %2$s%3$s' ), '<cite class="comment-author">' . get_comment_author_link() . '</cite>', $comment_post_link." ".$comment_link, ' <span class="approve">' . __( '[Pending]' ) . '</span>' ); ?></h4>
+			<h4 class="comment-meta"><?php printf( __( 'From %1$s on %2$s%3$s' ), '<cite class="comment-author">' . get_comment_author_link() . '</cite>', $comment_post_link.' '.$comment_link, ' <span class="approve">' . __( '[Pending]' ) . '</span>' ); ?></h4>
 
 			<?php
 			else :
@@ -585,20 +600,12 @@ function _wp_dashboard_recent_comments_row( &$comment, $show_date = true ) {
 			?>
 			<div class="dashboard-comment-wrap">
 			<?php /* translators: %1$s is type of comment, %2$s is link to the post */ ?>
-			<h4 class="comment-meta"><?php printf( _x( '%1$s on %2$s', 'dashboard' ), "<strong>$type</strong>", $comment_post_link ); ?></h4>
+			<h4 class="comment-meta"><?php printf( _x( '%1$s on %2$s', 'dashboard' ), "<strong>$type</strong>", $comment_post_link." ".$comment_link ); ?></h4>
 			<p class="comment-author"><?php comment_author_link(); ?></p>
 
 			<?php endif; // comment_type ?>
 			<blockquote><p><?php comment_excerpt(); ?></p></blockquote>
 			<p class="row-actions"><?php echo $actions_string; ?></p>
-
-			<div id="inline-<?php echo $comment->comment_ID; ?>" class="hidden">
-				<textarea class="comment" rows="3" cols="10"><?php echo $comment->comment_content; ?></textarea>
-				<div class="author-email"><?php echo esc_attr( $comment->comment_author_email ); ?></div>
-				<div class="author"><?php echo esc_attr( $comment->comment_author ); ?></div>
-				<div class="author-url"><?php echo esc_attr( $comment->comment_author_url ); ?></div>
-				<div class="comment_status"><?php echo $comment->comment_approved; ?></div>
-			</div>
 			</div>
 		</div>
 <?php
@@ -629,6 +636,8 @@ function wp_dashboard_incoming_links_output() {
 
 	if ( !$rss->get_item_quantity() ) {
 		echo '<p>' . __('This dashboard widget queries <a href="http://blogsearch.google.com/">Google Blog Search</a> so that when another blog links to your site it will show up here. It has found no incoming links&hellip; yet. It&#8217;s okay &#8212; there is no rush.') . "</p>\n";
+		$rss->__destruct(); 
+		unset($rss);
 		return;
 	}
 
@@ -682,7 +691,8 @@ function wp_dashboard_incoming_links_output() {
 	}
 
 	echo "</ul>\n";
-
+	$rss->__destruct(); 
+	unset($rss);
 }
 
 function wp_dashboard_incoming_links_control() {
@@ -706,7 +716,7 @@ function wp_dashboard_primary_control() {
  */
 function wp_dashboard_rss_output( $widget_id ) {
 	$widgets = get_option( 'dashboard_widget_options' );
-	echo "<div class='rss-widget'>";
+	echo '<div class="rss-widget">';
 	wp_widget_rss_output( $widgets[$widget_id] );
 	echo "</div>";
 }
@@ -738,11 +748,15 @@ function wp_dashboard_secondary_output() {
 			echo '</p></div>';
 		}
 	} elseif ( !$rss->get_item_quantity() ) {
+		$rss->__destruct(); 
+		unset($rss);
 		return false;
 	} else {
 		echo '<div class="rss-widget">';
 		wp_widget_rss_output( $rss, $widgets['dashboard_secondary'] );
 		echo '</div>';
+		$rss->__destruct(); 
+		unset($rss);
 	}
 }
 
@@ -825,6 +839,9 @@ function wp_dashboard_plugins_output() {
 		echo "<h4>$label</h4>\n";
 		echo "<h5><a href='$link'>$title</a></h5>&nbsp;<span>(<a href='$ilink' class='thickbox' title='$title'>" . __( 'Install' ) . "</a>)</span>\n";
 		echo "<p>$description</p>\n";
+		
+		$$feed->__destruct();
+		unset($$feed);
 	}
 }
 
@@ -918,10 +935,13 @@ function wp_dashboard_rss_control( $widget_id, $form_inputs = array() ) {
 		// title is optional.  If black, fill it if possible
 		if ( !$widget_options[$widget_id]['title'] && isset($_POST['widget-rss'][$number]['title']) ) {
 			$rss = fetch_feed($widget_options[$widget_id]['url']);
-			if ( ! is_wp_error($rss) )
-				$widget_options[$widget_id]['title'] = htmlentities(strip_tags($rss->get_title()));
-			else
+			if ( is_wp_error($rss) ) {
 				$widget_options[$widget_id]['title'] = htmlentities(__('Unknown Feed'));
+			} else {
+				$widget_options[$widget_id]['title'] = htmlentities(strip_tags($rss->get_title()));	
+				$rss->__destruct();
+				unset($rss);				
+			}
 		}
 		update_option( 'dashboard_widget_options', $widget_options );
 	}

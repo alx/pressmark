@@ -66,38 +66,25 @@
  * @return array See above for description.
  */
 function get_plugin_data( $plugin_file, $markup = true, $translate = true ) {
-	// We don't need to write to the file, so just open for reading.
-	$fp = fopen($plugin_file, 'r');
 
-	// Pull only the first 8kiB of the file in.
-	$plugin_data = fread( $fp, 8192 );
+	$default_headers = array( 
+		'Name' => 'Plugin Name', 
+		'PluginURI' => 'Plugin URI', 
+		'Version' => 'Version', 
+		'Description' => 'Description', 
+		'Author' => 'Author', 
+		'AuthorURI' => 'Author URI', 
+		'TextDomain' => 'Text Domain', 
+		'DomainPath' => 'Domain Path' 
+		);
 
-	// PHP will close file handle, but we are good citizens.
-	fclose($fp);
+	$plugin_data = get_file_data( $plugin_file, $default_headers, 'plugin' );
 
-	preg_match( '|Plugin Name:(.*)$|mi', $plugin_data, $name );
-	preg_match( '|Plugin URI:(.*)$|mi', $plugin_data, $uri );
-	preg_match( '|Version:(.*)|i', $plugin_data, $version );
-	preg_match( '|Description:(.*)$|mi', $plugin_data, $description );
-	preg_match( '|Author:(.*)$|mi', $plugin_data, $author_name );
-	preg_match( '|Author URI:(.*)$|mi', $plugin_data, $author_uri );
-	preg_match( '|Text Domain:(.*)$|mi', $plugin_data, $text_domain );
-	preg_match( '|Domain Path:(.*)$|mi', $plugin_data, $domain_path );
+	//For backward compatibility by default Title is the same as Name.
+	$plugin_data['Title'] = $plugin_data['Name'];
 
-	foreach ( array( 'name', 'uri', 'version', 'description', 'author_name', 'author_uri', 'text_domain', 'domain_path' ) as $field ) {
-		if ( !empty( ${$field} ) )
-			${$field} = _cleanup_header_comment(${$field}[1]);
-		else
-			${$field} = '';
-	}
-
-	$plugin_data = array(
-				'Name' => $name, 'Title' => $name, 'PluginURI' => $uri, 'Description' => $description,
-				'Author' => $author_name, 'AuthorURI' => $author_uri, 'Version' => $version,
-				'TextDomain' => $text_domain, 'DomainPath' => $domain_path
-				);
 	if ( $markup || $translate )
-		$plugin_data = _get_plugin_data_markup_translate($plugin_file, $plugin_data, $markup, $translate);
+		$plugin_data = _get_plugin_data_markup_translate( $plugin_file, $plugin_data, $markup, $translate );
 
 	return $plugin_data;
 }
@@ -107,9 +94,9 @@ function _get_plugin_data_markup_translate($plugin_file, $plugin_data, $markup =
 	//Translate fields
 	if( $translate && ! empty($plugin_data['TextDomain']) ) {
 		if( ! empty( $plugin_data['DomainPath'] ) )
-			load_plugin_textdomain($plugin_data['TextDomain'], dirname($plugin_file). $plugin_data['DomainPath']);
+			load_plugin_textdomain($plugin_data['TextDomain'], false, dirname($plugin_file). $plugin_data['DomainPath']);
 		else
-			load_plugin_textdomain($plugin_data['TextDomain'], dirname($plugin_file));
+			load_plugin_textdomain($plugin_data['TextDomain'], false, dirname($plugin_file));
 
 		foreach ( array('Name', 'PluginURI', 'Description', 'Author', 'AuthorURI', 'Version') as $field )
 			$plugin_data[ $field ] = translate($plugin_data[ $field ], $plugin_data['TextDomain']);
@@ -272,7 +259,7 @@ function get_plugins($plugin_folder = '') {
  * @return bool True, if in the active plugins list. False, not in the list.
  */
 function is_plugin_active($plugin) {
-	return in_array($plugin, get_option('active_plugins'));
+	return in_array( $plugin, apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) );
 }
 
 /**
@@ -314,8 +301,10 @@ function activate_plugin($plugin, $redirect = '') {
 		@include(WP_PLUGIN_DIR . '/' . $plugin);
 		$current[] = $plugin;
 		sort($current);
+		do_action( 'activate_plugin', trim( $plugin) );
 		update_option('active_plugins', $current);
-		do_action('activate_' . $plugin);
+		do_action( 'activate_' . trim( $plugin ) );
+		do_action( 'activated_plugin', trim( $plugin) );
 		ob_end_clean();
 	}
 
@@ -343,9 +332,19 @@ function deactivate_plugins($plugins, $silent= false) {
 		$plugin = plugin_basename($plugin);
 		if( ! is_plugin_active($plugin) )
 			continue;
-		array_splice($current, array_search( $plugin, $current), 1 ); // Fixed Array-fu!
-		if ( ! $silent ) //Used by Plugin updater to internally deactivate plugin, however, not to notify plugins of the fact to prevent plugin output.
-			do_action('deactivate_' . trim( $plugin ));
+		if ( ! $silent )
+			do_action( 'deactivate_plugin', trim( $plugin ) );
+
+		$key = array_search( $plugin, (array) $current );
+
+		if ( false !== $key )
+			array_splice( $current, $key, 1 );
+
+		//Used by Plugin updater to internally deactivate plugin, however, not to notify plugins of the fact to prevent plugin output.
+		if ( ! $silent ) {
+			do_action( 'deactivate_' . trim( $plugin ) );
+			do_action( 'deactivated_plugin', trim( $plugin ) );
+		}
 	}
 
 	update_option('active_plugins', $current);
@@ -477,7 +476,7 @@ function delete_plugins($plugins, $redirect = '' ) {
 }
 
 function validate_active_plugins() {
-	$check_plugins = get_option('active_plugins');
+	$check_plugins = apply_filters( 'active_plugins', get_option('active_plugins') );
 
 	// Sanity check.  If the active plugin list is not an array, make it an
 	// empty array.
@@ -584,7 +583,7 @@ function uninstall_plugin($plugin) {
 // Menu
 //
 
-function add_menu_page( $page_title, $menu_title, $access_level, $file, $function = '', $icon_url = '' ) {
+function add_menu_page( $page_title, $menu_title, $access_level, $file, $function = '', $icon_url = '', $position = NULL ) {
 	global $menu, $admin_page_hooks, $_registered_pages;
 
 	$file = plugin_basename( $file );
@@ -595,12 +594,19 @@ function add_menu_page( $page_title, $menu_title, $access_level, $file, $functio
 	if (!empty ( $function ) && !empty ( $hookname ))
 		add_action( $hookname, $function );
 
-	if ( empty($icon_url) )
+	if ( empty($icon_url) ) {
 		$icon_url = 'images/generic.png';
-	elseif ( is_ssl() && 0 === strpos($icon_url, 'http://') )
+	} elseif ( is_ssl() && 0 === strpos($icon_url, 'http://') ) {
 		$icon_url = 'https://' . substr($icon_url, 7);
+	}
 
-	$menu[] = array ( $menu_title, $access_level, $file, $page_title, 'menu-top ' . $hookname, $hookname, $icon_url );
+	$new_menu = array ( $menu_title, $access_level, $file, $page_title, 'menu-top ' . $hookname, $hookname, $icon_url );
+
+	if ( NULL === $position  ) {
+		$menu[] = $new_menu;
+	} else {
+		$menu[$position] = $new_menu;
+	}
 
 	$_registered_pages[$hookname] = true;
 
@@ -608,51 +614,19 @@ function add_menu_page( $page_title, $menu_title, $access_level, $file, $functio
 }
 
 function add_object_page( $page_title, $menu_title, $access_level, $file, $function = '', $icon_url = '') {
-	global $menu, $admin_page_hooks, $_wp_last_object_menu, $_registered_pages;
-
-	$file = plugin_basename( $file );
-
-	$admin_page_hooks[$file] = sanitize_title( $menu_title );
-
-	$hookname = get_plugin_page_hookname( $file, '' );
-	if (!empty ( $function ) && !empty ( $hookname ))
-		add_action( $hookname, $function );
-
-	if ( empty($icon_url) )
-		$icon_url = 'images/generic.png';
+	global $_wp_last_object_menu;
 
 	$_wp_last_object_menu++;
 
-	$menu[$_wp_last_object_menu] = array ( $menu_title, $access_level, $file, $page_title, 'menu-top ' . $hookname, $hookname, $icon_url );
-
-	$_registered_pages[$hookname] = true;
-
-	return $hookname;
+	return add_menu_page($page_title, $menu_title, $access_level, $file, $function, $icon_url, $_wp_last_object_menu);
 }
 
 function add_utility_page( $page_title, $menu_title, $access_level, $file, $function = '', $icon_url = '') {
-	global $menu, $admin_page_hooks, $_wp_last_utility_menu, $_registered_pages;
-
-	$file = plugin_basename( $file );
-
-	$admin_page_hooks[$file] = sanitize_title( $menu_title );
-
-	$hookname = get_plugin_page_hookname( $file, '' );
-	if (!empty ( $function ) && !empty ( $hookname ))
-		add_action( $hookname, $function );
-
-	if ( empty($icon_url) )
-		$icon_url = 'images/generic.png';
-	elseif ( is_ssl() && 0 === strpos($icon_url, 'http://') )
-		$icon_url = 'https://' . substr($icon_url, 7);
+	global $_wp_last_utility_menu;
 
 	$_wp_last_utility_menu++;
 
-	$menu[$_wp_last_utility_menu] = array ( $menu_title, $access_level, $file, $page_title, 'menu-top ' . $hookname, $hookname, $icon_url );
-
-	$_registered_pages[$hookname] = true;
-
-	return $hookname;
+	return add_menu_page($page_title, $menu_title, $access_level, $file, $function, $icon_url, $_wp_last_utility_menu);
 }
 
 function add_submenu_page( $parent, $page_title, $menu_title, $access_level, $file, $function = '' ) {
@@ -692,7 +666,7 @@ function add_submenu_page( $parent, $page_title, $menu_title, $access_level, $fi
 
 	$_registered_pages[$hookname] = true;
 	// backwards-compatibility for plugins using add_management page.  See wp-admin/admin.php for redirect from edit.php to tools.php
-	if ( 'tools.php' == $parent ) 
+	if ( 'tools.php' == $parent )
 		$_registered_pages[get_plugin_page_hookname( $file, 'edit.php')] = true;
 
 	return $hookname;
@@ -1003,7 +977,8 @@ function user_can_access_admin_page() {
  *
  * @since 2.7.0
  *
- * @param string $option_group A settings group name.  Can be anything.
+ * @param string $option_group A settings group name.  Should correspond to a whitelisted option key name.
+ * 	Default whitelisted option key names include "general," "discussion," and "reading," among others.
  * @param string $option_name The name of an option to sanitize and save.
  * @param unknown_type $sanitize_callback A callback function that sanitizes the option's value.
  * @return unknown

@@ -122,7 +122,7 @@ include ('admin-header.php');
 <?php screen_icon(); ?>
 <h2><?php echo esc_html( $title ); ?></h2>
 
-<form id="your-profile" action="" method="post">
+<form id="your-profile" action="<?php if ( IS_PROFILE_PAGE ) { echo admin_url('profile.php'); } else { echo admin_url('user-edit.php'); } ?>" method="post">
 <?php wp_nonce_field('update-user_' . $user_id) ?>
 <?php if ( $wp_http_referer ) : ?>
 	<input type="hidden" name="wp_http_referer" value="<?php echo esc_url($wp_http_referer); ?>" />
@@ -267,20 +267,16 @@ else
 	<td><input type="text" name="url" id="url" value="<?php echo esc_attr($profileuser->user_url) ?>" class="regular-text code" /></td>
 </tr>
 
+<?php
+	foreach (_wp_get_user_contactmethods() as $name => $desc) {
+?>
 <tr>
-	<th><label for="aim"><?php echo apply_filters('user_aim_label', __('AIM')); ?></label></th>
-	<td><input type="text" name="aim" id="aim" value="<?php echo esc_attr($profileuser->aim) ?>" class="regular-text" /></td>
+	<th><label for="<?php echo $name; ?>"><?php echo apply_filters('user_'.$name.'_label', $desc); ?></label></th>
+	<td><input type="text" name="<?php echo $name; ?>" id="<?php echo $name; ?>" value="<?php echo esc_attr($profileuser->$name) ?>" class="regular-text" /></td>
 </tr>
-
-<tr>
-	<th><label for="yim"><?php echo apply_filters('user_yim_label', __('Yahoo IM')); ?></label></th>
-	<td><input type="text" name="yim" id="yim" value="<?php echo esc_attr($profileuser->yim) ?>" class="regular-text" /></td>
-</tr>
-
-<tr>
-	<th><label for="jabber"><?php echo apply_filters('user_jabber_label', __('Jabber / Google Talk')); ?></label></th>
-	<td><input type="text" name="jabber" id="jabber" value="<?php echo esc_attr($profileuser->jabber) ?>" class="regular-text" /></td>
-</tr>
+<?php
+	}
+?>
 </table>
 
 <h3><?php IS_PROFILE_PAGE ? _e('About Yourself') : _e('About the user'); ?></h3>
@@ -288,7 +284,7 @@ else
 <table class="form-table">
 <tr>
 	<th><label for="description"><?php _e('Biographical Info'); ?></label></th>
-	<td><textarea name="description" id="description" rows="5" cols="30"><?php echo $profileuser->description ?></textarea><br />
+	<td><textarea name="description" id="description" rows="5" cols="30"><?php echo esc_html($profileuser->description); ?></textarea><br />
 	<span class="description"><?php _e('Share a little biographical information to fill out your profile. This may be shown publicly.'); ?></span></td>
 </tr>
 
@@ -315,16 +311,17 @@ if ( $show_password_fields ) :
 	}
 ?>
 
-<?php if (count($profileuser->caps) > count($profileuser->roles) && apply_filters('additional_capabilities_display', true, $profileuser)): ?>
+<?php if ( count($profileuser->caps) > count($profileuser->roles) && apply_filters('additional_capabilities_display', true, $profileuser) ) { ?>
 <br class="clear" />
 	<table width="99%" style="border: none;" cellspacing="2" cellpadding="3" class="editform">
 		<tr>
 			<th scope="row"><?php _e('Additional Capabilities') ?></th>
 			<td><?php
 			$output = '';
-			foreach($profileuser->caps as $cap => $value) {
-				if(!$wp_roles->is_role($cap)) {
-					if($output != '') $output .= ', ';
+			foreach ( $profileuser->caps as $cap => $value ) {
+				if ( !$wp_roles->is_role($cap) ) {
+					if ( $output != '' )
+						$output .= ', ';
 					$output .= $value ? $cap : "Denied: {$cap}";
 				}
 			}
@@ -332,7 +329,7 @@ if ( $show_password_fields ) :
 			?></td>
 		</tr>
 	</table>
-<?php endif; ?>
+<?php } ?>
 
 <p class="submit">
 	<input type="hidden" name="action" value="update" />

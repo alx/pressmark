@@ -15,8 +15,18 @@ require_once(ABSPATH . 'wp-admin/includes/widgets.php');
 if ( ! current_user_can('switch_themes') )
 	wp_die( __( 'Cheatin&#8217; uh?' ));
 
-wp_enqueue_script('admin-widgets');
 wp_admin_css( 'widgets' );
+
+$widgets_access = get_user_setting( 'widgets_access' );
+if ( isset($_GET['widgets-access']) ) {
+	$widgets_access = 'on' == $_GET['widgets-access'] ? 'on' : 'off';
+	set_user_setting( 'widgets_access', $widgets_access );
+}
+
+if ( 'on' == $widgets_access )
+	add_filter( 'admin_body_class', create_function('', '{return " widgets_access ";}') );
+else
+	wp_enqueue_script('admin-widgets');
 
 do_action( 'sidebar_admin_setup' );
 
@@ -27,6 +37,7 @@ $parent_file = 'themes.php';
 register_sidebar(array(
 	'name' => __('Inactive Widgets'),
 	'id' => 'wp_inactive_widgets',
+	'description' => '',
 	'before_widget' => '',
 	'after_widget' => '',
 	'before_title' => '',
@@ -252,13 +263,15 @@ if ( isset($_GET['editwidget']) && $_GET['editwidget'] ) {
 	<p class="describe"><?php _e('Select both the sidebar for this widget and the position of the widget in that sidebar.'); ?></p>
 	<div class="widget-position">
 	<table class="widefat"><thead><tr><th><?php _e('Sidebar'); ?></th><th><?php _e('Position'); ?></th></tr></thead><tbody>
-<?php	foreach ( $wp_registered_sidebars as $sbname => $sbvalue ) {
+<?php
+	foreach ( $wp_registered_sidebars as $sbname => $sbvalue ) {
 		echo "\t\t<tr><td><label><input type='radio' name='sidebar' value='" . esc_attr($sbname) . "'" . checked( $sbname, $sidebar, false ) . " /> $sbvalue[name]</label></td><td>";
 		if ( 'wp_inactive_widgets' == $sbname ) {
 			echo '&nbsp;';
 		} else {
 			if ( !isset($sidebars_widgets[$sbname]) || !is_array($sidebars_widgets[$sbname]) ) {
 				$j = 1;
+				$sidebars_widgets[$sbname] = array();
 			} else {
 				$j = count($sidebars_widgets[$sbname]);
 				if ( isset($_GET['addnew']) || !in_array($widget_id, $sidebars_widgets[$sbname], true) )
@@ -283,7 +296,7 @@ if ( isset($_GET['editwidget']) && $_GET['editwidget'] ) {
 <?php	if ( isset($_GET['addnew']) ) { ?>
 	<a href="widgets.php" class="button alignleft"><?php _e('Cancel'); ?></a>
 <?php	} else { ?>
-	<input type="submit" name="removewidget" class="button alignleft" value="<?php esc_attr_e('Remove'); ?>" />
+	<input type="submit" name="removewidget" class="button alignleft" value="<?php esc_attr_e('Delete'); ?>" />
 <?php	} ?>
 	<input type="submit" name="savewidget" class="button-primary alignright" value="<?php esc_attr_e('Save Widget'); ?>" />
 	<input type="hidden" name="widget-id" class="widget-id" value="<?php echo esc_attr($widget_id); ?>" />
@@ -299,15 +312,6 @@ if ( isset($_GET['editwidget']) && $_GET['editwidget'] ) {
 	require_once( 'admin-footer.php' );
 	exit;
 }
-
-$widgets_access = get_user_setting( 'widgets_access' );
-if ( isset($_GET['widgets-access']) ) {
-	$widgets_access = 'on' == $_GET['widgets-access'] ? 'on' : 'off';
-	set_user_setting( 'widgets_access', $widgets_access );
-}
-
-if ( 'on' == $widgets_access )
-	add_filter( 'admin_body_class', create_function('', '{return " widgets_access ";}') );
 
 $messages = array(
 	__('Changes saved.')

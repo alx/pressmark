@@ -66,7 +66,7 @@ include('admin-header.php');
 $maxdeep = (int) apply_filters( 'thread_comments_depth_max', 10 );
 
 $thread_comments_depth = '</label><select name="thread_comments_depth" id="thread_comments_depth">';
-for ( $i = 1; $i <= $maxdeep; $i++ ) {
+for ( $i = 2; $i <= $maxdeep; $i++ ) {
 	$thread_comments_depth .= "<option value='" . esc_attr($i) . "'";
 	if ( get_option('thread_comments_depth') == $i ) $thread_comments_depth .= " selected='selected'";
 	$thread_comments_depth .= ">$i</option>";
@@ -86,7 +86,7 @@ $default_comments_page .= '>' . __('last') . '</option><option value="oldest"';
 if ( 'oldest' == get_option('default_comments_page') ) $default_comments_page .= ' selected="selected"';
 $default_comments_page .= '>' . __('first') . '</option></select>';
 
-printf( __('Break comments into pages with %1$s comments per page and the %2$s page displayed by default'), '</label><label for="comments_per_page"><input name="comments_per_page" type="text" id="comments_per_page" value="' . esc_attr(get_option('comments_per_page')) . '" class="small-text" />', $default_comments_page );
+printf( __('Break comments into pages with %1$s top level comments per page and the %2$s page displayed by default'), '</label><label for="comments_per_page"><input name="comments_per_page" type="text" id="comments_per_page" value="' . esc_attr(get_option('comments_per_page')) . '" class="small-text" />', $default_comments_page );
 
 ?></label>
 <br />

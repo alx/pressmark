@@ -17,7 +17,7 @@ require( dirname(__FILE__) . '/wp-load.php' );
 
 nocache_headers();
 
-$comment_post_ID = (int) $_POST['comment_post_ID'];
+$comment_post_ID = isset($_POST['comment_post_ID']) ? (int) $_POST['comment_post_ID'] : 0;
 
 $status = $wpdb->get_row( $wpdb->prepare("SELECT post_status, comment_status FROM $wpdb->posts WHERE ID = %d", $comment_post_ID) );
 
@@ -29,6 +29,9 @@ if ( empty($status->comment_status) ) {
 	wp_die( __('Sorry, comments are closed for this item.') );
 } elseif ( in_array($status->post_status, array('draft', 'pending') ) ) {
 	do_action('comment_on_draft', $comment_post_ID);
+	exit;
+} elseif ( 'trash' == $status->post_status ) {
+	do_action('comment_on_trash', $comment_post_ID);
 	exit;
 } else {
 	do_action('pre_comment_on_post', $comment_post_ID);

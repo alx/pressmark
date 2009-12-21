@@ -1690,4 +1690,124 @@ function the_author_ID() {
 	the_author_meta('ID');
 }
 
+/**
+ * Display the post content for the feed.
+ *
+ * For encoding the html or the $encode_html parameter, there are three possible
+ * values. '0' will make urls footnotes and use make_url_footnote(). '1' will
+ * encode special characters and automatically display all of the content. The
+ * value of '2' will strip all HTML tags from the content.
+ *
+ * Also note that you cannot set the amount of words and not set the html
+ * encoding. If that is the case, then the html encoding will default to 2,
+ * which will strip all HTML tags.
+ *
+ * To restrict the amount of words of the content, you can use the cut
+ * parameter. If the content is less than the amount, then there won't be any
+ * dots added to the end. If there is content left over, then dots will be added
+ * and the rest of the content will be removed.
+ *
+ * @package WordPress
+ * @subpackage Feed
+ * @since 0.71
+ * @uses apply_filters() Calls 'the_content_rss' on the content before processing.
+ * @see get_the_content() For the $more_link_text, $stripteaser, and $more_file
+ *		parameters.
+ *
+ * @deprecated 2.9.0
+ *
+ * @param string $more_link_text Optional. Text to display when more content is available but not displayed.
+ * @param int|bool $stripteaser Optional. Default is 0.
+ * @param string $more_file Optional.
+ * @param int $cut Optional. Amount of words to keep for the content.
+ * @param int $encode_html Optional. How to encode the content.
+ */
+function the_content_rss($more_link_text='(more...)', $stripteaser=0, $more_file='', $cut = 0, $encode_html = 0) {
+	_deprecated_function(__FUNCTION__, '2.9', 'the_content_feed' );
+	$content = get_the_content($more_link_text, $stripteaser, $more_file);
+	$content = apply_filters('the_content_rss', $content);
+	if ( $cut && !$encode_html )
+		$encode_html = 2;
+	if ( 1== $encode_html ) {
+		$content = esc_html($content);
+		$cut = 0;
+	} elseif ( 0 == $encode_html ) {
+		$content = make_url_footnote($content);
+	} elseif ( 2 == $encode_html ) {
+		$content = strip_tags($content);
+	}
+	if ( $cut ) {
+		$blah = explode(' ', $content);
+		if ( count($blah) > $cut ) {
+			$k = $cut;
+			$use_dotdotdot = 1;
+		} else {
+			$k = count($blah);
+			$use_dotdotdot = 0;
+		}
+
+		/** @todo Check performance, might be faster to use array slice instead. */
+		for ( $i=0; $i<$k; $i++ )
+			$excerpt .= $blah[$i].' ';
+		$excerpt .= ($use_dotdotdot) ? '...' : '';
+		$content = $excerpt;
+	}
+	$content = str_replace(']]>', ']]&gt;', $content);
+	echo $content;
+}
+
+/**
+ * Strip HTML and put links at the bottom of stripped content.
+ *
+ * Searches for all of the links, strips them out of the content, and places
+ * them at the bottom of the content with numbers.
+ *
+ * @since 0.71
+ * @deprecated 2.9.0
+ *
+ * @param string $content Content to get links
+ * @return string HTML stripped out of content with links at the bottom.
+ */
+function make_url_footnote( $content ) {
+	_deprecated_function(__FUNCTION__, '2.9', '' );
+	preg_match_all( '/<a(.+?)href=\"(.+?)\"(.*?)>(.+?)<\/a>/', $content, $matches );
+	$links_summary = "\n";
+	for ( $i=0; $i<count($matches[0]); $i++ ) {
+		$link_match = $matches[0][$i];
+		$link_number = '['.($i+1).']';
+		$link_url = $matches[2][$i];
+		$link_text = $matches[4][$i];
+		$content = str_replace( $link_match, $link_text . ' ' . $link_number, $content );
+		$link_url = ( ( strtolower( substr( $link_url, 0, 7 ) ) != 'http://' ) && ( strtolower( substr( $link_url, 0, 8 ) ) != 'https://' ) ) ? get_option( 'home' ) . $link_url : $link_url;
+		$links_summary .= "\n" . $link_number . ' ' . $link_url;
+	}
+	$content  = strip_tags( $content );
+	$content .= $links_summary;
+	return $content;
+}
+
+/**
+ * Retrieve translated string with vertical bar context
+ *
+ * Quite a few times, there will be collisions with similar translatable text
+ * found in more than two places but with different translated context.
+ *
+ * In order to use the separate contexts, the _c() function is used and the
+ * translatable string uses a pipe ('|') which has the context the string is in.
+ *
+ * When the translated string is returned, it is everything before the pipe, not
+ * including the pipe character. If there is no pipe in the translated text then
+ * everything is returned.
+ *
+ * @since 2.2.0
+ * @deprecated 2.9.0
+ *
+ * @param string $text Text to translate
+ * @param string $domain Optional. Domain to retrieve the translated text
+ * @return string Translated context string without pipe
+ */
+function _c( $text, $domain = 'default' ) {
+	_deprecated_function(__FUNCTION__, '2.9', '_x' );
+	return translate_with_context( $text, $domain );
+}
 ?>

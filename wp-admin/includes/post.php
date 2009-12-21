@@ -236,6 +236,14 @@ function bulk_edit_posts( $post_data = null ) {
 			wp_die( __('You are not allowed to edit posts.') );
 	}
 
+	if ( -1 == $post_data['_status'] ) {
+		$post_data['post_status'] = null;
+		unset($post_data['post_status']);
+	} else {
+		$post_data['post_status'] = $post_data['_status'];
+	}
+	unset($post_data['_status']);
+
 	$post_IDs = array_map( 'intval', (array) $post_data['post'] );
 
 	$reset = array( 'post_author', 'post_status', 'post_password', 'post_parent', 'page_template', 'comment_status', 'ping_status', 'keep_private', 'tags_input', 'post_category', 'sticky' );
@@ -298,7 +306,7 @@ function bulk_edit_posts( $post_data = null ) {
 		$post_data['ID'] = $post_ID;
 		$updated[] = wp_update_post( $post_data );
 
-		if ( current_user_can( 'edit_others_posts' ) && isset( $post_data['sticky'] ) ) {
+		if ( isset( $post_data['sticky'] ) && current_user_can( 'edit_others_posts' ) ) {
 			if ( 'sticky' == $post_data['sticky'] )
 				stick_post( $post_ID );
 			else
@@ -318,29 +326,18 @@ function bulk_edit_posts( $post_data = null ) {
  * @return unknown
  */
 function get_default_post_to_edit() {
+
+	$post_title = '';
 	if ( !empty( $_REQUEST['post_title'] ) )
 		$post_title = esc_html( stripslashes( $_REQUEST['post_title'] ));
-	else if ( !empty( $_REQUEST['popuptitle'] ) ) {
-		$post_title = esc_html( stripslashes( $_REQUEST['popuptitle'] ));
-		$post_title = funky_javascript_fix( $post_title );
-	} else {
-		$post_title = '';
-	}
 
 	$post_content = '';
 	if ( !empty( $_REQUEST['content'] ) )
 		$post_content = esc_html( stripslashes( $_REQUEST['content'] ));
-	else if ( !empty( $post_title ) ) {
-		$text       = esc_html( stripslashes( urldecode( $_REQUEST['text'] ) ) );
-		$text       = funky_javascript_fix( $text);
-		$popupurl   = esc_url($_REQUEST['popupurl']);
-		$post_content = '<a href="'.$popupurl.'">'.$post_title.'</a>'."\n$text";
-	}
 
+	$post_excerpt = '';
 	if ( !empty( $_REQUEST['excerpt'] ) )
 		$post_excerpt = esc_html( stripslashes( $_REQUEST['excerpt'] ));
-	else
-		$post_excerpt = '';
 
 	$post->ID = 0;
 	$post->post_name = '';
@@ -562,7 +559,9 @@ function add_meta( $post_ID ) {
 
 	$metakeyselect = isset($_POST['metakeyselect']) ? stripslashes( trim( $_POST['metakeyselect'] ) ) : '';
 	$metakeyinput = isset($_POST['metakeyinput']) ? stripslashes( trim( $_POST['metakeyinput'] ) ) : '';
-	$metavalue = isset($_POST['metavalue']) ? maybe_serialize( stripslashes( trim( $_POST['metavalue'] ) ) ) : '';
+	$metavalue = isset($_POST['metavalue']) ? maybe_serialize( stripslashes_deep( $_POST['metavalue'] ) ) : '';
+	if ( is_string($metavalue) )
+		$metavalue = trim( $metavalue );
 
 	if ( ('0' === $metavalue || !empty ( $metavalue ) ) && ((('#NONE#' != $metakeyselect) && !empty ( $metakeyselect) ) || !empty ( $metakeyinput) ) ) {
 		// We have a key/value pair. If both the select and the
@@ -580,6 +579,8 @@ function add_meta( $post_ID ) {
 		wp_cache_delete($post_ID, 'post_meta');
 
 		$wpdb->query( $wpdb->prepare("INSERT INTO $wpdb->postmeta (post_id,meta_key,meta_value ) VALUES (%s, %s, %s)", $post_ID, $metakey, $metavalue) );
+		do_action( 'added_postmeta', $wpdb->insert_id, $post_ID, $metakey, $metavalue );
+
 		return $wpdb->insert_id;
 	}
 	return false;
@@ -598,9 +599,13 @@ function delete_meta( $mid ) {
 	$mid = (int) $mid;
 
 	$post_id = $wpdb->get_var( $wpdb->prepare("SELECT post_id FROM $wpdb->postmeta WHERE meta_id = %d", $mid) );
-	wp_cache_delete($post_id, 'post_meta');
 
-	return $wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->postmeta WHERE meta_id = %d", $mid) );
+	do_action( 'delete_postmeta', $mid );
+	wp_cache_delete($post_id, 'post_meta');
+	$rval = $wpdb->query( $wpdb->prepare("DELETE FROM $wpdb->postmeta WHERE meta_id = %d", $mid) );
+	do_action( 'deleted_postmeta', $mid );
+
+	return $rval;
 }
 
 /**
@@ -681,15 +686,19 @@ function update_meta( $meta_id, $meta_key, $meta_value ) {
 		return false;
 
 	$post_id = $wpdb->get_var( $wpdb->prepare("SELECT post_id FROM $wpdb->postmeta WHERE meta_id = %d", $meta_id) );
-	wp_cache_delete($post_id, 'post_meta');
 
-	$meta_value = maybe_serialize( stripslashes( $meta_value ) );
+	$meta_value = maybe_serialize( stripslashes_deep( $meta_value ) );
 	$meta_id = (int) $meta_id;
 
 	$data  = compact( 'meta_key', 'meta_value' );
 	$where = compact( 'meta_id' );
 
-	return $wpdb->update( $wpdb->postmeta, $data, $where );
+	do_action( 'update_postmeta', $meta_id, $post_id, $meta_key, $meta_value );
+	$rval = $wpdb->update( $wpdb->postmeta, $data, $where );
+	wp_cache_delete($post_id, 'post_meta');
+	do_action( 'updated_postmeta', $meta_id, $post_id, $meta_key, $meta_value );
+
+	return $rval;
 }
 
 //
@@ -706,6 +715,7 @@ function update_meta( $meta_id, $meta_key, $meta_value ) {
  * @return unknown
  */
 function _fix_attachment_links( $post_ID ) {
+	global $_fix_attachment_link_id;
 
 	$post = & get_post( $post_ID, ARRAY_A );
 
@@ -733,7 +743,8 @@ function _fix_attachment_links( $post_ID ) {
 		}
 
 		$post_search[$i] = $anchor;
-		$post_replace[$i] = preg_replace( "#href=(\"|')[^'\"]*\\1#e", "stripslashes( 'href=\\1' ).get_attachment_link( $id ).stripslashes( '\\1' )", $anchor );
+		 $_fix_attachment_link_id = $id;
+		$post_replace[$i] = preg_replace_callback( "#href=(\"|')[^'\"]*\\1#", '_fix_attachment_links_replace_cb', $anchor );
 		++$i;
 	}
 
@@ -743,6 +754,11 @@ function _fix_attachment_links( $post_ID ) {
 	$post = add_magic_quotes( $post);
 
 	return wp_update_post( $post);
+}
+
+function _fix_attachment_links_replace_cb($match) {
+        global $_fix_attachment_link_id;
+        return stripslashes( 'href='.$match[1] ).get_attachment_link( $_fix_attachment_link_id ).stripslashes( $match[1] );
 }
 
 /**
@@ -759,7 +775,17 @@ function _relocate_children( $old_ID, $new_ID ) {
 	global $wpdb;
 	$old_ID = (int) $old_ID;
 	$new_ID = (int) $new_ID;
-	return $wpdb->update($wpdb->posts, array('post_parent' => $new_ID), array('post_parent' => $old_ID) );
+
+	$children = $wpdb->get_col( $wpdb->prepare("
+		SELECT post_id
+		FROM $wpdb->postmeta
+		WHERE meta_key = '_wp_attachment_temp_parent'
+		AND meta_value = %d", $old_ID) );
+
+	foreach ( $children as $child_id ) {
+		$wpdb->update($wpdb->posts, array('post_parent' => $new_ID), array('ID' => $child_id) );
+		delete_post_meta($child_id, '_wp_attachment_temp_parent');
+	}
 }
 
 /**
@@ -795,6 +821,7 @@ function wp_edit_posts_query( $q = false ) {
 				'pending' => array(_x('Pending Review', 'post'), __('Pending posts'), _n_noop('Pending Review <span class="count">(%s)</span>', 'Pending Review <span class="count">(%s)</span>')),
 				'draft' => array(_x('Draft', 'post'), _x('Drafts', 'manage posts header'), _n_noop('Draft <span class="count">(%s)</span>', 'Drafts <span class="count">(%s)</span>')),
 				'private' => array(_x('Private', 'post'), __('Private posts'), _n_noop('Private <span class="count">(%s)</span>', 'Private <span class="count">(%s)</span>')),
+				'trash' => array(_x('Trash', 'post'), __('Trash posts'), _n_noop('Trash <span class="count">(%s)</span>', 'Trash <span class="count">(%s)</span>')),
 			);
 
 	$post_stati = apply_filters('post_stati', $post_stati);
@@ -818,14 +845,31 @@ function wp_edit_posts_query( $q = false ) {
 		$orderby = 'date';
 	}
 
-	$posts_per_page = get_user_option('edit_per_page');
-	if ( empty($posts_per_page) )
+	$posts_per_page = (int) get_user_option( 'edit_per_page', 0, false );
+	if ( empty( $posts_per_page ) || $posts_per_page < 1 )
 		$posts_per_page = 15;
-	$posts_per_page = apply_filters('edit_posts_per_page', $posts_per_page);
+	$posts_per_page = apply_filters( 'edit_posts_per_page', $posts_per_page );
 
 	wp("post_type=post&$post_status_q&posts_per_page=$posts_per_page&order=$order&orderby=$orderby");
 
 	return array($post_stati, $avail_post_stati);
+}
+
+/**
+ * Get default post mime types
+ *
+ * @since 2.9.0
+ *
+ * @return array
+ */
+function get_post_mime_types() {
+	$post_mime_types = array(	//	array( adj, noun )
+		'image' => array(__('Images'), __('Manage Images'), _n_noop('Image <span class="count">(%s)</span>', 'Images <span class="count">(%s)</span>')),
+		'audio' => array(__('Audio'), __('Manage Audio'), _n_noop('Audio <span class="count">(%s)</span>', 'Audio <span class="count">(%s)</span>')),
+		'video' => array(__('Video'), __('Manage Video'), _n_noop('Video <span class="count">(%s)</span>', 'Video <span class="count">(%s)</span>')),
+	);
+
+	return apply_filters('post_mime_types', $post_mime_types);
 }
 
 /**
@@ -858,18 +902,13 @@ function wp_edit_attachments_query( $q = false ) {
 	$q['m']   = isset( $q['m'] ) ? (int) $q['m'] : 0;
 	$q['cat'] = isset( $q['cat'] ) ? (int) $q['cat'] : 0;
 	$q['post_type'] = 'attachment';
-	$q['post_status'] = 'any';
-	$media_per_page = get_user_option('upload_per_page');
-	if ( empty($media_per_page) )
+	$q['post_status'] = isset( $q['status'] ) && 'trash' == $q['status'] ? 'trash' : 'inherit';
+	$media_per_page = (int) get_user_option( 'upload_per_page', 0, false );
+	if ( empty( $media_per_page ) || $media_per_page < 1 )
 		$media_per_page = 20;
-	$q['posts_per_page'] = $media_per_page;
-	$post_mime_types = array(	//	array( adj, noun )
-				'image' => array(__('Images'), __('Manage Images'), _n_noop('Image <span class="count">(%s)</span>', 'Images <span class="count">(%s)</span>')),
-				'audio' => array(__('Audio'), __('Manage Audio'), _n_noop('Audio <span class="count">(%s)</span>', 'Audio <span class="count">(%s)</span>')),
-				'video' => array(__('Video'), __('Manage Video'), _n_noop('Video <span class="count">(%s)</span>', 'Video <span class="count">(%s)</span>')),
-			);
-	$post_mime_types = apply_filters('post_mime_types', $post_mime_types);
+	$q['posts_per_page'] = apply_filters( 'upload_per_page', $media_per_page );
 
+	$post_mime_types = get_post_mime_types();
 	$avail_post_mime_types = get_available_post_mime_types('attachment');
 
 	if ( isset($q['post_mime_type']) && !array_intersect( (array) $q['post_mime_type'], array_keys($post_mime_types) ) )
@@ -906,12 +945,12 @@ function postbox_classes( $id, $page ) {
  *
  * @since unknown
  *
- * @param unknown_type $id
- * @param unknown_type $title
- * @param unknown_type $name
- * @return unknown
+ * @param int|object $id    Post ID or post object. 
+ * @param string $title (optional) Title 
+ * @param string $name (optional) Name 
+ * @return array With two entries of type string 
  */
-function get_sample_permalink($id, $title=null, $name = null) {
+function get_sample_permalink($id, $title = null, $name = null) {
 	$post = &get_post($id);
 	if (!$post->ID) {
 		return array('', '');
@@ -924,7 +963,7 @@ function get_sample_permalink($id, $title=null, $name = null) {
 	// drafts, so we will fake, that our post is published
 	if (in_array($post->post_status, array('draft', 'pending'))) {
 		$post->post_status = 'publish';
-		$post->post_name = sanitize_title($post->post_name? $post->post_name : $post->post_title, $post->ID);
+		$post->post_name = sanitize_title($post->post_name ? $post->post_name : $post->post_title, $post->ID);
 	}
 
 	$post->post_name = wp_unique_post_slug($post->post_name, $post->ID, $post->post_status, $post->post_type, $post->post_parent);
@@ -932,7 +971,7 @@ function get_sample_permalink($id, $title=null, $name = null) {
 	// If the user wants to set a new name -- override the current one
 	// Note: if empty name is supplied -- use the title instead, see #6072
 	if (!is_null($name)) {
-		$post->post_name = sanitize_title($name? $name : $title, $post->ID);
+		$post->post_name = sanitize_title($name ? $name : $title, $post->ID);
 	}
 
 	$post->filter = 'sample';
@@ -960,40 +999,48 @@ function get_sample_permalink($id, $title=null, $name = null) {
 }
 
 /**
- * {@internal Missing Short Description}}
+ * sample permalink html
  *
+ * intended to be used for the inplace editor of the permalink post slug on in the post (and page?) editor.
+ * 
  * @since unknown
  *
- * @param unknown_type $id
- * @param unknown_type $new_title
- * @param unknown_type $new_slug
- * @return unknown
+ * @param int|object $id Post ID or post object. 
+ * @param string $new_title (optional) New title  
+ * @param string $new_slug (optional) New slug 
+ * @return string intended to be used for the inplace editor of the permalink post slug on in the post (and page?) editor. 
  */
 function get_sample_permalink_html( $id, $new_title = null, $new_slug = null ) {
 	$post = &get_post($id);
 	list($permalink, $post_name) = get_sample_permalink($post->ID, $new_title, $new_slug);
-	if ( 'publish' == $post->post_status )
+
+	if ( 'publish' == $post->post_status ) {
 		$view_post = 'post' == $post->post_type ? __('View Post') : __('View Page');
+		$title = __('Click to edit this part of the permalink');
+	} else {
+		$title = __('Temporary permalink. Click to edit this part.');
+	}
 
 	if ( false === strpos($permalink, '%postname%') && false === strpos($permalink, '%pagename%') ) {
 		$return = '<strong>' . __('Permalink:') . "</strong>\n" . '<span id="sample-permalink">' . $permalink . "</span>\n";
-		if ( current_user_can( 'manage_options' ) )
+		if ( current_user_can( 'manage_options' ) && !( 'page' == get_option('show_on_front') && $id == get_option('page_on_front') ) )
 			$return .= '<span id="change-permalinks"><a href="options-permalink.php" class="button" target="_blank">' . __('Change Permalinks') . "</a></span>\n";
 		if ( isset($view_post) )
 			$return .= "<span id='view-post-btn'><a href='$permalink' class='button' target='_blank'>$view_post</a></span>\n";
 
+		$return = apply_filters('get_sample_permalink_html', $return, $id, $new_title, $new_slug);
+
 		return $return;
 	}
 
-	$title = __('Click to edit this part of the permalink');
-	if (function_exists('mb_strlen')) {
-		if (mb_strlen($post_name) > 30) {
+	if ( function_exists('mb_strlen') ) {
+		if ( mb_strlen($post_name) > 30 ) {
 			$post_name_abridged = mb_substr($post_name, 0, 14). '&hellip;' . mb_substr($post_name, -14);
 		} else {
 			$post_name_abridged = $post_name;
 		}
 	} else {
-		if (strlen($post_name) > 30) {
+		if ( strlen($post_name) > 30 ) {
 			$post_name_abridged = substr($post_name, 0, 14). '&hellip;' . substr($post_name, -14);
 		} else {
 			$post_name_abridged = $post_name;
@@ -1004,20 +1051,51 @@ function get_sample_permalink_html( $id, $new_title = null, $new_slug = null ) {
 	$display_link = str_replace(array('%pagename%','%postname%'), $post_name_html, $permalink);
 	$view_link = str_replace(array('%pagename%','%postname%'), $post_name, $permalink);
 	$return = '<strong>' . __('Permalink:') . "</strong>\n" . '<span id="sample-permalink">' . $display_link . "</span>\n";
-	$return .= '<span id="edit-slug-buttons"><a href="#post_name" class="edit-slug button hide-if-no-js" onclick="edit_permalink(' . $id . '); return false;">' . __('Edit') . "</a></span>\n";
+	$return .= '<span id="edit-slug-buttons"><a href="#post_name" class="edit-slug button hide-if-no-js" onclick="editPermalink(' . $id . '); return false;">' . __('Edit') . "</a></span>\n";
 	$return .= '<span id="editable-post-name-full">' . $post_name . "</span>\n";
 	if ( isset($view_post) )
 		$return .= "<span id='view-post-btn'><a href='$view_link' class='button' target='_blank'>$view_post</a></span>\n";
+
+	$return = apply_filters('get_sample_permalink_html', $return, $id, $new_title, $new_slug);
 
 	return $return;
 }
 
 /**
- * {@internal Missing Short Description}}
+ * Output HTML for the post thumbnail meta-box.
  *
- * @since unknown
+ * @since 2.9.0
  *
- * @param unknown_type $post_id
+ * @param int $thumbnail_id ID of the attachment used for thumbnail
+ * @return string html
+ */
+function _wp_post_thumbnail_html( $thumbnail_id = NULL ) {
+	global $content_width, $_wp_additional_image_sizes;
+	$content = '<p class="hide-if-no-js"><a href="#" id="set-post-thumbnail" onclick="jQuery(\'#add_image\').click();return false;">' . esc_html__( 'Set thumbnail' ) . '</a></p>';
+
+	if ( $thumbnail_id && get_post( $thumbnail_id ) ) {
+		$old_content_width = $content_width;
+		$content_width = 266;
+		if ( !isset( $_wp_additional_image_sizes['post-thumbnail'] ) )
+			$thumbnail_html = wp_get_attachment_image( $thumbnail_id, array( $content_width, $content_width ) );
+		else
+			$thumbnail_html = wp_get_attachment_image( $thumbnail_id, 'post-thumbnail' );
+		if ( !empty( $thumbnail_html ) ) {
+			$content = '<a href="#" id="set-post-thumbnail" onclick="jQuery(\'#add_image\').click();return false;">' . $thumbnail_html . '</a>';
+			$content .= '<p class="hide-if-no-js"><a href="#" id="remove-post-thumbnail" onclick="WPRemoveThumbnail();return false;">' . esc_html__( 'Remove thumbnail' ) . '</a></p>';
+		}
+		$content_width = $old_content_width;
+	}
+
+	return apply_filters( 'admin_post_thumbnail_html', $content );
+}
+
+/**
+ * Check to see if the post is currently being edited by another user.
+ *
+ * @since 2.5.0
+ *
+ * @param int $post_id ID of the post to check for editing
  * @return bool|int False: not locked or locked by current user. Int: user ID of user with lock.
  */
 function wp_check_post_lock( $post_id ) {
@@ -1037,12 +1115,12 @@ function wp_check_post_lock( $post_id ) {
 }
 
 /**
- * {@internal Missing Short Description}}
+ * Mark the post as currently being edited by the current user
  *
- * @since unknown
+ * @since 2.5.0
  *
- * @param unknown_type $post_id
- * @return unknown
+ * @param int $post_id ID of the post to being edited
+ * @return bool Returns false if the post doesn't exist of there is no current user
  */
 function wp_set_post_lock( $post_id ) {
 	global $current_user;
@@ -1061,7 +1139,7 @@ function wp_set_post_lock( $post_id ) {
 
 /**
  * Outputs the notice message to say that someone else is editing this post at the moment.
- * 
+ *
  * @since 2.8.5
  * @return none
  */
@@ -1069,7 +1147,7 @@ function _admin_notice_post_locked() {
 	global $post;
 	$last_user = get_userdata( get_post_meta( $post->ID, '_edit_last', true ) );
 	$last_user_name = $last_user ? $last_user->display_name : __('Somebody');
-	
+
 	switch ($post->post_type) {
 		case 'post':
 			$message = __( 'Warning: %s is currently editing this post' );
@@ -1080,9 +1158,9 @@ function _admin_notice_post_locked() {
 		default:
 			$message = __( 'Warning: %s is currently editing this.' );
 	}
-	
+
 	$message = sprintf( $message, esc_html( $last_user_name ) );
-	echo "<div class='error'><p>$message</p></div>";	
+	echo "<div class='error'><p>$message</p></div>";
 }
 
 /**
@@ -1104,6 +1182,8 @@ function wp_create_post_autosave( $post_id ) {
 	if ( $old_autosave = wp_get_post_autosave( $post_id ) ) {
 		$new_autosave = _wp_post_revision_fields( $_POST, true );
 		$new_autosave['ID'] = $old_autosave->ID;
+		$current_user = wp_get_current_user();
+		$new_autosave['post_author'] = $current_user->ID;
 		return wp_update_post( $new_autosave );
 	}
 
@@ -1187,8 +1267,9 @@ function post_preview() {
  * to the URL when queueing them with the mce_external_plugins filter.
  *
  * @param bool $teeny optional Output a trimmed down version used in Press This.
+ * @param mixed $settings optional An array that can add to or overwrite the default TinyMCE settings.
  */
-function wp_tiny_mce( $teeny = false ) {
+function wp_tiny_mce( $teeny = false, $settings = false ) {
 	global $concatenate_scripts, $compress_scripts, $tinymce_version;
 
 	if ( ! user_can_richedit() )
@@ -1207,7 +1288,7 @@ function wp_tiny_mce( $teeny = false ) {
 	$mce_spellchecker_languages = apply_filters('mce_spellchecker_languages', '+English=en,Danish=da,Dutch=nl,Finnish=fi,French=fr,German=de,Italian=it,Polish=pl,Portuguese=pt,Spanish=es,Swedish=sv');
 
 	if ( $teeny ) {
-		$plugins = apply_filters( 'teeny_mce_plugins', array('safari', 'inlinepopups', 'media', 'autosave', 'fullscreen') );
+		$plugins = apply_filters( 'teeny_mce_plugins', array('safari', 'inlinepopups', 'media', 'fullscreen', 'wordpress') );
 		$ext_plugins = '';
 	} else {
 		$plugins = array( 'safari', 'inlinepopups', 'spellchecker', 'paste', 'wordpress', 'media', 'fullscreen', 'wpeditimage', 'wpgallery', 'tabfocus' );
@@ -1341,7 +1422,9 @@ function wp_tiny_mce( $teeny = false ) {
 		'accessibility_focus' => true,
 		'tabfocus_elements' => 'major-publishing-actions',
 		'media_strict' => false,
-		'save_callback' => 'switchEditors.saveCallback',
+		'paste_remove_styles' => true,
+		'paste_remove_spans' => true,
+		'paste_strip_class_attributes' => 'all',
 		'wpeditimage_disable_captions' => $no_captions,
 		'plugins' => "$plugins"
 	);
@@ -1350,6 +1433,9 @@ function wp_tiny_mce( $teeny = false ) {
 
 	if ( ! empty($mce_css) )
 		$initArray['content_css'] = "$mce_css";
+
+	if ( is_array($settings) )
+		$initArray = array_merge($initArray, $settings);
 
 	// For people who really REALLY know what they're doing with TinyMCE
 	// You can modify initArray to add, remove, change elements of the config before tinyMCE.init

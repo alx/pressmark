@@ -4,9 +4,9 @@ var theList, theExtraList, toggleWithKeyboard = false;
 setCommentsList = function() {
 	var totalInput, perPageInput, pageInput, lastConfidentTime = 0, dimAfter, delBefore, updateTotalCount, delAfter;
 
-	totalInput = $('#comments-form .tablenav :input[name="_total"]');
-	perPageInput = $('#comments-form .tablenav :input[name="_per_page"]');
-	pageInput = $('#comments-form .tablenav :input[name="_page"]');
+	totalInput = $('.tablenav input[name="_total"]', '#comments-form');
+	perPageInput = $('.tablenav input[name="_per_page"]', '#comments-form');
+	pageInput = $('.tablenav input[name="_page"]', '#comments-form');
 
 	dimAfter = function( r, settings ) {
 		var c = $('#' + settings.element);
@@ -17,109 +17,192 @@ setCommentsList = function() {
 			c.find('div.comment_status').html('1')
 
 		$('span.pending-count').each( function() {
-			var a = $(this), n;
-			n = a.html().replace(/[ ,.]+/g, '');
+			var a = $(this), n, dif;
+			n = a.html().replace(/[^0-9]+/g, '');
 			n = parseInt(n,10);
 			if ( isNaN(n) ) return;
-			n = n + ( $('#' + settings.element).is('.' + settings.dimClass) ? 1 : -1 );
+			dif = $('#' + settings.element).is('.' + settings.dimClass) ? 1 : -1;
+			n = n + dif;
 			if ( n < 0 ) { n = 0; }
-			a.parents('#awaiting-mod')[ 0 == n ? 'addClass' : 'removeClass' ]('count-0');
-			n = n.toString();
-			if ( n.length > 3 )
-				n = n.substr(0, n.length-3)+' '+n.substr(-3);
-			a.html(n);
+			a.closest('#awaiting-mod')[ 0 == n ? 'addClass' : 'removeClass' ]('count-0');
+			updateCount(a, n);
+			dashboardTotals();
 		});
 	};
 
 	// Send current total, page, per_page and url
-	delBefore = function( settings ) {
-		settings.data._total = totalInput.val();
-		settings.data._per_page = perPageInput.val();
-		settings.data._page = pageInput.val();
+	delBefore = function( settings, list ) {
+		var cl = $(settings.target).attr('className'), id, el, n, h, a, author, action = false;
+
+		settings.data._total = totalInput.val() || 0;
+		settings.data._per_page = perPageInput.val() || 0;
+		settings.data._page = pageInput.val() || 0;
 		settings.data._url = document.location.href;
 
-		if ( 'undefined' != showNotice && settings.data.action && settings.data.action == 'delete-comment' && !settings.data.spam )
-			return showNotice.warn() ? settings : false;
+		if ( cl.indexOf(':trash=1') != -1 )
+			action = 'trash';
+		else if ( cl.indexOf(':spam=1') != -1 )
+			action = 'spam';
+
+		if ( action ) {
+			id = cl.replace(/.*?comment-([0-9]+).*/, '$1');
+			el = $('#comment-' + id);
+			note = $('#' + action + '-undo-holder').html();
+
+			if ( el.siblings('#replyrow').length && commentReply.cid == id )
+				commentReply.close();
+
+			if ( el.is('tr') ) {
+				n = el.children(':visible').length;
+				author = $('.author strong', el).text();
+				h = $('<tr id="undo-' + id + '" class="undo un' + action + '" style="display:none;"><td colspan="' + n + '">' + note + '</td></tr>');
+			} else {
+				author = $('.comment-author', el).text();
+				h = $('<div id="undo-' + id + '" style="display:none;" class="undo un' + action + '">' + note + '</div>');
+			}
+
+			el.before(h);
+
+			$('strong', '#undo-' + id).text(author + ' ');
+			a = $('.undo a', '#undo-' + id);
+			a.attr('href', 'comment.php?action=un' + action + 'comment&c=' + id + '&_wpnonce=' + settings.data._ajax_nonce);
+			a.attr('className', 'delete:the-comment-list:comment-' + id + '::un' + action + '=1 vim-z vim-destructive');
+			$('.avatar', el).clone().prependTo('#undo-' + id + ' .' + action + '-undo-inside');
+
+			a.click(function(){
+				list.wpList.del(this);
+				$('#undo-' + id).css( {backgroundColor:'#ceb'} ).fadeOut(350, function(){
+					$(this).remove();
+					$('#comment-' + id).css('backgroundColor', '').fadeIn(300, function(){ $(this).show() });
+				});
+				return false;
+			});
+		}
 
 		return settings;
 	};
 
-	/* Updates the current total (as displayed visibly)
-	*/
+	// Updates the current total (as displayed visibly)
 	updateTotalCount = function( total, time, setConfidentTime ) {
-		if ( time < lastConfidentTime ) {
+		if ( time < lastConfidentTime )
 			return;
-		}
-		totalInput.val( total.toString() );
-		if ( setConfidentTime ) {
-			lastConfidentTime = time;
-		}
-		$('span.total-type-count').each( function() {
-			var a = $(this), n;
-			n = totalInput.val().toString();
-			if ( n.length > 3 )
-				n = n.substr(0, n.length-3)+' '+n.substr(-3);
-			a.html(n);
-		});
 
+		if ( setConfidentTime )
+			lastConfidentTime = time;
+
+		totalInput.val( total.toString() );
+		$('span.total-type-count').each( function() {
+			updateCount( $(this), total );
+		});
 	};
+
+	function dashboardTotals(n) {
+		var dash = $('#dashboard_right_now'), total, appr, totalN, apprN;
+
+		n = n || 0;
+		if ( isNaN(n) || !dash.length )
+			return;
+
+		total = $('span.total-count', dash);
+		appr = $('span.approved-count', dash);
+		totalN = getCount(total);
+
+		totalN = totalN + n;
+		apprN = totalN - getCount( $('span.pending-count', dash) ) - getCount( $('span.spam-count', dash) );
+		updateCount(total, totalN);
+		updateCount(appr, apprN);
+
+	}
+
+	function getCount(el) {
+		var n = parseInt( el.html().replace(/[^0-9]+/g, ''), 10 );
+		if ( isNaN(n) )
+			return 0;
+		return n;
+	}
+
+	function updateCount(el, n) {
+		var n1 = '';
+		if ( isNaN(n) )
+			return;
+		n = n < 1 ? '0' : n.toString();
+		if ( n.length > 3 ) {
+			while ( n.length > 3 ) {
+				n1 = thousandsSeparator + n.substr(n.length - 3) + n1;
+				n = n.substr(0, n.length - 3);
+			}
+			n = n + n1;
+		}
+		el.html(n);
+	}
 
 	// In admin-ajax.php, we send back the unix time stamp instead of 1 on success
 	delAfter = function( r, settings ) {
+		var total, pageLinks, N, untrash = $(settings.target).parent().is('span.untrash'), unspam = $(settings.target).parent().is('span.unspam'), spam, trash;
+
+		function getUpdate(s) {
+			if ( $(settings.target).parent().is('span.' + s) )
+				return 1;
+			else if ( $('#' + settings.element).is('.' + s) )
+				return -1;
+
+			return 0;
+		}
+		spam = getUpdate('spam');
+		trash = getUpdate('trash');
+
+		if ( untrash )
+			trash = -1;
+		if ( unspam )
+			spam = -1;
+
 		$('span.pending-count').each( function() {
-			var a = $(this), n;
-			n = a.html().replace(/[ ,.]+/g, '');
-			n = parseInt(n,10);
-			if ( isNaN(n) ) return;
-			if ( $('#' + settings.element).is('.unapproved') ) { // we deleted a formerly unapproved comment
-				n = n - 1;
-			} else if ( $(settings.target).parents( 'span.unapprove' ).size() ) { // we "deleted" an approved comment from the approved list by clicking "Unapprove"
+			var a = $(this), n = getCount(a), unapproved = $('#' + settings.element).is('.unapproved');
+
+			if ( $(settings.target).parent().is('span.unapprove') || ( ( untrash || unspam ) && unapproved ) ) { // we "deleted" an approved comment from the approved list by clicking "Unapprove"
 				n = n + 1;
+			} else if ( unapproved ) { // we deleted a formerly unapproved comment
+				n = n - 1;
 			}
 			if ( n < 0 ) { n = 0; }
-			a.parents('#awaiting-mod')[ 0 == n ? 'addClass' : 'removeClass' ]('count-0');
-			n = n.toString();
-			if ( n.length > 3 )
-				n = n.substr(0, n.length-3)+' '+n.substr(-3);
-			a.html(n);
+			a.closest('#awaiting-mod')[ 0 == n ? 'addClass' : 'removeClass' ]('count-0');
+			updateCount(a, n);
+			dashboardTotals();
 		});
 
 		$('span.spam-count').each( function() {
-			var a = $(this), n;
-			n = a.html().replace(/[ ,.]+/g, '');
-			n = parseInt(n,10);
-			if ( isNaN(n) ) return;
-			if ( $(settings.target).parents( 'span.spam' ).size() ) { // we marked a comment as spam
-				n = n + 1;
-			} else if ( $('#' + settings.element).is('.spam') ) { // we approved or deleted a comment marked as spam
-				n = n - 1;
-			}
-			if ( n < 0 ) { n = 0; }
-			n = n.toString();
-			if ( n.length > 3 )
-				n = n.substr(0, n.length-3)+' '+n.substr(-3);
-			a.html(n);
+			var a = $(this), n = getCount(a) + spam;
+			updateCount(a, n);
 		});
 
+		$('span.trash-count').each( function() {
+			var a = $(this), n = getCount(a) + trash;
+			updateCount(a, n);
+		});
 
-		// XML response
-		if ( ( 'object' == typeof r ) && lastConfidentTime < settings.parsed.responses[0].supplemental.time ) {
-			// Set the total to the known good value (even if this value is a little old, newer values should only be a few less, and so shouldn't mess up the page links)
-			updateTotalCount( settings.parsed.responses[0].supplemental.total, settings.parsed.responses[0].supplemental.time, true );
-			if ( $.trim( settings.parsed.responses[0].supplemental.pageLinks ) ) {
-				$('.tablenav-pages').find( '.page-numbers' ).remove().end().append( $( settings.parsed.responses[0].supplemental.pageLinks ) );
-			} else if ( 'undefined' != typeof settings.parsed.responses[0].supplemental.pageLinks ) {
-				$('.tablenav-pages').find( '.page-numbers' ).remove();
-			}
+		if ( $('#dashboard_right_now').length ) {
+			N = trash ? -1 * trash : 0;
+			dashboardTotals(N);
 		} else {
-			// Decrement the total
-			var total = parseInt( totalInput.val(), 10 );
-			if ( total-- < 0 )
+			total = totalInput.val() ? parseInt( totalInput.val(), 10 ) : 0;
+			total = total - spam - trash;
+			if ( total < 0 )
 				total = 0;
-			updateTotalCount( total, r, false );
+
+			if ( ( 'object' == typeof r ) && lastConfidentTime < settings.parsed.responses[0].supplemental.time ) {
+				pageLinks = settings.parsed.responses[0].supplemental.pageLinks || '';
+				if ( $.trim( pageLinks ) )
+					$('.tablenav-pages').find( '.page-numbers' ).remove().end().append( $( pageLinks ) );
+				else
+					$('.tablenav-pages').find( '.page-numbers' ).remove();
+
+				updateTotalCount( total, settings.parsed.responses[0].supplemental.time, true );
+			} else {
+				updateTotalCount( total, r, false );
+			}
 		}
 
-		if ( theExtraList.size() == 0 || theExtraList.children().size() == 0 ) {
+		if ( theExtraList.size() == 0 || theExtraList.children().size() == 0 || untrash ) {
 			return;
 		}
 
@@ -128,11 +211,18 @@ setCommentsList = function() {
 	};
 
 	theExtraList = $('#the-extra-comment-list').wpList( { alt: '', delColor: 'none', addColor: 'none' } );
-	theList = $('#the-comment-list').wpList( { alt: '', delBefore: delBefore, dimAfter: dimAfter, delAfter: delAfter, addColor: 'none' } );
+	theList = $('#the-comment-list').wpList( { alt: '', delBefore: delBefore, dimAfter: dimAfter, delAfter: delAfter, addColor: 'none' } )
+		.bind('wpListDelEnd', function(e, s){
+			var id = s.element.replace(/[^0-9]+/g, '');
 
+			if ( s.target.className.indexOf(':trash=1') != -1 || s.target.className.indexOf(':spam=1') != -1 )
+				$('#undo-' + id).fadeIn(300, function(){ $(this).show() });
+		});
 };
 
 commentReply = {
+	cid : '',
+	act : '',
 
 	init : function() {
 		var row = $('#replyrow');
@@ -187,25 +277,38 @@ commentReply = {
 	},
 
 	close : function() {
-		$(this.o).fadeIn('fast').css('backgroundColor', '');
-		$('#com-reply').append( $('#replyrow') );
-		$('#replycontent').val('');
-		$('#edithead input').val('');
-		$('#replysubmit .error').html('').hide();
-		$('#replysubmit .waiting').hide();
-		if ( $.browser.msie )
-			$('#replycontainer, #replycontent').css('height', '120px');
-		else
-			$('#replycontainer').resizable('destroy').css('height', '120px');
+		var c;
+
+		if ( this.cid ) {
+			c = $('#comment-' + this.cid);
+
+			if ( this.act == 'edit-comment' )
+				c.fadeIn(300, function(){ c.show() }).css('backgroundColor', '');
+
+			$('#replyrow').hide();
+			$('#com-reply').append( $('#replyrow') );
+			$('#replycontent').val('');
+			$('input', '#edithead').val('');
+			$('.error', '#replysubmit').html('').hide();
+			$('.waiting', '#replysubmit').hide();
+
+			if ( $.browser.msie )
+				$('#replycontainer, #replycontent').css('height', '120px');
+			else
+				$('#replycontainer').resizable('destroy').css('height', '120px');
+
+			this.cid = '';
+		}
 	},
 
 	open : function(id, p, a) {
-		var t = this, editRow, act, h;
+		var t = this, editRow, rowData, act, h, c = $('#comment-' + id);
 		t.close();
-		t.o = '#comment-'+id;
+		t.cid = id;
 
-		$('#replyrow td').attr('colspan', $('.widefat thead th:visible').length);
-		editRow = $('#replyrow'), rowData = $('#inline-'+id);
+		$('td', '#replyrow').attr('colspan', $('table.widefat thead th:visible').length);
+		editRow = $('#replyrow');
+		rowData = $('#inline-'+id);
 		act = t.act = (a == 'edit') ? 'edit-comment' : 'replyto-comment';
 
 		$('#action', editRow).val(act);
@@ -221,21 +324,21 @@ commentReply = {
 			$('#edithead, #savebtn', editRow).show();
 			$('#replyhead, #replybtn', editRow).hide();
 
-			h = $(t.o).height();
+			h = c.height();
 			if ( h > 220 )
 				if ( $.browser.msie )
 					$('#replycontainer, #replycontent', editRow).height(h-105);
 				else
 					$('#replycontainer', editRow).height(h-105);
 
-			$(t.o).after(editRow.hide()).fadeOut('fast', function(){
-				$('#replyrow').fadeIn('fast');
+			c.after( editRow ).fadeOut('fast', function(){
+				$('#replyrow').fadeIn(300, function(){ $(this).show() });
 			});
 		} else {
 			$('#edithead, #savebtn', editRow).hide();
 			$('#replyhead, #replybtn', editRow).show();
-			$(t.o).after(editRow);
-			$('#replyrow').hide().fadeIn('fast');
+			c.after(editRow);
+			$('#replyrow').fadeIn(300, function(){ $(this).show() });
 		}
 
 		if ( ! $.browser.msie )
@@ -263,7 +366,8 @@ commentReply = {
 				window.scroll(0, rtop - 35);
 
 			$('#replycontent').focus().keyup(function(e){
-				if (e.which == 27) commentReply.revert(); // close on Escape
+				if ( e.which == 27 )
+					commentReply.revert(); // close on Escape
 			});
 		}, 600);
 
@@ -285,7 +389,7 @@ commentReply = {
 
 		$.ajax({
 			type : 'POST',
-			url : wpListL10n.url,
+			url : ajaxurl,
 			data : post,
 			success : function(x) { commentReply.show(x); },
 			error : function(r) { commentReply.error(r); }
@@ -308,16 +412,15 @@ commentReply = {
 			return false;
 		}
 
-		if ( 'edit-comment' == this.act )
-			$(this.o).remove();
-
 		r = r.responses[0];
 		c = r.data;
+		id = '#comment-' + r.id;
+		if ( 'edit-comment' == this.act )
+			$(id).remove();
 
 		$(c).hide()
 		$('#replyrow').after(c);
 
-		this.o = id = '#comment-'+r.id;
 		this.revert();
 		this.addEvents($(id));
 		bg = $(id).hasClass('unapproved') ? '#ffffe0' : '#fff';
@@ -364,26 +467,33 @@ $(document).ready(function(){
 					window.location = l[0].href.replace(/\&hotkeys_highlight_(first|last)=1/g, '')+'&hotkeys_highlight_'+first_last+'=1';
 			}
 		};
+
 		edit_comment = function(event, current_row) {
 			window.location = $('span.edit a', current_row).attr('href');
 		};
+
 		toggle_all = function() {
 			toggleWithKeyboard = true;
-			$('#comments-form thead #cb input:checkbox').click().attr('checked', '');
+			$('input:checkbox', '#cb').click().attr('checked', '');
 			toggleWithKeyboard = false;
-		}
+		};
+
 		make_bulk = function(value) {
-			return function(event, _) {
-				$('option[value='+value+']').attr('selected', 'selected');
-				$('form#comments-form')[0].submit();
+			return function() {
+				var scope = $('select[name="action"]');
+				$('option[value='+value+']', scope).attr('selected', 'selected');
+				$('#comments-form').submit();
 			}
 		};
-		$.table_hotkeys($('table.widefat'),['a', 'u', 's', 'd', 'r', 'q', ['e', edit_comment],
-				['shift+a', make_bulk('approve')], ['shift+s', make_bulk('markspam')],
-				['shift+d', make_bulk('delete')], ['shift+x', toggle_all],
-				['shift+u', make_bulk('unapprove')]],
-				{highlight_first: adminCommentsL10n.hotkeys_highlight_first, highlight_last: adminCommentsL10n.hotkeys_highlight_last,
-				prev_page_link_cb: make_hotkeys_redirect('prev'), next_page_link_cb: make_hotkeys_redirect('next')}
+
+		$.table_hotkeys(
+			$('table.widefat'),
+			['a', 'u', 's', 'd', 'r', 'q', 'z', ['e', edit_comment], ['shift+x', toggle_all],
+			['shift+a', make_bulk('approve')], ['shift+s', make_bulk('markspam')],
+			['shift+d', make_bulk('delete')], ['shift+t', make_bulk('trash')],
+			['shift+z', make_bulk('untrash')], ['shift+u', make_bulk('unapprove')]],
+			{ highlight_first: adminCommentsL10n.hotkeys_highlight_first, highlight_last: adminCommentsL10n.hotkeys_highlight_last,
+			prev_page_link_cb: make_hotkeys_redirect('prev'), next_page_link_cb: make_hotkeys_redirect('next') }
 		);
 	}
 });

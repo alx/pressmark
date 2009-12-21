@@ -52,18 +52,28 @@ function wp_list_widgets() {
 }
 
 /**
- * {@internal Missing Short Description}}
+ * Show the widgets and their settings for a sidebar.
+ * Used in the the admin widget config screen.
  *
  * @since unknown
  *
- * @param string $sidebar
+ * @param string $sidebar id slug of the sidebar
  */
 function wp_list_widget_controls( $sidebar ) {
 	add_filter( 'dynamic_sidebar_params', 'wp_list_widget_controls_dynamic_sidebar' );
 
-	echo "\t<div id='$sidebar' class='widgets-sortables'>\n";
+	echo "<div id='$sidebar' class='widgets-sortables'>\n";
+
+	$description = wp_sidebar_description( $sidebar );
+
+	if ( !empty( $description ) ) {
+		echo "<div class='sidebar-description'>\n";
+		echo "\t<p class='description'>$description</p>"; 
+		echo "</div>\n";
+	}
+
 	dynamic_sidebar( $sidebar );
-	echo "\t</div>\n";
+	echo "</div>\n";
 }
 
 /**
@@ -180,15 +190,15 @@ function wp_widget_control( $sidebar_args ) {
 	</div>
 	<input type="hidden" name="widget-id" class="widget-id" value="<?php echo esc_attr($id_format); ?>" />
 	<input type="hidden" name="id_base" class="id_base" value="<?php echo esc_attr($id_base); ?>" />
-	<input type="hidden" name="widget-width" class="widget-width" value="<?php echo esc_attr($control['width']); ?>" />
-	<input type="hidden" name="widget-height" class="widget-height" value="<?php echo esc_attr($control['height']); ?>" />
+	<input type="hidden" name="widget-width" class="widget-width" value="<?php if (isset( $control['width'] )) echo esc_attr($control['width']); ?>" />
+	<input type="hidden" name="widget-height" class="widget-height" value="<?php if (isset( $control['height'] )) echo esc_attr($control['height']); ?>" />
 	<input type="hidden" name="widget_number" class="widget_number" value="<?php echo esc_attr($widget_number); ?>" />
 	<input type="hidden" name="multi_number" class="multi_number" value="<?php echo esc_attr($multi_number); ?>" />
 	<input type="hidden" name="add_new" class="add_new" value="<?php echo esc_attr($add_new); ?>" />
 
 	<div class="widget-control-actions">
 		<div class="alignleft">
-		<a class="widget-control-remove" href="#remove"><?php _e('Remove'); ?></a> |
+		<a class="widget-control-remove" href="#remove"><?php _e('Delete'); ?></a> |
 		<a class="widget-control-close" href="#close"><?php _e('Close'); ?></a>
 		</div>
 		<div class="alignright<?php if ( 'noform' === $has_form ) echo ' widget-control-noform'; ?>">

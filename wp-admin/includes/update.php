@@ -3,7 +3,7 @@
  * WordPress Administration Update API
  *
  * @package WordPress
- * @subpackage Admin
+ * @subpackage Administration
  */
 
 // The admin side of our 1.1 update system
@@ -145,6 +145,31 @@ function update_right_now_message() {
 	echo "<span id='wp-version-message'>$msg</span>";
 }
 
+function get_plugin_updates() {
+	$all_plugins = get_plugins();
+	$upgrade_plugins = array();
+	$current = get_transient( 'update_plugins' );
+	foreach ( (array)$all_plugins as $plugin_file => $plugin_data) {
+		if ( isset( $current->response[ $plugin_file ] ) ) {
+			$upgrade_plugins[ $plugin_file ] = (object) $plugin_data;
+			$upgrade_plugins[ $plugin_file ]->update = $current->response[ $plugin_file ];
+		}
+	}
+
+	return $upgrade_plugins;
+}
+
+function wp_plugin_update_rows() {
+	$plugins = get_transient( 'update_plugins' );
+	if ( isset($plugins->response) && is_array($plugins->response) ) {
+		$plugins = array_keys( $plugins->response );
+		foreach( $plugins as $plugin_file ) {
+			add_action( "after_plugin_row_$plugin_file", 'wp_plugin_update_row', 10, 2 );
+		}
+	}
+}
+add_action( 'admin_init', 'wp_plugin_update_rows' );
+
 function wp_plugin_update_row( $file, $plugin_data ) {
 	$current = get_transient( 'update_plugins' );
 	if ( !isset( $current->response[ $file ] ) )
@@ -169,7 +194,6 @@ function wp_plugin_update_row( $file, $plugin_data ) {
 
 	echo '</div></td></tr>';
 }
-add_action( 'after_plugin_row', 'wp_plugin_update_row', 10, 2 );
 
 function wp_update_plugin($plugin, $feedback = '') {
 
@@ -179,6 +203,22 @@ function wp_update_plugin($plugin, $feedback = '') {
 	include ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 	$upgrader = new Plugin_Upgrader();
 	return $upgrader->upgrade($plugin);
+}
+
+function get_theme_updates() {
+	$themes = get_themes();
+	$current = get_transient('update_themes');
+	$update_themes = array();
+
+	foreach ( $themes as $theme ) {
+		$theme = (object) $theme;
+		if ( isset($current->response[ $theme->Stylesheet ]) ) {
+			$update_themes[$theme->Stylesheet] = $theme;
+			$update_themes[$theme->Stylesheet]->update = $current->response[ $theme->Stylesheet ];
+		}
+	}
+
+	return $update_themes;
 }
 
 function wp_update_theme($theme, $feedback = '') {

@@ -126,19 +126,23 @@ class WP_Widget {
 
 	function _register() {
 		$settings = $this->get_settings();
+		$empty = true;
 
-		if ( empty($settings) ) {
-			// If there are none, we register the widget's existance with a
-			// generic template
-			$this->_set(1);
-			$this->_register_one();
-		} elseif ( is_array($settings) ) {
+		if ( is_array($settings) ) {
 			foreach ( array_keys($settings) as $number ) {
 				if ( is_numeric($number) ) {
 					$this->_set($number);
 					$this->_register_one($number);
+					$empty = false;
 				}
 			}
+		}
+
+		if ( $empty ) {
+			// If there are none, we register the widget's existance with a
+			// generic template
+			$this->_set(1);
+			$this->_register_one();
 		}
 	}
 
@@ -544,6 +548,7 @@ function register_sidebar($args = array()) {
 	$defaults = array(
 		'name' => sprintf(__('Sidebar %d'), $i ),
 		'id' => "sidebar-$i",
+		'description' => '',
 		'before_widget' => '<li id="%1$s" class="widget %2$s">',
 		'after_widget' => "</li>\n",
 		'before_title' => '<h2 class="widgettitle">',
@@ -649,6 +654,28 @@ function wp_widget_description( $id ) {
 	if ( isset($wp_registered_widgets[$id]['description']) )
 		return esc_html( $wp_registered_widgets[$id]['description'] );
 }
+
+/**
+ * Retrieve description for a sidebar.
+ *
+ * When registering sidebars a 'description' parameter can be included that
+ * describes the sidebar for display on the widget administration panel.
+ *
+ * @since 2.9.0
+ *
+ * @param int|string $id sidebar ID.
+ * @return string Sidebar description, if available. Null on failure to retrieve description.
+ */
+function wp_sidebar_description( $id ) {
+	if ( !is_scalar($id) )
+		return;
+
+	global $wp_registered_sidebars;
+
+	if ( isset($wp_registered_sidebars[$id]['description']) )
+		return esc_html( $wp_registered_sidebars[$id]['description'] );
+}
+
 
 /**
  * Remove widget from sidebar.
@@ -970,7 +997,7 @@ function wp_get_sidebars_widgets($deprecated = true) {
 		$sidebars_widgets = get_option('sidebars_widgets', array());
 		$_sidebars_widgets = array();
 
-		if ( isset($sidebars_widgets['wp_inactive_widgets']) )
+		if ( isset($sidebars_widgets['wp_inactive_widgets']) || empty($sidebars_widgets) )
 			$sidebars_widgets['array_version'] = 3;
 		elseif ( !isset($sidebars_widgets['array_version']) )
 			$sidebars_widgets['array_version'] = 1;

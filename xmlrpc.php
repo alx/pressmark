@@ -201,6 +201,9 @@ class wp_xmlrpc_server extends IXR_Server {
 
 		$this->initialise_blog_option_info( );
 		$this->methods = apply_filters('xmlrpc_methods', $this->methods);
+	}
+
+	function serve_request() {
 		$this->IXR_Server($this->methods);
 	}
 
@@ -419,6 +422,11 @@ class wp_xmlrpc_server extends IXR_Server {
 				'desc'			=> __( 'Time Format' ),
 				'readonly'		=> false,
 				'option'		=> 'time_format'
+			),
+			'users_can_register'	=> array(
+				'desc'			=> __( 'Allow new users to sign up' ),
+				'readonly'		=> false,
+				'option'		=> 'users_can_register'
 			)
 		);
 
@@ -593,7 +601,7 @@ class wp_xmlrpc_server extends IXR_Server {
 		$blog_id	= (int) $args[0];
 		$username	= $args[1];
 		$password	= $args[2];
-		$num_pages	= (int) $args[3];
+		$num_pages	= isset($args[3]) ? (int) $args[3] : 10;
 
 		if ( !$user = $this->login($username, $password) ) {
 			return $this->error;
@@ -604,12 +612,7 @@ class wp_xmlrpc_server extends IXR_Server {
 
 		do_action('xmlrpc_call', 'wp.getPages');
 
-		$page_limit = 10;
-		if( isset( $num_pages ) ) {
-			$page_limit = $num_pages;
-		}
-
-		$pages = get_posts( array('post_type' => 'page', 'post_status' => 'all', 'numberposts' => $page_limit) );
+		$pages = get_posts( array('post_type' => 'page', 'post_status' => 'any', 'numberposts' => $num_pages) );
 		$num_pages = count($pages);
 
 		// If we have pages, put together their info.
@@ -1063,11 +1066,11 @@ class wp_xmlrpc_server extends IXR_Server {
 		$comment_date = mysql2date("Ymd\TH:i:s", $comment->comment_date, false);
 		$comment_date_gmt = mysql2date("Ymd\TH:i:s", $comment->comment_date_gmt, false);
 
-		if ( 0 == $comment->comment_approved )
+		if ( '0' == $comment->comment_approved )
 			$comment_status = 'hold';
 		else if ( 'spam' == $comment->comment_approved )
 			$comment_status = 'spam';
-		else if ( 1 == $comment->comment_approved )
+		else if ( '1' == $comment->comment_approved )
 			$comment_status = 'approve';
 		else
 			$comment_status = $comment->comment_approved;
@@ -1564,9 +1567,6 @@ class wp_xmlrpc_server extends IXR_Server {
 
 		foreach( $options as $o_name => $o_value ) {
 			$option_names[] = $o_name;
-			if( empty( $o_value ) )
-				continue;
-
 			if( !array_key_exists( $o_name, $this->blog_options ) )
 				continue;
 
@@ -2092,7 +2092,7 @@ class wp_xmlrpc_server extends IXR_Server {
 		}
 
 		$post_title = $content_struct['title'];
-		$post_content = apply_filters( 'content_save_pre', $content_struct['description'] );
+		$post_content = $content_struct['description'];
 
 		$post_status = $publish ? 'publish' : 'draft';
 
@@ -2282,7 +2282,7 @@ class wp_xmlrpc_server extends IXR_Server {
 		global $wpdb;
 
 		// find any unattached files
-		$attachments = $wpdb->get_results( "SELECT ID, guid FROM {$wpdb->posts} WHERE post_parent = '-1' AND post_type = 'attachment'" );
+		$attachments = $wpdb->get_results( "SELECT ID, guid FROM {$wpdb->posts} WHERE post_parent = '0' AND post_type = 'attachment'" );
 		if( is_array( $attachments ) ) {
 			foreach( $attachments as $file ) {
 				if( strpos( $post_content, $file->guid ) !== false ) {
@@ -2459,7 +2459,7 @@ class wp_xmlrpc_server extends IXR_Server {
 		}
 
 		$post_title = $content_struct['title'];
-		$post_content = apply_filters( 'content_save_pre', $content_struct['description'] );
+		$post_content = $content_struct['description'];
 		$catnames = $content_struct['categories'];
 
 		$post_category = array();
@@ -2889,8 +2889,8 @@ class wp_xmlrpc_server extends IXR_Server {
 			return new IXR_Error(500, $errorString);
 		}
 		// Construct the attachment array
-		// attach to post_id -1
-		$post_id = -1;
+		// attach to post_id 0
+		$post_id = 0;
 		$attachment = array(
 			'post_title' => $name,
 			'post_content' => '',
@@ -3424,5 +3424,5 @@ class wp_xmlrpc_server extends IXR_Server {
 }
 
 $wp_xmlrpc_server = new wp_xmlrpc_server();
-
+$wp_xmlrpc_server->serve_request();
 ?>

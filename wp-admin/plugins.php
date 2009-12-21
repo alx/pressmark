@@ -61,10 +61,10 @@ if ( !empty($action) ) {
 		case 'activate-selected':
 			if ( ! current_user_can('activate_plugins') )
 				wp_die(__('You do not have sufficient permissions to activate plugins for this blog.'));
-			
+
 			check_admin_referer('bulk-manage-plugins');
 
-			$plugins = (array) $_POST['checked'];
+			$plugins = isset( $_POST['checked'] ) ? (array) $_POST['checked'] : array();
 			$plugins = array_filter($plugins, create_function('$plugin', 'return !is_plugin_active($plugin);') ); //Only activate plugins which are not already active.
 			if ( empty($plugins) ) {
 				wp_redirect("plugins.php?plugin_status=$status&paged=$page");
@@ -93,7 +93,11 @@ if ( !empty($action) ) {
 			if ( is_wp_error($valid) )
 				wp_die($valid);
 
-			error_reporting( E_ALL ^ E_NOTICE );
+			if ( defined('E_RECOVERABLE_ERROR') )
+				error_reporting(E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING | E_RECOVERABLE_ERROR);
+			else
+				error_reporting(E_ERROR | E_WARNING | E_PARSE | E_USER_ERROR | E_USER_WARNING);
+
 			@ini_set('display_errors', true); //Ensure that Fatal errors are displayed.
 			include(WP_PLUGIN_DIR . '/' . $plugin);
 			do_action('activate_' . $plugin);
@@ -115,7 +119,7 @@ if ( !empty($action) ) {
 
 			check_admin_referer('bulk-manage-plugins');
 
-			$plugins = (array) $_POST['checked'];
+			$plugins = isset( $_POST['checked'] ) ? (array) $_POST['checked'] : array();
 			$plugins = array_filter($plugins, 'is_plugin_active'); //Do not deactivate plugins which are already deactivated.
 			if ( empty($plugins) ) {
 				wp_redirect("plugins.php?plugin_status=$status&paged=$page");
@@ -138,7 +142,8 @@ if ( !empty($action) ) {
 
 			check_admin_referer('bulk-manage-plugins');
 
-			$plugins = (array) $_REQUEST['checked']; //$_POST = from the plugin form; $_GET = from the FTP details screen.
+			//$_POST = from the plugin form; $_GET = from the FTP details screen.
+			$plugins = isset( $_REQUEST['checked'] ) ? (array) $_REQUEST['checked'] : array();
 			$plugins = array_filter($plugins, create_function('$plugin', 'return !is_plugin_active($plugin);') ); //Do not allow to delete Activated plugins.
 			if ( empty($plugins) ) {
 				wp_redirect("plugins.php?plugin_status=$status&paged=$page");
@@ -270,7 +275,7 @@ if ( !empty($invalid) )
 
 <div class="wrap">
 <?php screen_icon(); ?>
-<h2><?php echo esc_html( $title ); ?></h2>
+<h2><?php echo esc_html( $title ); ?> <a href="plugin-install.php" class="button add-new-h2"><?php echo esc_html_x('Add New', 'plugin'); ?></a></h2>
 
 <?php
 
@@ -349,10 +354,10 @@ $plugins = &$$plugin_array_name;
 //Paging.
 $total_this_page = "total_{$status}_plugins";
 $total_this_page = $$total_this_page;
-$plugins_per_page = get_user_option('plugins_per_page');
-if ( empty($plugins_per_page) )
+$plugins_per_page = (int) get_user_option( 'plugins_per_page', 0, false );
+if ( empty( $plugins_per_page ) || $plugins_per_page < 1 )
 	$plugins_per_page = 999;
-$plugins_per_page = apply_filters('plugins_per_page', $plugins_per_page);
+$plugins_per_page = apply_filters( 'plugins_per_page', $plugins_per_page );
 
 $start = ($page - 1) * $plugins_per_page;
 

@@ -24,7 +24,7 @@ define('WXR_VERSION', '1.0');
  * @param unknown_type $author
  */
 function export_wp($author='') {
-global $wpdb, $post_ids, $post;
+global $wpdb, $post_ids, $post, $wp_taxonomies;
 
 do_action('export_wp');
 
@@ -45,6 +45,13 @@ $post_ids = $wpdb->get_col("SELECT ID FROM $wpdb->posts $where ORDER BY post_dat
 
 $categories = (array) get_categories('get=all');
 $tags = (array) get_tags('get=all');
+
+$custom_taxonomies = $wp_taxonomies;
+unset($custom_taxonomies['category']);
+unset($custom_taxonomies['post_tag']);
+unset($custom_taxonomies['link_category']);
+$custom_taxonomies = array_keys($custom_taxonomies);
+$terms = (array) get_terms($custom_taxonomies, 'get=all');
 
 /**
  * {@internal Missing Short Description}}
@@ -186,6 +193,34 @@ function wxr_tag_description($t) {
  * {@internal Missing Short Description}}
  *
  * @since unknown
+ *
+ * @param object $t Term Object
+ */
+function wxr_term_name($t) {
+	if ( empty($t->name) )
+		return;
+
+	echo '<wp:term_name>' . wxr_cdata($t->name) . '</wp:term_name>';
+}
+
+/**
+ * {@internal Missing Short Description}}
+ *
+ * @since unknown
+ *
+ * @param object $t Term Object
+ */
+function wxr_term_description($t) {
+	if ( empty($t->description) )
+		return;
+
+	echo '<wp:term_description>' . wxr_cdata($t->description) . '</wp:term_description>';
+}
+
+/**
+ * {@internal Missing Short Description}}
+ *
+ * @since unknown
  */
 function wxr_post_taxonomy() {
 	$categories = get_the_category();
@@ -221,7 +256,7 @@ echo '<?xml version="1.0" encoding="' . get_bloginfo('charset') . '"?' . ">\n";
 <!-- This file is not intended to serve as a complete backup of your blog. -->
 
 <!-- To import this information into a WordPress blog follow these steps. -->
-<!-- 1. Log into that blog as an administrator. -->
+<!-- 1. Log in to that blog as an administrator. -->
 <!-- 2. Go to Tools: Import in the blog's admin panels (or Manage: Import in older versions of WordPress). -->
 <!-- 3. Choose "WordPress" from the list. -->
 <!-- 4. Upload this file using the form provided on that page. -->
@@ -256,6 +291,9 @@ echo '<?xml version="1.0" encoding="' . get_bloginfo('charset') . '"?' . ">\n";
 <?php if ( $tags ) : foreach ( $tags as $t ) : ?>
 	<wp:tag><wp:tag_slug><?php echo $t->slug; ?></wp:tag_slug><?php wxr_tag_name($t); ?><?php wxr_tag_description($t); ?></wp:tag>
 <?php endforeach; endif; ?>
+<?php if ( $terms ) : foreach ( $terms as $t ) : ?>
+	<wp:term><wp:term_taxonomy><?php echo $t->taxonomy; ?></wp:term_taxonomy><wp:term_slug><?php echo $t->slug; ?></wp:term_slug><wp:term_parent><?php echo $t->parent ? $custom_taxonomies[$t->parent]->name : ''; ?></wp:term_parent><?php wxr_term_name($t); ?><?php wxr_term_description($t); ?></wp:term>
+<?php endforeach; endif; ?>
 	<?php do_action('rss2_head'); ?>
 	<?php if ($post_ids) {
 		global $wp_query;
@@ -268,7 +306,13 @@ echo '<?xml version="1.0" encoding="' . get_bloginfo('charset') . '"?' . ">\n";
 			// Don't export revisions.  They bloat the export.
 			if ( 'revision' == $post->post_type )
 				continue;
-			setup_postdata($post); ?>
+			setup_postdata($post);
+
+			$is_sticky = 0;
+			if ( is_sticky( $post->ID ) )
+				$is_sticky = 1;
+
+?>
 <item>
 <title><?php echo apply_filters('the_title_rss', $post->post_title); ?></title>
 <link><?php the_permalink_rss() ?></link>
@@ -291,6 +335,7 @@ echo '<?xml version="1.0" encoding="' . get_bloginfo('charset') . '"?' . ">\n";
 <wp:menu_order><?php echo $post->menu_order; ?></wp:menu_order>
 <wp:post_type><?php echo $post->post_type; ?></wp:post_type>
 <wp:post_password><?php echo $post->post_password; ?></wp:post_password>
+<wp:is_sticky><?php echo $is_sticky; ?></wp:is_sticky>
 <?php
 if ($post->post_type == 'attachment') { ?>
 <wp:attachment_url><?php echo wp_get_attachment_url($post->ID); ?></wp:attachment_url>
@@ -313,7 +358,7 @@ if ( $comments ) { foreach ( $comments as $c ) { ?>
 <wp:comment_id><?php echo $c->comment_ID; ?></wp:comment_id>
 <wp:comment_author><?php echo wxr_cdata($c->comment_author); ?></wp:comment_author>
 <wp:comment_author_email><?php echo $c->comment_author_email; ?></wp:comment_author_email>
-<wp:comment_author_url><?php echo $c->comment_author_url; ?></wp:comment_author_url>
+<wp:comment_author_url><?php echo esc_url_raw( $c->comment_author_url ); ?></wp:comment_author_url>
 <wp:comment_author_IP><?php echo $c->comment_author_IP; ?></wp:comment_author_IP>
 <wp:comment_date><?php echo $c->comment_date; ?></wp:comment_date>
 <wp:comment_date_gmt><?php echo $c->comment_date_gmt; ?></wp:comment_date_gmt>

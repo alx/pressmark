@@ -239,7 +239,7 @@ if ( ! empty($messages) ) {
 
 <div class="wrap">
 <?php screen_icon(); ?>
-<h2><?php echo esc_html( $title );
+<h2><?php echo esc_html( $title ); ?>  <a href="user-new.php" class="button add-new-h2"><?php echo esc_html_x('Add New', 'user'); ?></a> <?php
 if ( isset($_GET['usersearch']) && $_GET['usersearch'] )
 	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', esc_html( $_GET['usersearch'] ) ); ?>
 </h2>
@@ -384,14 +384,6 @@ foreach ( $wp_user_search->get_results() as $userid ) {
 
 </form>
 </div>
-
-<?php
-	foreach ( array('user_login' => 'user_login', 'first_name' => 'user_firstname', 'last_name' => 'user_lastname', 'email' => 'user_email', 'url' => 'user_uri', 'role' => 'user_role') as $formpost => $var ) {
-		$var = 'new_' . $var;
-		$$var = isset($_REQUEST[$formpost]) ? esc_attr(stripslashes($_REQUEST[$formpost])) : '';
-	}
-	unset($name);
-?>
 
 <br class="clear" />
 <?php

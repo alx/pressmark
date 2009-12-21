@@ -31,19 +31,27 @@ function redirect_page($page_ID) {
 	}
 	$referer = preg_replace('|https?://[^/]+|i', '', wp_get_referer());
 
-	if ( 'post' == $_POST['originalaction'] && !empty($_POST['mode']) && 'bookmarklet' == $_POST['mode'] ) {
-		$location = $_POST['referredby'];
-	} elseif ( 'post' == $_POST['originalaction'] && !empty($_POST['mode']) && 'sidebar' == $_POST['mode'] ) {
+	if ( 'post' == $_POST['originalaction'] && !empty($_POST['mode']) && 'sidebar' == $_POST['mode'] ) {
 		$location = 'sidebar.php?a=b';
-	} elseif ( ( isset($_POST['save']) || isset($_POST['publish']) ) ) {
+	} elseif ( isset($_POST['save']) || isset($_POST['publish']) ) {
+		$status = get_post_status( $page_ID );
+
 		if ( isset( $_POST['publish'] ) ) {
-			if ( 'pending' == get_post_status( $page_ID ) )
-				$location = add_query_arg( 'message', 6, get_edit_post_link( $page_ID, 'url' ) );
-			else
-				$location = add_query_arg( 'message', 5, get_edit_post_link( $page_ID, 'url' ) );
+			switch ( $status ) {
+				case 'pending':
+					$message = 6;
+					break;
+				case 'future':
+					$message = 7;
+					break;
+				default:
+					$message = 4;
+			}
 		} else {
-			$location = add_query_arg( 'message', 1, get_edit_post_link( $page_ID, 'url' ) );
+				$message = 'draft' == $status ? 8 : 1;
 		}
+
+		$location = add_query_arg( 'message', $message, get_edit_post_link( $page_ID, 'url' ) );
 	} elseif ( isset($_POST['addmeta']) ) {
 		$location = add_query_arg( 'message', 2, wp_get_referer() );
 		$location = explode('#', $location);
@@ -52,19 +60,23 @@ function redirect_page($page_ID) {
 		$location = add_query_arg( 'message', 3, wp_get_referer() );
 		$location = explode('#', $location);
 		$location = $location[0] . '#postcustom';
-	} elseif ($action == 'editattachment') {
-		$location = 'attachments.php';
 	} else {
 		$location = add_query_arg( 'message', 1, get_edit_post_link( $page_ID, 'url' ) );
 	}
 
-	wp_redirect($location);
+	wp_redirect( apply_filters( 'redirect_page_location', $location, $page_ID ) );
 }
 
 if (isset($_POST['deletepost']))
 	$action = "delete";
 elseif ( isset($_POST['wp-preview']) && 'dopreview' == $_POST['wp-preview'] )
 	$action = 'preview';
+
+$sendback = wp_get_referer();
+if ( strpos($sendback, 'page.php') !== false || strpos($sendback, 'page-new.php') !== false )
+	$sendback = admin_url('edit-pages.php');
+else
+	$sendback = remove_query_arg( array('trashed', 'untrashed', 'deleted', 'ids'), $sendback );
 
 switch($action) {
 case 'post':
@@ -82,31 +94,33 @@ case 'edit':
 	$page_ID = $post_ID = $p = (int) $_GET['post'];
 	$post = get_post_to_edit($page_ID);
 
-	if ( empty($post->ID) ) wp_die( __('You attempted to edit a page that doesn&#8217;t exist. Perhaps it was deleted?') );
+	if ( empty($post->ID) )
+		wp_die( __('You attempted to edit a page that doesn&#8217;t exist. Perhaps it was deleted?') );
+
+	if ( !current_user_can('edit_page', $page_ID) )
+		wp_die( __('You are not allowed to edit this page.') );
+
+	if ( 'trash' == $post->post_status )
+		wp_die( __('You can&#8217;t edit this page because it is in the Trash. Please move it out of the Trash and try again.') );
 
 	if ( 'page' != $post->post_type ) {
 		wp_redirect( get_edit_post_link( $post_ID, 'url' ) );
 		exit();
 	}
 
-	wp_enqueue_script('page');
+	wp_enqueue_script('post');
 	if ( user_can_richedit() )
 		wp_enqueue_script('editor');
 	add_thickbox();
 	wp_enqueue_script('media-upload');
 	wp_enqueue_script('word-count');
 
-	if ( current_user_can('edit_page', $page_ID) ) {
-		if ( $last = wp_check_post_lock( $post->ID ) ) {
-			add_action('admin_notices', '_admin_notice_post_locked' );
-		} else {
-			wp_set_post_lock( $post->ID );
-			wp_enqueue_script('autosave');
-		}
+	if ( $last = wp_check_post_lock( $post->ID ) ) {
+		add_action('admin_notices', '_admin_notice_post_locked' );
+	} else {
+		wp_set_post_lock( $post->ID );
+		wp_enqueue_script('autosave');
 	}
-
-	if ( !current_user_can('edit_page', $page_ID) )
-		die ( __('You are not allowed to edit this page.') );
 
 	include('edit-page-form.php');
 	break;
@@ -136,8 +150,40 @@ case 'editpost':
 	exit();
 	break;
 
+case 'trash':
+	$post_id = isset($_GET['post']) ? intval($_GET['post']) : intval($_POST['post_ID']);
+	check_admin_referer('trash-page_' . $post_id);
+
+	$post = & get_post($post_id);
+
+	if ( !current_user_can('delete_page', $post_id) )
+		wp_die( __('You are not allowed to move this page to the trash.') );
+
+	if ( !wp_trash_post($post_id) )
+		wp_die( __('Error in moving to trash...') );
+
+	wp_redirect( add_query_arg( array('trashed' => 1, 'ids' => $post_id), $sendback ) );
+	exit();
+	break;
+
+case 'untrash':
+	$post_id = isset($_GET['post']) ? intval($_GET['post']) : intval($_POST['post_ID']);
+	check_admin_referer('untrash-page_' . $post_id);
+
+	$post = & get_post($post_id);
+
+	if ( !current_user_can('delete_page', $post_id) )
+		wp_die( __('You are not allowed to move this page out of the trash.') );
+
+	if ( !wp_untrash_post($post_id) )
+		wp_die( __('Error in restoring from trash...') );
+
+	wp_redirect( add_query_arg('untrashed', 1, $sendback) );
+	exit();
+	break;
+
 case 'delete':
-	$page_id = (isset($_GET['post']))  ? intval($_GET['post']) : intval($_POST['post_ID']);
+	$page_id = isset($_GET['post']) ? intval($_GET['post']) : intval($_POST['post_ID']);
 	check_admin_referer('delete-page_' .  $page_id);
 
 	$page = & get_post($page_id);
@@ -153,11 +199,7 @@ case 'delete':
 			wp_die( __('Error in deleting...') );
 	}
 
-	$sendback = wp_get_referer();
-	if (strpos($sendback, 'page.php') !== false) $sendback = admin_url('edit-pages.php?deleted=1');
-	elseif (strpos($sendback, 'attachments.php') !== false) $sendback = admin_url('attachments.php');
-	else $sendback = add_query_arg('deleted', 1, $sendback);
-	wp_redirect($sendback);
+	wp_redirect( add_query_arg('deleted', 1, $sendback) );
 	exit();
 	break;
 

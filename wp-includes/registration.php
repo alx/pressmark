@@ -164,21 +164,12 @@ function wp_insert_user($userdata) {
 	if ( empty($use_ssl) )
 		$use_ssl = 0;
 
-	if ( empty($jabber) )
-		$jabber = '';
-
-	if ( empty($aim) )
-		$aim = '';
-
-	if ( empty($yim) )
-		$yim = '';
-
 	if ( empty($user_registered) )
 		$user_registered = gmdate('Y-m-d H:i:s');
 
 	$user_nicename_check = $wpdb->get_var( $wpdb->prepare("SELECT ID FROM $wpdb->users WHERE user_nicename = %s AND user_login != %s LIMIT 1" , $user_nicename, $user_login));
 
-	if ($user_nicename_check) {
+	if ( $user_nicename_check ) {
 		$suffix = 2;
 		while ($user_nicename_check) {
 			$alt_user_nicename = $user_nicename . "-$suffix";
@@ -203,13 +194,17 @@ function wp_insert_user($userdata) {
 	update_usermeta( $user_id, 'last_name', $last_name);
 	update_usermeta( $user_id, 'nickname', $nickname );
 	update_usermeta( $user_id, 'description', $description );
-	update_usermeta( $user_id, 'jabber', $jabber );
-	update_usermeta( $user_id, 'aim', $aim );
-	update_usermeta( $user_id, 'yim', $yim );
 	update_usermeta( $user_id, 'rich_editing', $rich_editing);
 	update_usermeta( $user_id, 'comment_shortcuts', $comment_shortcuts);
 	update_usermeta( $user_id, 'admin_color', $admin_color);
 	update_usermeta( $user_id, 'use_ssl', $use_ssl);
+
+	foreach ( _wp_get_user_contactmethods() as $method => $name ) {
+		if ( empty($$method) )
+			$$method = '';
+
+		update_usermeta( $user_id, $method, $$method );
+	}
 
 	if ( isset($role) ) {
 		$user = new WP_User($user_id);
@@ -288,7 +283,6 @@ function wp_update_user($userdata) {
  *
  * @since 2.0.0
  * @see wp_insert_user() More complete way to create a new user
- * @uses $wpdb Escapes $username and $email parameters
  *
  * @param string $username The user's username.
  * @param string $password The user's password.
@@ -296,14 +290,30 @@ function wp_update_user($userdata) {
  * @return int The new user's ID.
  */
 function wp_create_user($username, $password, $email = '') {
-	global $wpdb;
-
-	$user_login = $wpdb->escape($username);
-	$user_email = $wpdb->escape($email);
+	$user_login = esc_sql( $username );
+	$user_email = esc_sql( $email    );
 	$user_pass = $password;
 
 	$userdata = compact('user_login', 'user_email', 'user_pass');
 	return wp_insert_user($userdata);
+}
+
+
+/**
+ * Setup the default contact methods
+ *
+ * @access private
+ * @since
+ *
+ * @return array $user_contactmethods Array of contact methods and their labels.
+ */
+function _wp_get_user_contactmethods() {
+	$user_contactmethods = array(
+		'aim' => __('AIM'),
+		'yim' => __('Yahoo IM'),
+		'jabber' => __('Jabber / Google Talk')
+	);
+	return apply_filters('user_contactmethods',$user_contactmethods);
 }
 
 ?>

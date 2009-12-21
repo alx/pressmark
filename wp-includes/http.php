@@ -118,8 +118,7 @@ class WP_Http {
 			}
 		}
 
-		if ( has_filter('http_transport_get_debug') )
-			do_action('http_transport_get_debug', $working_transport, $blocking_transport, $nonblocking_transport);
+		do_action( 'http_transport_get_debug', $working_transport, $blocking_transport, $nonblocking_transport );
 
 		if ( isset($args['blocking']) && !$args['blocking'] )
 			return $nonblocking_transport;
@@ -166,8 +165,7 @@ class WP_Http {
 			}
 		}
 
-		if ( has_filter('http_transport_post_debug') )
-			do_action('http_transport_post_debug', $working_transport, $blocking_transport, $nonblocking_transport);
+		do_action( 'http_transport_post_debug', $working_transport, $blocking_transport, $nonblocking_transport );
 
 		if ( isset($args['blocking']) && !$args['blocking'] )
 			return $nonblocking_transport;
@@ -210,6 +208,11 @@ class WP_Http {
 	 *
 	 * @access public
 	 * @since 2.7.0
+	 * @todo Refactor this code. The code in this method extends the scope of its original purpose
+	 *		and should be refactored to allow for cleaner abstraction and reduce duplication of the
+	 *		code. One suggestion is to create a class specifically for the arguments, however
+	 *		preliminary refactoring to this affect has affect more than just the scope of the
+	 *		arguments. Something to ponder at least.
 	 *
 	 * @param string $url URI resource.
 	 * @param str|array $args Optional. Override the defaults.
@@ -235,6 +238,11 @@ class WP_Http {
 
 		$r = wp_parse_args( $args, $defaults );
 		$r = apply_filters( 'http_request_args', $r, $url );
+
+		// Allow plugins to short-circuit the request
+		$pre = apply_filters( 'pre_http_request', false, $r, $url );
+		if ( false !== $pre )
+			return $pre;
 
 		$arrURL = parse_url($url);
 
@@ -274,10 +282,16 @@ class WP_Http {
 		if ( WP_Http_Encoding::is_available() )
 			$r['headers']['Accept-Encoding'] = WP_Http_Encoding::accept_encoding();
 
-		if ( is_null($r['body']) ) {
-			// Some servers fail when sending content without the content-length
-			// header being set.
-			$r['headers']['Content-Length'] = 0;
+		if ( empty($r['body']) ) {
+			// Some servers fail when sending content without the content-length header being set.
+			// Also, to fix another bug, we only send when doing POST and PUT and the content-length
+			// header isn't already set.
+			if( ($r['method'] == 'POST' || $r['method'] == 'PUT') && ! isset($r['headers']['Content-Length']) )
+				$r['headers']['Content-Length'] = 0;
+
+			// The method is ambiguous, because we aren't talking about HTTP methods, the "get" in
+			// this case is simply that we aren't sending any bodies and to get the transports that
+			// don't support sending bodies along with those which do.
 			$transports = WP_Http::_getTransport($r);
 		} else {
 			if ( is_array( $r['body'] ) || is_object( $r['body'] ) ) {
@@ -292,21 +306,23 @@ class WP_Http {
 			if ( ! isset( $r['headers']['Content-Length'] ) && ! isset( $r['headers']['content-length'] ) )
 				$r['headers']['Content-Length'] = strlen($r['body']);
 
+			// The method is ambiguous, because we aren't talking about HTTP methods, the "post" in
+			// this case is simply that we are sending HTTP body and to get the transports that do
+			// support sending the body. Not all do, depending on the limitations of the PHP core
+			// limitations.
 			$transports = WP_Http::_postTransport($r);
 		}
 
-		if ( has_action('http_api_debug') )
-			do_action('http_api_debug', $transports, 'transports_list');
+		do_action( 'http_api_debug', $transports, 'transports_list' );
 
 		$response = array( 'headers' => array(), 'body' => '', 'response' => array('code' => false, 'message' => false), 'cookies' => array() );
 		foreach ( (array) $transports as $transport ) {
 			$response = $transport->request($url, $r);
 
-			if ( has_action('http_api_debug') )
-				do_action( 'http_api_debug', $response, 'response', get_class($transport) );
+			do_action( 'http_api_debug', $response, 'response', get_class($transport) );
 
 			if ( ! is_wp_error($response) )
-				return $response;
+				return apply_filters( 'http_response', $response, $r, $url );
 		}
 
 		return $response;
@@ -625,6 +641,11 @@ class WP_Http_Fsockopen {
 			}
 		}
 
+		//fsockopen has issues with 'localhost' with IPv6 with certain versions of PHP, It attempts to connect to ::1,
+		// which fails when the server is not setup for it. For compatibility, always connect to the IPv4 address.
+		if ( 'localhost' == strtolower($fsockopen_host) )
+			$fsockopen_host = '127.0.0.1';
+
 		// There are issues with the HTTPS and SSL protocols that cause errors that can be safely
 		// ignored and should be ignored.
 		if ( true === $secure_transport )
@@ -634,7 +655,7 @@ class WP_Http_Fsockopen {
 
 		$proxy = new WP_HTTP_Proxy();
 
-		if ( !defined('WP_DEBUG') || ( defined('WP_DEBUG') && false === WP_DEBUG ) ) {
+		if ( !WP_DEBUG ) {
 			if ( $proxy->is_enabled() && $proxy->send_through_proxy( $url ) )
 				$handle = @fsockopen( $proxy->host(), $proxy->port(), $iError, $strError, $r['timeout'] );
 			else
@@ -657,7 +678,9 @@ class WP_Http_Fsockopen {
 		if ( false === $handle )
 			return new WP_Error('http_request_failed', $iError . ': ' . $strError);
 
-		stream_set_timeout($handle, $r['timeout'] );
+		$timeout = (int) floor( $r['timeout'] );
+		$utimeout = $timeout == $r['timeout'] ? 0 : 1000000 * $r['timeout'] % 1000000;
+		stream_set_timeout( $handle, $timeout, $utimeout );
 
 		if ( $proxy->is_enabled() && $proxy->send_through_proxy( $url ) ) //Some proxies require full URL in this field.
 			$requestPath = $url;
@@ -805,7 +828,7 @@ class WP_Http_Fopen {
 		if ( 'http' != $arrURL['scheme'] && 'https' != $arrURL['scheme'] )
 			$url = str_replace($arrURL['scheme'], 'http', $url);
 
-		if ( !defined('WP_DEBUG') || ( defined('WP_DEBUG') && false === WP_DEBUG ) )
+		if ( !WP_DEBUG )
 			$handle = @fopen($url, 'r');
 		else
 			$handle = fopen($url, 'r');
@@ -813,7 +836,9 @@ class WP_Http_Fopen {
 		if (! $handle)
 			return new WP_Error('http_request_failed', sprintf(__('Could not open handle for fopen() to %s'), $url));
 
-		stream_set_timeout($handle, $r['timeout'] );
+		$timeout = (int) floor( $r['timeout'] );
+		$utimeout = $timeout == $r['timeout'] ? 0 : 1000000 * $r['timeout'] % 1000000;
+		stream_set_timeout( $handle, $timeout, $utimeout );
 
 		if ( ! $r['blocking'] ) {
 			fclose($handle);
@@ -978,7 +1003,7 @@ class WP_Http_Streams {
 
 		$context = stream_context_create($arrContext);
 
-		if ( ! defined('WP_DEBUG') || ( defined('WP_DEBUG') && false === WP_DEBUG ) )
+		if ( !WP_DEBUG )
 			$handle = @fopen($url, 'r', false, $context);
 		else
 			$handle = fopen($url, 'r', false, $context);
@@ -986,9 +1011,9 @@ class WP_Http_Streams {
 		if ( ! $handle)
 			return new WP_Error('http_request_failed', sprintf(__('Could not open handle for fopen() to %s'), $url));
 
-		// WordPress supports PHP 4.3, which has this function. Removed sanity checking for
-		// performance reasons.
-		stream_set_timeout($handle, $r['timeout'] );
+		$timeout = (int) floor( $r['timeout'] );
+		$utimeout = $timeout == $r['timeout'] ? 0 : 1000000 * $r['timeout'] % 1000000;
+		stream_set_timeout( $handle, $timeout, $utimeout );
 
 		if ( ! $r['blocking'] ) {
 			stream_set_blocking($handle, 0);
@@ -1100,6 +1125,9 @@ class WP_Http_ExtHTTP {
 			case 'HEAD':
 				$r['method'] = HTTP_METH_HEAD;
 				break;
+			case 'PUT':
+				$r['method'] =  HTTP_METH_PUT;
+				break;
 			case 'GET':
 			default:
 				$r['method'] = HTTP_METH_GET;
@@ -1116,6 +1144,8 @@ class WP_Http_ExtHTTP {
 			$ssl_verify = apply_filters('https_local_ssl_verify', $ssl_verify);
 		elseif ( ! $is_local )
 			$ssl_verify = apply_filters('https_ssl_verify', $ssl_verify);
+
+		$r['timeout'] = (int) ceil( $r['timeout'] );
 
 		$options = array(
 			'timeout' => $r['timeout'],
@@ -1143,7 +1173,7 @@ class WP_Http_ExtHTTP {
 			}
 		}
 
-		if ( !defined('WP_DEBUG') || ( defined('WP_DEBUG') && false === WP_DEBUG ) ) //Emits warning level notices for max redirects and timeouts
+		if ( !WP_DEBUG ) //Emits warning level notices for max redirects and timeouts
 			$strResponse = @http_request($r['method'], $url, $r['body'], $options, $info);
 		else
 			$strResponse = http_request($r['method'], $url, $r['body'], $options, $info); //Emits warning level notices for max redirects and timeouts
@@ -1160,7 +1190,7 @@ class WP_Http_ExtHTTP {
 		$theHeaders = WP_Http::processHeaders($theHeaders);
 
 		if ( ! empty( $theBody ) && isset( $theHeaders['headers']['transfer-encoding'] ) && 'chunked' == $theHeaders['headers']['transfer-encoding'] ) {
-			if ( !defined('WP_DEBUG') || ( defined('WP_DEBUG') && false === WP_DEBUG ) )
+			if ( !WP_DEBUG )
 				$theBody = @http_chunked_decode($theBody);
 			else
 				$theBody = http_chunked_decode($theBody);
@@ -1231,11 +1261,6 @@ class WP_Http_Curl {
 		// Construct Cookie: header if any cookies are set.
 		WP_Http::buildCookieHeader( $r );
 
-		// cURL extension will sometimes fail when the timeout is less than 1 as it may round down
-		// to 0, which gives it unlimited timeout.
-		if ( $r['timeout'] > 0 && $r['timeout'] < 1 )
-			$r['timeout'] = 1;
-
 		$handle = curl_init();
 
 		// cURL offers really easy proxy support.
@@ -1268,13 +1293,25 @@ class WP_Http_Curl {
 		elseif ( ! $is_local )
 			$ssl_verify = apply_filters('https_ssl_verify', $ssl_verify);
 
+
+		// CURLOPT_TIMEOUT and CURLOPT_CONNECTTIMEOUT expect integers.  Have to use ceil since
+		// a value of 0 will allow an ulimited timeout.
+		// Use _MS if available.
+		if ( defined( 'CURLOPT_TIMEOUT_MS' ) ) {
+			$timeout_ms = (int) ceil( 1000 * $r['timeout'] );
+			curl_setopt( $handle, CURLOPT_CONNECTTIMEOUT_MS, $timeout_ms );
+			curl_setopt( $handle, CURLOPT_TIMEOUT_MS, $timeout_ms );
+		} else {
+			$timeout = (int) ceil( $r['timeout'] );
+			curl_setopt( $handle, CURLOPT_CONNECTTIMEOUT, $timeout );
+			curl_setopt( $handle, CURLOPT_TIMEOUT, $timeout );
+		}
+
 		curl_setopt( $handle, CURLOPT_URL, $url);
 		curl_setopt( $handle, CURLOPT_RETURNTRANSFER, true );
 		curl_setopt( $handle, CURLOPT_SSL_VERIFYHOST, $ssl_verify );
 		curl_setopt( $handle, CURLOPT_SSL_VERIFYPEER, $ssl_verify );
 		curl_setopt( $handle, CURLOPT_USERAGENT, $r['user-agent'] );
-		curl_setopt( $handle, CURLOPT_CONNECTTIMEOUT, $r['timeout'] );
-		curl_setopt( $handle, CURLOPT_TIMEOUT, $r['timeout'] );
 		curl_setopt( $handle, CURLOPT_MAXREDIRS, $r['redirection'] );
 
 		switch ( $r['method'] ) {
@@ -1283,6 +1320,10 @@ class WP_Http_Curl {
 				break;
 			case 'POST':
 				curl_setopt( $handle, CURLOPT_POST, true );
+				curl_setopt( $handle, CURLOPT_POSTFIELDS, $r['body'] );
+				break;
+			case 'PUT':
+				curl_setopt( $handle, CURLOPT_CUSTOMREQUEST, 'PUT' );
 				curl_setopt( $handle, CURLOPT_POSTFIELDS, $r['body'] );
 				break;
 		}
@@ -1324,8 +1365,6 @@ class WP_Http_Curl {
 		$theResponse = curl_exec( $handle );
 
 		if ( !empty($theResponse) ) {
-			$parts = explode("\r\n\r\n", $theResponse);
-
 			$headerLength = curl_getinfo($handle, CURLINFO_HEADER_SIZE);
 			$theHeaders = trim( substr($theResponse, 0, $headerLength) );
 			$theBody = substr( $theResponse, $headerLength );
@@ -1784,7 +1823,7 @@ class WP_Http_Encoding {
 	 * @return string|bool False on failure.
 	 */
 	function decompress( $compressed, $length = null ) {
-		$decompressed = gzinflate( $compressed );
+		$decompressed = WP_Http_Encoding::compatible_gzinflate( $compressed );
 
 		if ( false !== $decompressed )
 			return $decompressed;
@@ -1802,6 +1841,42 @@ class WP_Http_Encoding {
 		}
 
 		return $compressed;
+	}
+
+	/**
+	 * Decompression of deflated string while staying compatible with the majority of servers.
+	 *
+	 * Certain Servers will return deflated data with headers which PHP's gziniflate()
+	 * function cannot handle out of the box. The following function lifted from
+	 * http://au2.php.net/manual/en/function.gzinflate.php#77336 will attempt to deflate
+	 * the various return forms used.
+	 *
+	 * @since 2.8.1
+	 * @link http://au2.php.net/manual/en/function.gzinflate.php#77336
+	 *
+	 * @param string $gzData String to decompress.
+	 * @return string|bool False on failure.
+	 */
+	function compatible_gzinflate($gzData) {
+		if ( substr($gzData, 0, 3) == "\x1f\x8b\x08" ) {
+			$i = 10;
+			$flg = ord( substr($gzData, 3, 1) );
+			if ( $flg > 0 ) {
+				if ( $flg & 4 ) {
+					list($xlen) = unpack('v', substr($gzData, $i, 2) );
+					$i = $i + 2 + $xlen;
+				}
+				if ( $flg & 8 )
+					$i = strpos($gzData, "\0", $i) + 1;
+				if ( $flg & 16 )
+					$i = strpos($gzData, "\0", $i) + 1;
+				if ( $flg & 2 )
+					$i = $i + 2;
+			}
+			return gzinflate( substr($gzData, $i, -8) );
+		} else {
+			return false;
+		}
 	}
 
 	/**

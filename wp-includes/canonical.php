@@ -84,13 +84,19 @@ function redirect_canonical($requested_url=null, $do_redirect=true) {
 		$redirect_url = redirect_guess_404_permalink();
 	} elseif ( is_object($wp_rewrite) && $wp_rewrite->using_permalinks() ) {
 		// rewriting of old ?p=X, ?m=2004, ?m=200401, ?m=20040101
-		if ( is_single() && !empty($_GET['p']) && ! $redirect_url ) {
+		if ( is_attachment() && !empty($_GET['attachment_id']) && ! $redirect_url ) {
+			if ( $redirect_url = get_attachment_link(get_query_var('attachment_id')) )
+				$redirect['query'] = remove_query_arg('attachment_id', $redirect['query']);
+		} elseif ( is_single() && !empty($_GET['p']) && ! $redirect_url ) {
 			if ( $redirect_url = get_permalink(get_query_var('p')) )
 				$redirect['query'] = remove_query_arg('p', $redirect['query']);
 			if ( get_query_var( 'page' ) ) {
 				$redirect_url = trailingslashit( $redirect_url ) . user_trailingslashit( get_query_var( 'page' ), 'single_paged' );
 				$redirect['query'] = remove_query_arg( 'page', $redirect['query'] );
 			}
+		} elseif ( is_single() && !empty($_GET['name'])  && ! $redirect_url ) {
+			if ( $redirect_url = get_permalink( $wp_query->get_queried_object_id() ) )
+				$redirect['query'] = remove_query_arg('name', $redirect['query']);
 		} elseif ( is_page() && !empty($_GET['page_id']) && ! $redirect_url ) {
 			if ( $redirect_url = get_permalink(get_query_var('page_id')) )
 				$redirect['query'] = remove_query_arg('page_id', $redirect['query']);
@@ -122,7 +128,7 @@ function redirect_canonical($requested_url=null, $do_redirect=true) {
 		} elseif ( is_category() && !empty($_GET['cat']) && preg_match( '|^[0-9]+$|', $_GET['cat'] ) ) {
 			if ( $redirect_url = get_category_link(get_query_var('cat')) )
 				$redirect['query'] = remove_query_arg('cat', $redirect['query']);
-		} elseif ( is_author() && !empty($_GET['author']) ) {
+		} elseif ( is_author() && !empty($_GET['author']) && preg_match( '|^[0-9]+$|', $_GET['author'] ) ) {
 			$author = get_userdata(get_query_var('author'));
 			if ( false !== $author && $redirect_url = get_author_posts_url($author->ID, $author->user_nicename) )
 				$redirect['query'] = remove_query_arg('author', $redirect['author']);

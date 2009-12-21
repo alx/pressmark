@@ -18,13 +18,14 @@ if ( isset($_GET['action']) && isset($_GET['linkcheck']) ) {
 		wp_die( __('You do not have sufficient permissions to edit the links for this blog.') );
 
 	if ( 'delete' == $doaction ) {
-		foreach ( (array) $_GET['linkcheck'] as $link_id ) {
+		$bulklinks = (array) $_GET['linkcheck'];
+		foreach ( $bulklinks as $link_id ) {
 			$link_id = (int) $link_id;
 
 			wp_delete_link($link_id);
 		}
 
-		wp_redirect( wp_get_referer() );
+		wp_safe_redirect( wp_get_referer() );
 		exit;
 	}
 } elseif ( isset($_GET['_wp_http_referer']) && ! empty($_GET['_wp_http_referer']) ) {
@@ -71,7 +72,7 @@ switch ($order_by) {
 
 <div class="wrap nosubsub">
 <?php screen_icon(); ?>
-<h2><?php echo esc_html( $title );
+<h2><?php echo esc_html( $title ); ?> <a href="link-add.php" class="button add-new-h2"><?php esc_html_e('Add New'); ?></a> <?php
 if ( isset($_GET['s']) && $_GET['s'] )
 	printf( '<span class="subtitle">' . __('Search results for &#8220;%s&#8221;') . '</span>', esc_html( stripslashes($_GET['s']) ) ); ?>
 </h2>

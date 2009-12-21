@@ -28,17 +28,17 @@
 function get_locale() {
 	global $locale;
 
-	if (isset($locale))
+	if ( isset( $locale ) )
 		return apply_filters( 'locale', $locale );
 
 	// WPLANG is defined in wp-config.
-	if (defined('WPLANG'))
+	if ( defined( 'WPLANG' ) )
 		$locale = WPLANG;
 
-	if (empty($locale))
+	if ( empty( $locale ) )
 		$locale = 'en_US';
 
-	return apply_filters('locale', $locale);
+	return apply_filters( 'locale', $locale );
 }
 
 /**
@@ -56,7 +56,7 @@ function get_locale() {
  */
 function translate( $text, $domain = 'default' ) {
 	$translations = &get_translations_for_domain( $domain );
-	return apply_filters('gettext', $translations->translate($text), $text, $domain);
+	return apply_filters( 'gettext', $translations->translate( $text ), $text, $domain );
 }
 
 function before_last_bar( $string ) {
@@ -80,12 +80,11 @@ function before_last_bar( $string ) {
  */
 function translate_with_context( $text, $domain = 'default' ) {
 	return before_last_bar( translate( $text, $domain ) );
-
 }
 
 function translate_with_gettext_context( $text, $context, $domain = 'default' ) {
 	$translations = &get_translations_for_domain( $domain );
-	return apply_filters( 'gettext_with_context', $translations->translate( $text, $context ), $text, $context, $domain);
+	return apply_filters( 'gettext_with_context', $translations->translate( $text, $context ), $text, $context, $domain );
 }
 
 /**
@@ -177,27 +176,21 @@ function esc_html_e( $text, $domain = 'default' ) {
 }
 
 /**
- * Retrieve translated string with vertical bar context
+ * Retrieve translated string with gettext context
  *
  * Quite a few times, there will be collisions with similar translatable text
  * found in more than two places but with different translated context.
  *
- * In order to use the separate contexts, the _c() function is used and the
- * translatable string uses a pipe ('|') which has the context the string is in.
+ * By including the context in the pot file translators can translate the two
+ * string differently
  *
- * When the translated string is returned, it is everything before the pipe, not
- * including the pipe character. If there is no pipe in the translated text then
- * everything is returned.
- *
- * @since 2.2.0
+ * @since 2.8
  *
  * @param string $text Text to translate
+ * @param string $context Context information for the translators
  * @param string $domain Optional. Domain to retrieve the translated text
  * @return string Translated context string without pipe
  */
-function _c($text, $domain = 'default') {
-	return translate_with_context($text, $domain);
-}
 
 function _x( $single, $context, $domain = 'default' ) {
 	return translate_with_gettext_context( $single, $context, $domain );
@@ -205,6 +198,10 @@ function _x( $single, $context, $domain = 'default' ) {
 
 function esc_attr_x( $single, $context, $domain = 'default' ) {
 	return esc_attr( translate_with_gettext_context( $single, $context, $domain ) );
+}
+
+function esc_html_x( $single, $context, $domain = 'default' ) {
+	return esc_html( translate_with_gettext_context( $single, $context, $domain ) );
 }
 
 function __ngettext() {
@@ -235,7 +232,7 @@ function __ngettext() {
  * @param string $domain Optional. The domain identifier the text should be retrieved in
  * @return string Either $single or $plural translated text
  */
-function _n($single, $plural, $number, $domain = 'default') {
+function _n( $single, $plural, $number, $domain = 'default' ) {
 	$translations = &get_translations_for_domain( $domain );
 	$translation = $translations->translate_plural( $single, $plural, $number );
 	return apply_filters( 'ngettext', $translation, $single, $plural, $number, $domain );
@@ -253,7 +250,7 @@ function _nc( $single, $plural, $number, $domain = 'default' ) {
 function _nx($single, $plural, $number, $context, $domain = 'default') {
 	$translations = &get_translations_for_domain( $domain );
 	$translation = $translations->translate_plural( $single, $plural, $number, $context );
-	return apply_filters( 'ngettext_with_context ', $translation, $single, $plural, $number, $context, $domain );
+	return apply_filters( 'ngettext_with_context', $translation, $single, $plural, $number, $context, $domain );
 }
 
 /**
@@ -316,8 +313,18 @@ function _nx_noop( $single, $plural, $context ) {
  * @param string $mofile Path to the .mo file
  * @return bool true on success, false on failure
  */
-function load_textdomain($domain, $mofile) {
+function load_textdomain( $domain, $mofile ) {
 	global $l10n;
+	
+	$plugin_override = apply_filters( 'override_load_textdomain', false, $domain, $mofile );
+	
+	if ( true == $plugin_override ) {
+		return true;
+	}
+	
+	do_action( 'load_textdomain', $domain, $mofile );
+		
+	$mofile = apply_filters( 'load_textdomain_mofile', $mofile, $domain );
 
 	if ( !is_readable( $mofile ) ) return false;
 
@@ -328,6 +335,7 @@ function load_textdomain($domain, $mofile) {
 		$mo->merge_with( $l10n[$domain] );
 
 	$l10n[$domain] = &$mo;
+	
 	return true;
 }
 
@@ -344,7 +352,7 @@ function load_default_textdomain() {
 
 	$mofile = WP_LANG_DIR . "/$locale.mo";
 
-	return load_textdomain('default', $mofile);
+	return load_textdomain( 'default', $mofile );
 }
 
 /**
@@ -360,18 +368,18 @@ function load_default_textdomain() {
  * 	where the .mo file resides. Deprecated, but still functional until 2.7
  * @param string $plugin_rel_path Optional. Relative path to WP_PLUGIN_DIR. This is the preferred argument to use. It takes precendence over $abs_rel_path
  */
-function load_plugin_textdomain($domain, $abs_rel_path = false, $plugin_rel_path = false) {
+function load_plugin_textdomain( $domain, $abs_rel_path = false, $plugin_rel_path = false ) {
 	$locale = get_locale();
 
 	if ( false !== $plugin_rel_path	)
-		$path = WP_PLUGIN_DIR . '/' . trim( $plugin_rel_path, '/');
-	else if ( false !== $abs_rel_path)
-		$path = ABSPATH . trim( $abs_rel_path, '/');
+		$path = WP_PLUGIN_DIR . '/' . trim( $plugin_rel_path, '/' );
+	else if ( false !== $abs_rel_path )
+		$path = ABSPATH . trim( $abs_rel_path, '/' );
 	else
 		$path = WP_PLUGIN_DIR;
 
 	$mofile = $path . '/'. $domain . '-' . $locale . '.mo';
-	return load_textdomain($domain, $mofile);
+	return load_textdomain( $domain, $mofile );
 }
 
 /**
@@ -396,6 +404,27 @@ function load_theme_textdomain($domain, $path = false) {
 }
 
 /**
+ * Loads the child themes translated strings.
+ *
+ * If the current locale exists as a .mo file in the child themes root directory, it
+ * will be included in the translated strings by the $domain.
+ *
+ * The .mo files must be named based on the locale exactly.
+ *
+ * @since 2.9.0
+ *
+ * @param string $domain Unique identifier for retrieving translated strings
+ */
+function load_child_theme_textdomain($domain, $path = false) {
+        $locale = get_locale();
+
+        $path = ( empty( $path ) ) ? get_stylesheet_directory() : $path;
+
+        $mofile = "$path/$locale.mo";
+        return load_textdomain($domain, $mofile);
+}
+
+/**
  * Returns the Translations instance for a domain. If there isn't one,
  * returns empty Translations instance.
  *
@@ -404,11 +433,10 @@ function load_theme_textdomain($domain, $path = false) {
  */
 function &get_translations_for_domain( $domain ) {
 	global $l10n;
-	$empty = &new Translations;
-	if ( isset($l10n[$domain]) )
-		return $l10n[$domain];
-	else
-		return $empty;
+	if ( !isset( $l10n[$domain] ) ) {
+		$l10n[$domain] = &new NOOP_Translations;
+	}
+	return $l10n[$domain];
 }
 
 /**

@@ -532,7 +532,7 @@ function get_comments_number( $post_id = 0 ) {
 	else
 		$count = $post->comment_count;
 
-	return apply_filters('get_comments_number', $count);
+	return apply_filters('get_comments_number', $count, $post_id);
 }
 
 /**
@@ -599,12 +599,12 @@ function comment_text() {
  */
 function get_comment_time( $d = '', $gmt = false, $translate = true ) {
 	global $comment;
-	$comment_date = $gmt? $comment->comment_date_gmt : $comment->comment_date;
+	$comment_date = $gmt ? $comment->comment_date_gmt : $comment->comment_date;
 	if ( '' == $d )
 		$date = mysql2date(get_option('time_format'), $comment_date, $translate);
 	else
 		$date = mysql2date($d, $comment_date, $translate);
-	return apply_filters('get_comment_time', $date, $d, $gmt);
+	return apply_filters('get_comment_time', $date, $d, $gmt, $translate);
 }
 
 /**
@@ -813,7 +813,7 @@ function wp_comment_form_unfiltered_html_nonce() {
 function comments_template( $file = '/comments.php', $separate_comments = false ) {
 	global $wp_query, $withcomments, $post, $wpdb, $id, $comment, $user_login, $user_ID, $user_identity, $overridden_cpage;
 
-	if ( ! (is_single() || is_page() || $withcomments) )
+	if ( !(is_single() || is_page() || $withcomments) || empty($post) )
 		return;
 
 	if ( empty($file) )
@@ -835,12 +835,12 @@ function comments_template( $file = '/comments.php', $separate_comments = false 
 
 	/**
 	 * The email address of the current comment author escaped for use in attributes.
-	 */	
+	 */
 	$comment_author_email = $commenter['comment_author_email'];  // Escaped by sanitize_comment_cookies()
 
 	/**
 	 * The url of the current comment author escaped for use in attributes.
-	 */	
+	 */
 	$comment_author_url = esc_url($commenter['comment_author_url']);
 
 	/** @todo Use API instead of SELECTs. */
@@ -970,7 +970,7 @@ function comments_popup_link( $zero = false, $one = false, $more = false, $css_c
 	if ( !empty( $css_class ) ) {
 		echo ' class="'.$css_class.'" ';
 	}
-	$title = esc_attr( get_the_title() );
+	$title = the_title_attribute( 'echo=0' );
 
 	echo apply_filters( 'comments_popup_link_attributes', '' );
 
@@ -1255,7 +1255,7 @@ class Walker_Comment extends Walker {
 		}
 ?>
 		<<?php echo $tag ?> <?php comment_class(empty( $args['has_children'] ) ? '' : 'parent') ?> id="comment-<?php comment_ID() ?>">
-		<?php if ( 'ul' == $args['style'] ) : ?>
+		<?php if ( 'div' != $args['style'] ) : ?>
 		<div id="div-comment-<?php comment_ID() ?>" class="comment-body">
 		<?php endif; ?>
 		<div class="comment-author vcard">
@@ -1274,7 +1274,7 @@ class Walker_Comment extends Walker {
 		<div class="reply">
 		<?php comment_reply_link(array_merge( $args, array('add_below' => $add_below, 'depth' => $depth, 'max_depth' => $args['max_depth']))) ?>
 		</div>
-		<?php if ( 'ul' == $args['style'] ) : ?>
+		<?php if ( 'div' != $args['style'] ) : ?>
 		</div>
 		<?php endif; ?>
 <?php

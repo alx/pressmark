@@ -34,8 +34,10 @@ function get_stylesheet() {
  */
 function get_stylesheet_directory() {
 	$stylesheet = get_stylesheet();
-	$stylesheet_dir = get_theme_root() . "/$stylesheet";
-	return apply_filters('stylesheet_directory', $stylesheet_dir, $stylesheet);
+	$theme_root = get_theme_root( $stylesheet );
+	$stylesheet_dir = "$theme_root/$stylesheet";
+
+	return apply_filters( 'stylesheet_directory', $stylesheet_dir, $stylesheet, $theme_root );
 }
 
 /**
@@ -47,8 +49,10 @@ function get_stylesheet_directory() {
  */
 function get_stylesheet_directory_uri() {
 	$stylesheet = get_stylesheet();
-	$stylesheet_dir_uri = get_theme_root_uri() . "/$stylesheet";
-	return apply_filters('stylesheet_directory_uri', $stylesheet_dir_uri, $stylesheet);
+	$theme_root_uri = get_theme_root_uri( $stylesheet );
+	$stylesheet_dir_uri = "$theme_root_uri/$stylesheet";
+
+	return apply_filters( 'stylesheet_directory_uri', $stylesheet_dir_uri, $stylesheet, $theme_root_uri );
 }
 
 /**
@@ -123,8 +127,10 @@ function get_template() {
  */
 function get_template_directory() {
 	$template = get_template();
-	$template_dir = get_theme_root() . "/$template";
-	return apply_filters('template_directory', $template_dir, $template);
+	$theme_root = get_theme_root( $template );
+	$template_dir = "$theme_root/$template";
+
+	return apply_filters( 'template_directory', $template_dir, $template, $theme_root );
 }
 
 /**
@@ -137,8 +143,10 @@ function get_template_directory() {
  */
 function get_template_directory_uri() {
 	$template = get_template();
-	$template_dir_uri = get_theme_root_uri() . "/$template";
-	return apply_filters('template_directory_uri', $template_dir_uri, $template);
+	$theme_root_uri = get_theme_root_uri( $template );
+	$template_dir_uri = "$theme_root_uri/$template";
+
+	return apply_filters( 'template_directory_uri', $template_dir_uri, $template, $theme_root_uri );
 }
 
 /**
@@ -162,6 +170,18 @@ function get_template_directory_uri() {
  * @return array Theme data.
  */
 function get_theme_data( $theme_file ) {
+	$default_headers = array( 
+		'Name' => 'Theme Name', 
+		'URI' => 'Theme URI', 
+		'Description' => 'Description', 
+		'Author' => 'Author', 
+		'AuthorURI' => 'Author URI',
+		'Version' => 'Version', 
+		'Template' => 'Template', 
+		'Status' => 'Status', 
+		'Tags' => 'Tags'
+		);
+
 	$themes_allowed_tags = array(
 		'a' => array(
 			'href' => array(),'title' => array()
@@ -177,59 +197,41 @@ function get_theme_data( $theme_file ) {
 		'strong' => array()
 	);
 
-	$theme_data = implode( '', file( $theme_file ) );
-	$theme_data = str_replace ( '\r', '\n', $theme_data );
-	if ( preg_match( '|Theme Name:(.*)$|mi', $theme_data, $theme_name ) )
-		$name = $theme = wp_kses( _cleanup_header_comment($theme_name[1]), $themes_allowed_tags );
-	else
-		$name = $theme = '';
+	$theme_data = get_file_data( $theme_file, $default_headers, 'theme' );
 
-	if ( preg_match( '|Theme URI:(.*)$|mi', $theme_data, $theme_uri ) )
-		$theme_uri = esc_url( _cleanup_header_comment($theme_uri[1]) );
-	else
-		$theme_uri = '';
+	$theme_data['Name'] = $theme_data['Title'] = wp_kses( $theme_data['Name'], $themes_allowed_tags );
 
-	if ( preg_match( '|Description:(.*)$|mi', $theme_data, $description ) )
-		$description = wptexturize( wp_kses( _cleanup_header_comment($description[1]), $themes_allowed_tags ) );
-	else
-		$description = '';
+	$theme_data['URI'] = esc_url( $theme_data['URI'] );
 
-	if ( preg_match( '|Author URI:(.*)$|mi', $theme_data, $author_uri ) )
-		$author_uri = esc_url( _cleanup_header_comment($author_uri[1]) );
-	else
-		$author_uri = '';
+	$theme_data['Description'] = wptexturize( wp_kses( $theme_data['Description'], $themes_allowed_tags ) );
 
-	if ( preg_match( '|Template:(.*)$|mi', $theme_data, $template ) )
-		$template = wp_kses( _cleanup_header_comment($template[1]), $themes_allowed_tags );
-	else
-		$template = '';
+	$theme_data['AuthorURI'] = esc_url( $theme_data['AuthorURI'] );
 
-	if ( preg_match( '|Version:(.*)|i', $theme_data, $version ) )
-		$version = wp_kses( _cleanup_header_comment($version[1]), $themes_allowed_tags );
-	else
-		$version = '';
+	$theme_data['Template'] = wp_kses( $theme_data['Template'], $themes_allowed_tags );
 
-	if ( preg_match('|Status:(.*)|i', $theme_data, $status) )
-		$status = wp_kses( _cleanup_header_comment($status[1]), $themes_allowed_tags );
-	else
-		$status = 'publish';
+	$theme_data['Version'] = wp_kses( $theme_data['Version'], $themes_allowed_tags );
 
-	if ( preg_match('|Tags:(.*)|i', $theme_data, $tags) )
-		$tags = array_map( 'trim', explode( ',', wp_kses( _cleanup_header_comment($tags[1]), array() ) ) );
+	if ( $theme_data['Status'] == '' )
+		$theme_data['Status'] = 'publish';
 	else
-		$tags = array();
+		$theme_data['Status'] = wp_kses( $theme_data['Status'], $themes_allowed_tags );
 
-	if ( preg_match( '|Author:(.*)$|mi', $theme_data, $author_name ) ) {
-		if ( empty( $author_uri ) ) {
-			$author = wp_kses( _cleanup_header_comment($author_name[1]), $themes_allowed_tags );
-		} else {
-			$author = sprintf( '<a href="%1$s" title="%2$s">%3$s</a>', $author_uri, __( 'Visit author homepage' ), wp_kses( _cleanup_header_comment($author_name[1]), $themes_allowed_tags ) );
-		}
+	if ( $theme_data['Tags'] == '' )
+		$theme_data['Tags'] = array();
+	else
+		$theme_data['Tags'] = array_map( 'trim', explode( ',', wp_kses( $theme_data['Tags'], array() ) ) );
+
+	if ( $theme_data['Author'] == '' ) {
+		$theme_data['Author'] = __('Anonymous');
 	} else {
-		$author = __('Anonymous');
+		if ( empty( $theme_data['AuthorURI'] ) ) {
+			$theme_data['Author'] = wp_kses( $theme_data['Author'], $themes_allowed_tags );
+		} else {
+			$theme_data['Author'] = sprintf( '<a href="%1$s" title="%2$s">%3$s</a>', $theme_data['AuthorURI'], __( 'Visit author homepage' ), wp_kses( $theme_data['Author'], $themes_allowed_tags ) );
+		}
 	}
 
-	return array( 'Name' => $name, 'Title' => $theme, 'URI' => $theme_uri, 'Description' => $description, 'Author' => $author, 'Version' => $version, 'Template' => $template, 'Status' => $status, 'Tags' => $tags );
+	return $theme_data;
 }
 
 /**
@@ -253,65 +255,20 @@ function get_themes() {
 	if ( isset($wp_themes) )
 		return $wp_themes;
 
-	$themes = array();
-	$wp_broken_themes = array();
-	$theme_loc = $theme_root = get_theme_root();
-	if ( '/' != WP_CONTENT_DIR ) // don't want to replace all forward slashes, see Trac #4541
-		$theme_loc = str_replace(WP_CONTENT_DIR, '', $theme_root);
+	/* Register the default root as a theme directory */
+	register_theme_directory( get_theme_root() );
 
-	// Files in wp-content/themes directory and one subdir down
-	$themes_dir = @ opendir($theme_root);
-	if ( !$themes_dir )
+	if ( !$theme_files = search_theme_directories() )
 		return false;
 
-	while ( ($theme_dir = readdir($themes_dir)) !== false ) {
-		if ( is_dir($theme_root . '/' . $theme_dir) && is_readable($theme_root . '/' . $theme_dir) ) {
-			if ( $theme_dir{0} == '.' || $theme_dir == '..' || $theme_dir == 'CVS' )
-				continue;
-			$stylish_dir = @ opendir($theme_root . '/' . $theme_dir);
-			$found_stylesheet = false;
-			while ( ($theme_file = readdir($stylish_dir)) !== false ) {
-				if ( $theme_file == 'style.css' ) {
-					$theme_files[] = $theme_dir . '/' . $theme_file;
-					$found_stylesheet = true;
-					break;
-				}
-			}
-			@closedir($stylish_dir);
-			if ( !$found_stylesheet ) { // look for themes in that dir
-				$subdir = "$theme_root/$theme_dir";
-				$subdir_name = $theme_dir;
-				$theme_subdir = @ opendir( $subdir );
-				while ( ($theme_dir = readdir($theme_subdir)) !== false ) {
-					if ( is_dir( $subdir . '/' . $theme_dir) && is_readable($subdir . '/' . $theme_dir) ) {
-						if ( $theme_dir{0} == '.' || $theme_dir == '..' || $theme_dir == 'CVS' )
-							continue;
-						$stylish_dir = @ opendir($subdir . '/' . $theme_dir);
-						$found_stylesheet = false;
-						while ( ($theme_file = readdir($stylish_dir)) !== false ) {
-							if ( $theme_file == 'style.css' ) {
-								$theme_files[] = $subdir_name . '/' . $theme_dir . '/' . $theme_file;
-								$found_stylesheet = true;
-								break;
-							}
-						}
-						@closedir($stylish_dir);
-					}
-				}
-				@closedir($theme_subdir);
-				$wp_broken_themes[$theme_dir] = array('Name' => $theme_dir, 'Title' => $theme_dir, 'Description' => __('Stylesheet is missing.'));
-			}
-		}
-	}
-	if ( is_dir( $theme_dir ) )
-		@closedir( $theme_dir );
+	asort( $theme_files );
 
-	if ( !$themes_dir || !$theme_files )
-		return $themes;
-
-	sort($theme_files);
+	$wp_themes = array();
 
 	foreach ( (array) $theme_files as $theme_file ) {
+		$theme_root = $theme_file['theme_root'];
+		$theme_file = $theme_file['theme_file'];
+
 		if ( !is_readable("$theme_root/$theme_file") ) {
 			$wp_broken_themes[$theme_file] = array('Name' => $theme_file, 'Title' => $theme_file, 'Description' => __('File not readable.'));
 			continue;
@@ -341,22 +298,34 @@ function get_themes() {
 		}
 
 		if ( empty($template) ) {
-			if ( file_exists(dirname("$theme_root/$theme_file/index.php")) )
-				$template = dirname($theme_file);
+			if ( file_exists("$theme_root/$stylesheet/index.php") )
+				$template = $stylesheet;
 			else
 				continue;
 		}
 
-		$template = trim($template);
+		$template = trim( $template );
 
 		if ( !file_exists("$theme_root/$template/index.php") ) {
 			$parent_dir = dirname(dirname($theme_file));
 			if ( file_exists("$theme_root/$parent_dir/$template/index.php") ) {
 				$template = "$parent_dir/$template";
+				$template_directory = "$theme_root/$template";
 			} else {
-				$wp_broken_themes[$name] = array('Name' => $name, 'Title' => $title, 'Description' => __('Template is missing.'));
-				continue;
+				/**
+				 * The parent theme doesn't exist in the current theme's folder or sub folder
+				 * so lets use the theme root for the parent template.
+				 */
+				if ( isset($theme_files[$template]) && file_exists( $theme_files[$template]['theme_root'] . "/$template/index.php" ) ) {
+					$template_directory = $theme_files[$template]['theme_root'] . "/$template";
+				} else {
+					$wp_broken_themes[$name] = array('Name' => $name, 'Title' => $title, 'Description' => __('Template is missing.'));
+					continue;
+				}
+
 			}
+		} else {
+			$template_directory = trim( $theme_root . '/' . $template );
 		}
 
 		$stylesheet_files = array();
@@ -367,28 +336,30 @@ function get_themes() {
 			while ( ($file = $stylesheet_dir->read()) !== false ) {
 				if ( !preg_match('|^\.+$|', $file) ) {
 					if ( preg_match('|\.css$|', $file) )
-						$stylesheet_files[] = "$theme_loc/$stylesheet/$file";
+						$stylesheet_files[] = "$theme_root/$stylesheet/$file";
 					elseif ( preg_match('|\.php$|', $file) )
-						$template_files[] = "$theme_loc/$stylesheet/$file";
+						$template_files[] = "$theme_root/$stylesheet/$file";
 				}
 			}
 			@ $stylesheet_dir->close();
 		}
 
-		$template_dir = @ dir("$theme_root/$template");
+		$template_dir = @ dir("$template_directory");
 		if ( $template_dir ) {
 			while ( ($file = $template_dir->read()) !== false ) {
 				if ( preg_match('|^\.+$|', $file) )
 					continue;
 				if ( preg_match('|\.php$|', $file) ) {
-					$template_files[] = "$theme_loc/$template/$file";
-				} elseif ( is_dir("$theme_root/$template/$file") ) {
-					$template_subdir = @ dir("$theme_root/$template/$file");
+					$template_files[] = "$template_directory/$file";
+				} elseif ( is_dir("$template_directory/$file") ) {
+					$template_subdir = @ dir("$template_directory/$file");
+					if ( !$template_subdir )
+						continue;
 					while ( ($subfile = $template_subdir->read()) !== false ) {
 						if ( preg_match('|^\.+$|', $subfile) )
 							continue;
 						if ( preg_match('|\.php$|', $subfile) )
-							$template_files[] = "$theme_loc/$template/$file/$subfile";
+							$template_files[] = "$template_directory/$file/$subfile";
 					}
 					@ $template_subdir->close();
 				}
@@ -396,6 +367,10 @@ function get_themes() {
 			@ $template_dir->close();
 		}
 
+		//Make unique and remove duplicates when stylesheet and template are the same i.e. most themes
+		$template_files = array_unique($template_files);
+		$stylesheet_files = array_unique($stylesheet_files);
+			
 		$template_dir = dirname($template_files[0]);
 		$stylesheet_dir = dirname($stylesheet_files[0]);
 
@@ -408,41 +383,62 @@ function get_themes() {
 		// a new theme directory and the theme header is not updated.  Whichever
 		// theme is first keeps the name.  Subsequent themes get a suffix applied.
 		// The Default and Classic themes always trump their pretenders.
-		if ( isset($themes[$name]) ) {
+		if ( isset($wp_themes[$name]) ) {
 			if ( ('WordPress Default' == $name || 'WordPress Classic' == $name) &&
 					 ('default' == $stylesheet || 'classic' == $stylesheet) ) {
 				// If another theme has claimed to be one of our default themes, move
 				// them aside.
-				$suffix = $themes[$name]['Stylesheet'];
+				$suffix = $wp_themes[$name]['Stylesheet'];
 				$new_name = "$name/$suffix";
-				$themes[$new_name] = $themes[$name];
-				$themes[$new_name]['Name'] = $new_name;
+				$wp_themes[$new_name] = $wp_themes[$name];
+				$wp_themes[$new_name]['Name'] = $new_name;
 			} else {
 				$name = "$name/$stylesheet";
 			}
 		}
 
-		$themes[$name] = array('Name' => $name, 'Title' => $title, 'Description' => $description, 'Author' => $author, 'Version' => $version, 'Template' => $template, 'Stylesheet' => $stylesheet, 'Template Files' => $template_files, 'Stylesheet Files' => $stylesheet_files, 'Template Dir' => $template_dir, 'Stylesheet Dir' => $stylesheet_dir, 'Status' => $theme_data['Status'], 'Screenshot' => $screenshot, 'Tags' => $theme_data['Tags']);
+		$theme_roots[$stylesheet] = str_replace( WP_CONTENT_DIR, '', $theme_root );
+		$wp_themes[$name] = array( 'Name' => $name, 'Title' => $title, 'Description' => $description, 'Author' => $author, 'Version' => $version, 'Template' => $template, 'Stylesheet' => $stylesheet, 'Template Files' => $template_files, 'Stylesheet Files' => $stylesheet_files, 'Template Dir' => $template_dir, 'Stylesheet Dir' => $stylesheet_dir, 'Status' => $theme_data['Status'], 'Screenshot' => $screenshot, 'Tags' => $theme_data['Tags'], 'Theme Root' => $theme_root, 'Theme Root URI' => str_replace( WP_CONTENT_DIR, content_url(), $theme_root ) );
 	}
 
-	// Resolve theme dependencies.
-	$theme_names = array_keys($themes);
+	unset($theme_files);
 
+	/* Store theme roots in the DB */
+	if ( get_site_transient( 'theme_roots' ) != $theme_roots )
+		set_site_transient( 'theme_roots', $theme_roots, 7200 ); // cache for two hours
+	unset($theme_roots);
+
+	/* Resolve theme dependencies. */
+	$theme_names = array_keys( $wp_themes );
 	foreach ( (array) $theme_names as $theme_name ) {
-		$themes[$theme_name]['Parent Theme'] = '';
-		if ( $themes[$theme_name]['Stylesheet'] != $themes[$theme_name]['Template'] ) {
+		$wp_themes[$theme_name]['Parent Theme'] = '';
+		if ( $wp_themes[$theme_name]['Stylesheet'] != $wp_themes[$theme_name]['Template'] ) {
 			foreach ( (array) $theme_names as $parent_theme_name ) {
-				if ( ($themes[$parent_theme_name]['Stylesheet'] == $themes[$parent_theme_name]['Template']) && ($themes[$parent_theme_name]['Template'] == $themes[$theme_name]['Template']) ) {
-					$themes[$theme_name]['Parent Theme'] = $themes[$parent_theme_name]['Name'];
+				if ( ($wp_themes[$parent_theme_name]['Stylesheet'] == $wp_themes[$parent_theme_name]['Template']) && ($wp_themes[$parent_theme_name]['Template'] == $wp_themes[$theme_name]['Template']) ) {
+					$wp_themes[$theme_name]['Parent Theme'] = $wp_themes[$parent_theme_name]['Name'];
 					break;
 				}
 			}
 		}
 	}
 
-	$wp_themes = $themes;
+	return $wp_themes;
+}
 
-	return $themes;
+/**
+ * Retrieve theme roots.
+ *
+ * @since 2.9.0
+ *
+ * @return array Theme roots
+ */
+function get_theme_roots() {
+	$theme_roots = get_site_transient( 'theme_roots' );
+	if ( false === $theme_roots ) {
+		get_themes();
+		$theme_roots = get_site_transient( 'theme_roots' ); // this is set in get_theme()
+	}
+	return $theme_roots;
 }
 
 /**
@@ -499,17 +495,139 @@ function get_current_theme() {
 }
 
 /**
+ * Register a directory that contains themes.
+ *
+ * @since 2.9.0
+ *
+ * @param string $directory Either the full filesystem path to a theme folder or a folder within WP_CONTENT_DIR
+ * @return bool
+ */
+function register_theme_directory( $directory) {
+	global $wp_theme_directories;
+
+	/* If this folder does not exist, return and do not register */
+	if ( !file_exists( $directory ) )
+			/* Try prepending as the theme directory could be relative to the content directory */
+		$registered_directory = WP_CONTENT_DIR . '/' . $directory;
+	else
+		$registered_directory = $directory;
+
+	/* If this folder does not exist, return and do not register */
+	if ( !file_exists( $registered_directory ) )
+		return false;
+
+	$wp_theme_directories[] = $registered_directory;
+
+	return true;
+}
+
+/**
+ * Search all registered theme directories for complete and valid themes.
+ *
+ * @since 2.9.0
+ *
+ * @return array Valid themes found
+ */
+function search_theme_directories() {
+	global $wp_theme_directories, $wp_broken_themes;
+	if ( empty( $wp_theme_directories ) )
+		return false;
+
+	$theme_files = array();
+	$wp_broken_themes = array();
+
+	/* Loop the registered theme directories and extract all themes */
+	foreach ( (array) $wp_theme_directories as $theme_root ) {
+		$theme_loc = $theme_root;
+
+		/* We don't want to replace all forward slashes, see Trac #4541 */
+		if ( '/' != WP_CONTENT_DIR )
+			$theme_loc = str_replace(WP_CONTENT_DIR, '', $theme_root);
+
+		/* Files in the root of the current theme directory and one subdir down */
+		$themes_dir = @ opendir($theme_root);
+
+		if ( !$themes_dir )
+			return false;
+
+		while ( ($theme_dir = readdir($themes_dir)) !== false ) {
+			if ( is_dir($theme_root . '/' . $theme_dir) && is_readable($theme_root . '/' . $theme_dir) ) {
+				if ( $theme_dir{0} == '.' || $theme_dir == 'CVS' )
+					continue;
+
+				$stylish_dir = @opendir($theme_root . '/' . $theme_dir);
+				$found_stylesheet = false;
+
+				while ( ($theme_file = readdir($stylish_dir)) !== false ) {
+					if ( $theme_file == 'style.css' ) {
+						$theme_files[$theme_dir] = array( 'theme_file' => $theme_dir . '/' . $theme_file, 'theme_root' => $theme_root );
+						$found_stylesheet = true;
+						break;
+					}
+				}
+				@closedir($stylish_dir);
+
+				if ( !$found_stylesheet ) { // look for themes in that dir
+					$subdir = "$theme_root/$theme_dir";
+					$subdir_name = $theme_dir;
+					$theme_subdirs = @opendir( $subdir );
+
+					$found_subdir_themes = false;
+					while ( ($theme_subdir = readdir($theme_subdirs)) !== false ) {
+						if ( is_dir( $subdir . '/' . $theme_subdir) && is_readable($subdir . '/' . $theme_subdir) ) {
+							if ( $theme_subdir{0} == '.' || $theme_subdir == 'CVS' )
+								continue;
+
+							$stylish_dir = @opendir($subdir . '/' . $theme_subdir);
+							$found_stylesheet = false;
+
+							while ( ($theme_file = readdir($stylish_dir)) !== false ) {
+								if ( $theme_file == 'style.css' ) {
+									$theme_files["$theme_dir/$theme_subdir"] = array( 'theme_file' => $subdir_name . '/' . $theme_subdir . '/' . $theme_file, 'theme_root' => $theme_root );
+									$found_stylesheet = true;
+									$found_subdir_themes = true;
+									break;
+								}
+							}
+							@closedir($stylish_dir);
+						}
+					}
+					@closedir($theme_subdir);
+					if ( !$found_subdir_themes )
+						$wp_broken_themes[$theme_dir] = array('Name' => $theme_dir, 'Title' => $theme_dir, 'Description' => __('Stylesheet is missing.'));
+				}
+			}
+		}
+		if ( is_dir( $theme_dir ) )
+			@closedir( $theme_dir );
+	}
+	return $theme_files;
+}
+
+/**
  * Retrieve path to themes directory.
  *
  * Does not have trailing slash.
  *
  * @since 1.5.0
+ * @param $stylesheet_or_template The stylesheet or template name of the theme
  * @uses apply_filters() Calls 'theme_root' filter on path.
  *
  * @return string Theme path.
  */
-function get_theme_root() {
-	return apply_filters('theme_root', WP_CONTENT_DIR . "/themes");
+function get_theme_root( $stylesheet_or_template = false ) {
+	if ($stylesheet_or_template) {
+		$theme_roots = get_theme_roots();
+
+		if ( $theme_roots[$stylesheet_or_template] )
+			$theme_root = WP_CONTENT_DIR . $theme_roots[$stylesheet_or_template];
+		else
+			$theme_root = WP_CONTENT_DIR . '/themes';
+	} else {
+		$theme_root = WP_CONTENT_DIR . '/themes';
+	}
+
+	return apply_filters( 'theme_root', $theme_root );
 }
 
 /**
@@ -518,11 +636,19 @@ function get_theme_root() {
  * Does not have trailing slash.
  *
  * @since 1.5.0
+ * @param $stylesheet_or_template The stylesheet or template name of the theme
  *
  * @return string Themes URI.
  */
-function get_theme_root_uri() {
-	return apply_filters('theme_root_uri', content_url('themes'), get_option('siteurl'));
+function get_theme_root_uri( $stylesheet_or_template = false ) {
+	$theme_roots = get_theme_roots();
+
+	if ( $theme_roots[$stylesheet_or_template] )
+		$theme_root_uri = content_url( $theme_roots[$stylesheet_or_template] );
+	else
+		$theme_root_uri = content_url( 'themes' );
+
+	return apply_filters( 'theme_root_uri', $theme_root_uri, get_option('siteurl'), $stylesheet_or_template );
 }
 
 /**
@@ -590,9 +716,9 @@ function get_author_template() {
 /**
  * Retrieve path of category template in current or parent template.
  *
- * Works by retrieving the current category ID, for example 'category-1.php' and
- * will fallback to category.php template, if the ID category file doesn't
- * exist.
+ * Works by first retrieving the current slug for example 'category-default.php' and then
+ * trying category ID, for example 'category-1.php' and will finally fallback to category.php
+ * template, if those files don't exist.
  *
  * @since 1.5.0
  * @uses apply_filters() Calls 'category_template' on file path of category template.
@@ -600,15 +726,27 @@ function get_author_template() {
  * @return string
  */
 function get_category_template() {
-	$template = locate_template(array("category-" . absint( get_query_var('cat') ) . '.php', 'category.php'));
+	$cat_ID = absint( get_query_var('cat') );
+	$category = get_category( $cat_ID );
+
+	$templates = array();
+
+	if ( !is_wp_error($category) )
+		$templates[] = "category-{$category->slug}.php";
+
+	$templates[] = "category-$cat_ID.php";
+	$templates[] = "category.php";
+
+	$template = locate_template($templates);
 	return apply_filters('category_template', $template);
 }
 
 /**
  * Retrieve path of tag template in current or parent template.
  *
- * Works by retrieving the current tag name, for example 'tag-wordpress.php' and will
- * fallback to tag.php template, if the name tag file doesn't exist.
+ * Works by first retrieving the current tag name, for example 'tag-wordpress.php' and then
+ * trying tag ID, for example 'tag-1.php' and will finally fallback to tag.php
+ * template, if those files don't exist.
  *
  * @since 2.3.0
  * @uses apply_filters() Calls 'tag_template' on file path of tag template.
@@ -616,7 +754,18 @@ function get_category_template() {
  * @return string
  */
 function get_tag_template() {
-	$template = locate_template(array("tag-" . get_query_var('tag') . '.php', 'tag.php'));
+	$tag_id = absint( get_query_var('tag_id') );
+	$tag_name = get_query_var('tag');
+
+	$templates = array();
+
+	if ( $tag_name )
+		$templates[] = "tag-$tag_name.php";
+	if ( $tag_id )
+		$templates[] = "tag-$tag_id.php";
+	$templates[] = "tag.php";
+
+	$template = locate_template($templates);
 	return apply_filters('tag_template', $template);
 }
 
@@ -682,9 +831,9 @@ function get_home_template() {
 /**
  * Retrieve path of page template in current or parent template.
  *
- * First attempt is to look for the file in the '_wp_page_template' page meta
- * data. The second attempt, if the first has a file and is not empty, is to
- * look for 'page.php'.
+ * Will first look for the specifically assigned page template
+ * The will search for 'page-{slug}.php' followed by 'page-id.php'
+ * and finally 'page.php'
  *
  * @since 1.5.0
  *
@@ -695,6 +844,7 @@ function get_page_template() {
 
 	$id = (int) $wp_query->post->ID;
 	$template = get_post_meta($id, '_wp_page_template', true);
+	$pagename = get_query_var('pagename');
 
 	if ( 'default' == $template )
 		$template = '';
@@ -702,7 +852,10 @@ function get_page_template() {
 	$templates = array();
 	if ( !empty($template) && !validate_file($template) )
 		$templates[] = $template;
-
+	if ( $pagename )
+		$templates[] = "page-$pagename.php";
+	if ( $id )
+		$templates[] = "page-$id.php";
 	$templates[] = "page.php";
 
 	return apply_filters('page_template', locate_template($templates));
@@ -861,7 +1014,7 @@ function locale_stylesheet() {
  * Will only preform task if the user has permissions and template and preview
  * query variables exist.
  *
- * @since 2.5.0
+ * @since 2.6.0
  */
 function preview_theme() {
 	if ( ! (isset($_GET['template']) && isset($_GET['preview'])) )
@@ -893,7 +1046,10 @@ add_action('setup_theme', 'preview_theme');
 
 /**
  * Private function to modify the current template when previewing a theme
- * 
+ *
+ * @since 2.9.0
+ * @access private
+ *
  * @return string
  */
 function _preview_theme_template_filter() {
@@ -902,7 +1058,10 @@ function _preview_theme_template_filter() {
 
 /**
  * Private function to modify the current stylesheet when previewing a theme
- * 
+ *
+ * @since 2.9.0
+ * @access private
+ *
  * @return string
  */
 function _preview_theme_stylesheet_filter() {
@@ -912,7 +1071,7 @@ function _preview_theme_stylesheet_filter() {
 /**
  * Callback function for ob_start() to capture all links in the theme.
  *
- * @since unknown
+ * @since 2.6.0
  * @access private
  *
  * @param string $content
@@ -927,7 +1086,7 @@ function preview_theme_ob_filter( $content ) {
  *
  * Callback function for preg_replace_callback() to accept and filter matches.
  *
- * @since unknown
+ * @since 2.6.0
  * @access private
  *
  * @param array $matches
@@ -1150,6 +1309,77 @@ function add_custom_image_header($header_callback, $admin_header_callback) {
 	require_once(ABSPATH . 'wp-admin/custom-header.php');
 	$GLOBALS['custom_image_header'] =& new Custom_Image_Header($admin_header_callback);
 	add_action('admin_menu', array(&$GLOBALS['custom_image_header'], 'init'));
+}
+
+/**
+ * Allows a theme to register its support of a certain feature
+ * 
+ * Must be called in the themes functions.php file to work.
+ *
+ * @author Mark Jaquith
+ * @since 2.9
+ * @param string $feature the feature being added
+ */
+function add_theme_support( $feature ) {
+	global $_wp_theme_features;
+
+	if ( func_num_args() == 1 )
+		$_wp_theme_features[$feature] = true;
+	else
+		$_wp_theme_features[$feature] = array_slice( func_get_args(), 1 );
+}
+
+/**
+ * Checks a theme's support for a given feature
+ *
+ * @author Mark Jaquith
+ * @since 2.9
+ * @param string $feature the feature being checked
+ * @return boolean
+ */
+
+function current_theme_supports( $feature ) {
+	global $_wp_theme_features;
+
+	if ( !isset( $_wp_theme_features[$feature] ) )
+		return false;
+
+	// If no args passed then no extra checks need be performed
+	if ( func_num_args() <= 1 )
+		return true;
+
+	$args = array_slice( func_get_args(), 1 );
+
+	// @todo Allow pluggable arg checking
+	switch ( $feature ) {
+		case 'post-thumbnails':
+			// post-thumbnails can be registered for only certain content/post types by passing
+			// an array of types to add_theme_support().  If no array was passed, then
+			// any type is accepted
+			if ( true === $_wp_theme_features[$feature] )  // Registered for all types
+				return true;
+			$content_type = $args[0];
+			if ( in_array($content_type, $_wp_theme_features[$feature][0]) )
+				return true;
+			else
+				return false;
+			break;
+	}
+
+	return true;
+}
+
+/**
+ * Checks a theme's support for a given feature before loading the functions which implement it.
+ *
+ * @author Peter Westwood
+ * @since 2.9
+ * @param string $feature the feature being checked
+ * @param string $include the file containing the functions that implement the feature
+ */
+function require_if_theme_supports( $feature, $include) {
+	if ( current_theme_supports( $feature ) )
+		require ( $include );
 }
 
 ?>
