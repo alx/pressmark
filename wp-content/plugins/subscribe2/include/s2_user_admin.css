@@ -5,7 +5,7 @@ ul.s2_blogs {
 
 ul.s2_blogs li {
 	background-color: #E3E3E3;
-	border:1px solid #E0E0E0;
+	border: 1px solid #E0E0E0;
 	display: block;
 	float: left;
 	margin: 3px;
@@ -41,7 +41,7 @@ ul.s2_blogs li .buttons a {
 	margin: 0 0 0 1em;
 }
 
-ul.s2_blogs li .buttons a: hover {
+ul.s2_blogs li .buttons a:hover {
 	background-color: whitesmoke;
 	color: #666;
 }
@@ -59,25 +59,11 @@ ul.s2_blogs div.additional_info {
 	color: #fff;
 	border: 1px solid white;
 	border-bottom: medium none;
+	font-style: italic; 
 	-moz-border-radius-topright: .5em;
 	-moz-border-radius-topleft: .5em;	
 }
 
-ul.s2_blogs li: hover div.additional_info {
+ul.s2_blogs li:hover div.additional_info {
 	display: block;
-}
-
-ul.s2_blogs div.additional_info li {
-	display: block;
-	width: auto;
-	float: left;
-	padding: 1px;
-	background-color: transparent;
-	margin-right: 0;
-	border: medium none;
-	margin-bottom: 0;
-}
-
-ul.s2_blogs div.additional_info .description {
-	font-style: italic; 
 }

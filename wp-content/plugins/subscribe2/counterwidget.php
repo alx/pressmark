@@ -1,11 +1,12 @@
 <?php
 /*
 Plugin Name: Subscribe2 Counter Widget
-Version: 4.16
 Plugin URI: http://subscribe2.wordpress.com
 Description: Adds a sidebar widget to easily customize and display your Subscribe2 subscribers stats.
+Version: 5.2
 Author: Matthew Robinson
 Author URI: http://subscribe2.wordpress.com
+Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=2387904
 */
 
 // Put functions into one big function we'll call at the plugins_loaded
