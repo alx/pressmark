@@ -25,7 +25,7 @@ jQuery(document).ready(function() {
 
 <div id="postbox">
 		<ul id="post-types">
-			<li><a id="link"<?php if ( $_GET['p'] == 'link' || !isset($_GET['p']) : ?> class="selected"<?php endif; ?> href="<?php echo site_url( '?p=link' ) ?>" title="<?php _e( 'Link', 'p2' ) ?>"><?php _e( 'Link', 'p2' ) ?></a></li>
+			<li><a id="link"<?php if ( $_GET['p'] == 'link' || !isset($_GET['p']) ) : ?> class="selected"<?php endif; ?> href="<?php echo site_url( '?p=link' ) ?>" title="<?php _e( 'Link', 'p2' ) ?>"><?php _e( 'Link', 'p2' ) ?></a></li>
 			<li><a id="status"<?php if ( $_GET['p'] == 'status') : ?> class="selected"<?php endif; ?> href="<?php echo site_url( '?p=status' ) ?>" title="<?php _e( 'Status Update', 'p2' ) ?>"><?php _e( 'Status Update', 'p2' ) ?></a></li>
 			<li><a id="post"<?php if ( $_GET['p'] == 'post' ) : ?> class="selected"<?php endif; ?> href="<?php echo site_url( '?p=post' ) ?>" title="<?php _e( 'Blog Post', 'p2' ) ?>"><?php _e( 'Blog Post', 'p2' ) ?></a></li>
 			<li><a id="quote"<?php if ( $_GET['p'] == 'quote' ) : ?> class="selected"<?php endif; ?> href="<?php echo site_url( '?p=quote' ) ?>" title="<?php _e( 'Quote', 'p2' ) ?>"><?php _e( 'Quote', 'p2' ) ?></a></li>
