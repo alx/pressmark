@@ -2,7 +2,7 @@
 /*
 Plugin Name: Akismet
 Plugin URI: http://akismet.com/
-Description: Akismet checks your comments against the Akismet web service to see if they look like spam or not. You need a <a href="http://wordpress.com/api-keys/">WordPress.com API key</a> to use it. You can review the spam it catches under "Comments." To show off your Akismet stats just put <code>&lt;?php akismet_counter(); ?&gt;</code> in your template. See also: <a href="http://wordpress.org/extend/plugins/stats/">WP Stats plugin</a>.
+Description: Akismet checks your comments against the Akismet web service to see if they look like spam or not. You need a <a href="http://akismet.com/get/">WordPress.com API key</a> to use it. You can review the spam it catches under "Comments." To show off your Akismet stats just put <code>&lt;?php akismet_counter(); ?&gt;</code> in your template. See also: <a href="http://wordpress.org/extend/plugins/stats/">WP Stats plugin</a>.
 Version: 2.2.7
 Author: Matt Mullenweg
 Author URI: http://ma.tt/
@@ -122,7 +122,7 @@ function akismet_conf() {
 		'new_key_invalid' => array('color' => 'd22', 'text' => __('The key you entered is invalid. Please double-check it.')),
 		'new_key_failed' => array('color' => 'd22', 'text' => __('The key you entered could not be verified because a connection to akismet.com could not be established. Please check your server configuration.')),
 		'no_connection' => array('color' => 'd22', 'text' => __('There was a problem connecting to the Akismet server. Please check your server configuration.')),
-		'key_empty' => array('color' => 'aa0', 'text' => sprintf(__('Please enter an API key. (<a href="%s" style="color:#fff">Get your key.</a>)'), 'http://wordpress.com/profile/')),
+		'key_empty' => array('color' => 'aa0', 'text' => sprintf(__('Please enter an API key. (<a href="%s" style="color:#fff">Get your key.</a>)'), 'http://akismet.com/get/')),
 		'key_valid' => array('color' => '2d2', 'text' => __('This key is valid.')),
 		'key_failed' => array('color' => 'aa0', 'text' => __('The key below was previously validated but a connection to akismet.com can not be established at this time. Please check your server configuration.')));
 ?>
@@ -134,7 +134,7 @@ function akismet_conf() {
 <div class="narrow">
 <form action="" method="post" id="akismet-conf" style="margin: auto; width: 400px; ">
 <?php if ( !$wpcom_api_key ) { ?>
-	<p><?php printf(__('For many people, <a href="%1$s">Akismet</a> will greatly reduce or even completely eliminate the comment and trackback spam you get on your site. If one does happen to get through, simply mark it as "spam" on the moderation screen and Akismet will learn from the mistakes. If you don\'t have a WordPress.com account yet, you can get one at <a href="%2$s">WordPress.com</a>.'), 'http://akismet.com/', 'http://wordpress.com/api-keys/'); ?></p>
+	<p><?php printf(__('For many people, <a href="%1$s">Akismet</a> will greatly reduce or even completely eliminate the comment and trackback spam you get on your site. If one does happen to get through, simply mark it as "spam" on the moderation screen and Akismet will learn from the mistakes. If you don\'t have a WordPress.com account yet, you can get one at <a href="%2$s">Akismet.com</a>.'), 'http://akismet.com/', 'http://akismet.com/get/'); ?></p>
 
 <?php akismet_nonce_field($akismet_nonce) ?>
 <h3><label for="key"><?php _e('WordPress.com API Key'); ?></label></h3>

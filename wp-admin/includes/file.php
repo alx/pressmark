@@ -235,7 +235,7 @@ function wp_handle_upload( &$file, $overrides = false, $time = null ) {
 	$upload_error_handler = 'wp_handle_upload_error';
 
 	// You may have had one or more 'wp_handle_upload_prefilter' functions error out the file.  Handle that gracefully.
-	if ( isset( $file['error'] ) && !ctype_digit( $file['error'] ) && $file['error'] )
+	if ( isset( $file['error'] ) && !is_numeric( $file['error'] ) && $file['error'] )
 		return $upload_error_handler( $file, $file['error'] );
 
 	// You may define your own function and pass the name in $overrides['unique_filename_callback']
@@ -458,7 +458,7 @@ function download_url( $url ) {
 	if ( ! $handle )
 		return new WP_Error('http_no_file', __('Could not create Temporary file'));
 
-	$response = wp_remote_get($url, array('timeout' => 60));
+	$response = wp_remote_get($url, array('timeout' => 300));
 
 	if ( is_wp_error($response) ) {
 		fclose($handle);
