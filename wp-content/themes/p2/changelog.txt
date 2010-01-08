@@ -1,0 +1,55 @@
+P2 Theme - Changes
+---------------------------
+1.1.3 - 5 Dec 2009
+- Fix for subdirectory installs and media uploads
+- RTL updates
+- Template tag updates
+
+1.1.2 - 2 Dec 2009
+- Fix for subdirectory installs (with root directory "homes") and media uploads
+- Fix for PHP4 issues with str_ireplace
+
+1.1 - 26 Nov 2009
+- Supported by >=2.9 beta
+- @name support
+- Proper child theme support
+- Completely restructured XHR code
+- New files to manage functions, including template-tags.php
+- iPhone style support
+- Refactored JavaScript
+- Speed improvements
+- Large modifications to backend JS and theme management
+- Options for simple style changes, including a custom header
+
+1.0.5 - 12 May 2009
+- Proper 304 response for ajax updates
+- ajax updates for each template page
+- Fixed posts may create blank titles still
+- added hover affect for postbox
+- added postbox to every page.
+- es translations thanks to Luxiano http://www.luxiano.com.ar
+
+1.0.4 - 7 May 2009
+- Danish translations (props Adamsen)
+- Italian translations (props webmaster@giuda.it)
+- Update for short tags problem.
+- Update for navigation issues on single.php
+- Fixed keyboard shortcuts menu layout
+- Added ability for any title that is not auto-generated, to appear as a large title. This is an option which you can turn on and off.
+- Made trackbacks only visible from archive pages.
+- Fix Older/Newer link text.
+- Move logout link.
+- Comment permalink fix.
+- Fixed title count for frontpage showing up on single posts.
+- Fixed bug if posting to an empty blog.
+
+1.0.3 - 15 April 2009
+- Fixed JSON class loading twice
+- Japanese Translations (props OKAMOTO Wataru)
+
+1.0.2 - 13 April 2009
+- Lots of bug fixes.
+- Released to themes directory.
+
+1.0.1 - 11 Mar 2009
+- Prevent scheduled posts from appearing
